@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gekko Browser - History</title>
+  <link rel="stylesheet" href="../index.css">
+  <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+</head>
+<body>
+  <div class="internal-page">
+    <div class="internal-page-header">
+      <h1 class="internal-page-title">Browsing History</h1>
+      <p class="internal-page-subtitle">View and manage your browsing history</p>
+    </div>
+    
+    <div class="internal-page-content">
+      <div class="history-controls">
+        <div class="history-search">
+          <i class="fa-solid fa-magnifying-glass history-search-icon"></i>
+          <input type="text" class="history-search-input" id="history-search" placeholder="Search history">
+        </div>
+        
+        <div class="history-actions">
+          <button class="setting-button" id="clear-history-btn">Clear History</button>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div id="history-empty" class="hidden">
+          <p>Your browsing history is empty.</p>
+        </div>
+        
+        <ul class="history-list" id="history-list">
+          <!-- History items will be populated dynamically -->
+        </ul>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Get history from the API
+    const history = window.parent.api.getHistory();
+    
+    // DOM elements
+    const historyList = document.getElementById('history-list');
+    const historyEmpty = document.getElementById('history-empty');
+    const historySearch = document.getElementById('history-search');
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+    
+    // Format date
+    function formatDate(timestamp) {
+      const date = new Date(timestamp);
+      return date.toLocaleString();
+    }
+    
+    // Render history items
+    function renderHistory(items) {
+      historyList.innerHTML = '';
+      
+      if (items.length === 0) {
+        historyEmpty.classList.remove('hidden');
+        return;
+      }
+      
+      historyEmpty.classList.add('hidden');
+      
+      items.forEach(item => {
+        const historyItem = document.createElement('li');
+        historyItem.className = 'history-item';
+        historyItem.setAttribute('data-url', item.url);
+        
+        // Get favicon based on URL
+        let faviconHTML = '<i class="fa-solid fa-globe"></i>';
+        if (item.url.startsWith('https://')) {
+          faviconHTML = '<i class="fa-solid fa-lock"></i>';
+        } else if (item.url.startsWith('gkps://')) {
+          faviconHTML = '<i class="fa-solid fa-shield"></i>';
+        }
+        
+        historyItem.innerHTML = `
+          <div class="history-icon">${faviconHTML}</div>
+          <div class="history-content">
+            <div class="history-title">${item.title || item.url}</div>
+            <div class="history-url">${item.url}</div>
+          </div>
+          <div class="history-time">${formatDate(item.timestamp)}</div>
+        `;
+        
+        historyList.appendChild(historyItem);
+        
+        // Add click event to navigate to the URL
+        historyItem.addEventListener('click', () => {
+          window.parent.postMessage({ type: 'navigate', url: item.url }, '*');
+        });
+      });
+    }
+    
+    // Initial render
+    renderHistory(history);
+    
+    // Search history
+    historySearch.addEventListener('input', () => {
+      const query = historySearch.value.toLowerCase();
+      let filteredHistory = history;
+      
+      if (query) {
+        filteredHistory = history.filter(item => {
+          return (
+            (item.title && item.title.toLowerCase().includes(query)) ||
+            item.url.toLowerCase().includes(query)
+          );
+        });
+      }
+      
+      renderHistory(filteredHistory);
+    });
+    
+    // Clear history
+    clearHistoryBtn.addEventListener('click', () => {
+      if (confirm('Are you sure you want to clear your browsing history?')) {
+        window.parent.api.clearHistory();
+        history.length = 0;
+        renderHistory(history);
+      }
+    });
+  </script>
+</body>
+</html>

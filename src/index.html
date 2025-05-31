@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self';">
+  <title>Gekko Browser</title>
+  <link rel="stylesheet" href="index.css" />
+  <link rel="stylesheet" href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css" />
+  <script src="themes.js" defer></script>
+</head>
+<body>
+  <div class="container">
+    <!-- Browser Header -->
+    <div class="browser-header">
+      <!-- Title Bar -->
+      <div class="title-bar">
+        <div class="title-bar-text">Gekko Browser</div>
+        <div class="window-controls">
+          <div class="window-control" id="minimize-button">
+            <i class="fa-solid fa-window-minimize"></i>
+          </div>
+          <div class="window-control" id="maximize-button">
+            <i class="fa-solid fa-window-maximize"></i>
+          </div>
+          <div class="window-control" id="close-button">
+            <i class="fa-solid fa-xmark"></i>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Tab Bar -->
+      <div class="tab-bar" id="tab-bar">
+        <!-- Tabs will be generated dynamically -->
+        <div class="new-tab-button" id="new-tab-button">
+          <i class="fa-solid fa-plus"></i>
+        </div>
+      </div>
+      
+      <!-- Navigation Bar -->
+      <div class="nav-bar">
+        <div class="nav-controls">
+          <div class="nav-button" id="back-button">
+            <i class="fa-solid fa-arrow-left"></i>
+          </div>
+          <div class="nav-button" id="forward-button">
+            <i class="fa-solid fa-arrow-right"></i>
+          </div>
+          <div class="nav-button" id="refresh-button">
+            <i class="fa-solid fa-arrows-rotate"></i>
+          </div>
+          <div class="nav-button" id="home-button">
+            <i class="fa-solid fa-house"></i>
+          </div>
+        </div>
+        
+        <div class="address-bar-container">
+          <div class="address-protocol" id="address-protocol">
+            <i class="fa-solid fa-globe"></i>
+          </div>
+          <input type="text" class="address-bar" id="address-bar" placeholder="Search or enter URL" />
+          <div class="address-bar-actions">
+            <div class="address-bar-action" id="clear-button">
+              <i class="fa-solid fa-xmark"></i>
+            </div>
+          </div>
+        </div>
+        
+        <div class="browser-actions">
+          <div class="browser-action" id="bookmarks-button">
+            <i class="fa-regular fa-bookmark"></i>
+          </div>
+          <div class="browser-action" id="history-button">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <div class="browser-action" id="settings-button">
+            <i class="fa-solid fa-gear"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="content-container">
+      <div class="browser-view" id="browser-content">
+        <!-- Browser content (webviews) will be inserted here dynamically -->
+      </div>
+    </div>
+    
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="status-text" id="status-text">Ready</div>
+      <div class="status-security" id="status-security">
+        <div class="security-icon">
+          <i class="fa-solid fa-lock"></i>
+        </div>
+        <span id="security-text">Secure</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load the renderer script -->
+  <script src="renderer.js"></script>
+</body>
+</html>

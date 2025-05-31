@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Content Demo</title>
+  <link rel="stylesheet" href="../../index.css">
+  <link rel="stylesheet" href="../../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+  <style>
+    .secure-badge {
+      display: inline-flex;
+      align-items: center;
+      background-color: var(--secure);
+      color: #000;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .secure-badge i {
+      margin-right: 6px;
+    }
+    
+    .data-card {
+      background-color: rgba(129, 201, 149, 0.1);
+      border: 1px solid var(--secure);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+    
+    .data-title {
+      color: var(--secure);
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    
+    .data-content {
+      font-family: monospace;
+      background-color: rgba(0, 0, 0, 0.2);
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="internal-page">
+    <div class="internal-page-header">
+      <div class="secure-badge">
+        <i class="fa-solid fa-shield"></i> GKPS Secure Connection
+      </div>
+      <h1 class="internal-page-title">Secure Content Demo</h1>
+      <p class="internal-page-subtitle">This page demonstrates the GKPS secure protocol</p>
+    </div>
+    
+    <div class="internal-page-content">
+      <!-- Introduction -->
+      <div class="card">
+        <h2 class="card-title">Secure Connection Details</h2>
+        <div class="card-content">
+          <p>You are viewing this page over a secure GKPS connection. The GKPS protocol provides end-to-end encryption and content verification.</p>
+          
+          <div class="data-card">
+            <div class="data-title">Security Certificate</div>
+            <div class="data-content">
+              <pre>
+-----BEGIN GEKKO CERTIFICATE-----
+Domain: secure.gekko
+Issued: 2025-05-15T00:00:00Z
+Expires: 2026-05-15T00:00:00Z
+Issuer: Gekko Certificate Authority
+Fingerprint: f8:7a:e5:d6:9c:3b:2a:14:5e:8f:7d:0b:6c:a9:4f:e3
+Status: Valid
+-----END GEKKO CERTIFICATE-----</pre>
+            </div>
+          </div>
+          
+          <div class="data-card">
+            <div class="data-title">Connection Information</div>
+            <div class="data-content">
+              <pre>
+Protocol: GKPS/1.0
+Encryption: AES-256-GCM
+Key Exchange: ECDHE-RSA
+TLS Version: 1.3
+Cipher Suite: GKPS_ECDHE_RSA_WITH_AES_256_GCM_SHA384</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Protected Content -->
+      <div class="card">
+        <h2 class="card-title">Protected Content Example</h2>
+        <div class="card-content">
+          <p>The following content is protected by the GKPS protocol:</p>
+          
+          <div class="data-card">
+            <div class="data-title">Sample Secure Data</div>
+            <div class="data-content">
+              <pre>
+{
+  "user": {
+    "id": "user-12345",
+    "name": "Demo User",
+    "access_level": "admin",
+    "session_valid_until": "2025-05-31T12:00:00Z"
+  },
+  "secure_data": {
+    "api_key": "gkps_sk_7a9b2c3d4e5f6g7h8i9j0k",
+    "permissions": ["read", "write", "admin"],
+    "encrypted_payload": "U2FtcGxlIGVuY3J5cHRlZCBkYXRhIHdvdWxkIGJlIGhlcmUu"
+  },
+  "timestamp": "2025-05-31T10:15:30Z",
+  "signature": "f7d8e9c0b1a2938475610293847561029384756102"
+}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Security Features -->
+      <div class="card">
+        <h2 class="card-title">GKPS Security Features</h2>
+        <div class="card-content">
+          <p>The GKPS protocol includes the following security features:</p>
+          
+          <ul>
+            <li><strong>End-to-End Encryption:</strong> All data transmitted is encrypted using strong cryptographic algorithms.</li>
+            <li><strong>Certificate Validation:</strong> Domain ownership is verified through a trusted certificate system.</li>
+            <li><strong>Content Integrity:</strong> All responses include a signature to verify content hasn't been tampered with.</li>
+            <li><strong>Security Indicators:</strong> Visual indicators in the browser show the connection is secure.</li>
+            <li><strong>Fingerprinting Protection:</strong> Additional measures to prevent tracking and fingerprinting.</li>
+          </ul>
+        </div>
+      </div>
+      
+      <!-- Links -->
+      <div class="card">
+        <h2 class="card-title">Secure Navigation</h2>
+        <div class="card-content">
+          <p>You can safely navigate to the following secure pages:</p>
+          
+          <ul>
+            <li><a href="gkps://secure.gekko/profile.html">Your Profile</a></li>
+            <li><a href="gkps://secure.gekko/dashboard.html">Dashboard</a></li>
+            <li><a href="gkps://secure.gekko/settings.html">Security Settings</a></li>
+          </ul>
+          
+          <p>Or return to a standard connection:</p>
+          
+          <ul>
+            <li><a href="gkp://home.gekko/">Home Page</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Make links work
+    document.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const url = link.getAttribute('href');
+        window.parent.postMessage({ type: 'navigate', url: url }, '*');
+      });
+    });
+  </script>
+</body>
+</html>

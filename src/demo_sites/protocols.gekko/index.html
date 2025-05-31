@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GKP and GKPS Protocols Documentation</title>
+  <link rel="stylesheet" href="../index.css">
+  <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+</head>
+<body>
+  <div class="internal-page">
+    <div class="internal-page-header">
+      <h1 class="internal-page-title">GKP and GKPS Protocols</h1>
+      <p class="internal-page-subtitle">Documentation for the Gekko Protocol and its secure variant</p>
+    </div>
+    
+    <div class="internal-page-content">
+      <!-- Introduction -->
+      <div class="card">
+        <h2 class="card-title">Introduction</h2>
+        <div class="card-content">
+          <p>The Gekko Protocol (GKP) and its secure variant (GKPS) are specialized protocols for accessing resources across different domains. This guide will help you understand how to use them effectively.</p>
+        </div>
+      </div>
+      
+      <!-- URL Structure -->
+      <div class="card">
+        <h2 class="card-title">Basic URL Structure</h2>
+        <div class="card-content">
+          <p>GKP URLs follow this format:</p>
+          <pre><code>gkp://&lt;domain&gt;.&lt;tld&gt;/</code></pre>
+          
+          <p>For secure connections, use GKPS:</p>
+          <pre><code>gkps://&lt;domain&gt;.&lt;tld&gt;/</code></pre>
+        </div>
+      </div>
+      
+      <!-- Supported TLDs -->
+      <div class="card">
+        <h2 class="card-title">Supported Top-Level Domains (TLDs)</h2>
+        <div class="card-content">
+          <p>The protocol supports three specialized TLDs:</p>
+          <ol>
+            <li><code>.rust</code></li>
+            <li><code>.gekko</code></li>
+            <li><code>.kewl</code></li>
+          </ol>
+        </div>
+      </div>
+      
+      <!-- Content Types -->
+      <div class="card">
+        <h2 class="card-title">Content Types</h2>
+        <div class="card-content">
+          <p>The protocol automatically detects content types based on file extensions:</p>
+          <ul>
+            <li><code>.html</code> - HTML content (text/html)</li>
+            <li><code>.json</code> - JSON data (application/json)</li>
+            <li><code>.md</code> - Markdown content (text/markdown)</li>
+            <li><code>.txt</code> - Plain text (text/plain)</li>
+            <li>Other extensions default to application/octet-stream</li>
+          </ul>
+        </div>
+      </div>
+      
+      <!-- Examples -->
+      <div class="card">
+        <h2 class="card-title">Examples</h2>
+        <div class="card-content">
+          <h3>Basic GKP Requests</h3>
+          <pre><code>gkp://hello.gekko/search.html
+gkp://docs.rust/guide.md
+gkp://blog.kewl/posts/latest.md</code></pre>
+          
+          <h3>Secure GKPS Requests</h3>
+          <pre><code>gkps://vault.rust/user/profile.json
+gkps://secure.gekko/api/data.json
+gkps://private.kewl/dashboard.html</code></pre>
+        </div>
+      </div>
+      
+      <!-- Security Features -->
+      <div class="card">
+        <h2 class="card-title">Security Features</h2>
+        <div class="card-content">
+          <p>When using GKPS:</p>
+          <ul>
+            <li>Connections are encrypted</li>
+            <li>Domain certificates are verified</li>
+            <li>Responses include a security fingerprint</li>
+            <li>Data is encoded with additional security measures</li>
+          </ul>
+        </div>
+      </div>
+      
+      <!-- Common Use Cases -->
+      <div class="card">
+        <h2 class="card-title">Common Use Cases</h2>
+        <div class="card-content">
+          <ol>
+            <li>
+              <strong>Public Content Access</strong>
+              <pre><code>gkp://news.kewl/latest.html</code></pre>
+            </li>
+            <li>
+              <strong>Secure Data Transfer</strong>
+              <pre><code>gkps://vault.rust/sensitive/data.json</code></pre>
+            </li>
+            <li>
+              <strong>API Endpoints</strong>
+              <pre><code>gkp://api.gekko/v1/status.json</code></pre>
+            </li>
+            <li>
+              <strong>Documentation</strong>
+              <pre><code>gkp://docs.rust/tutorial/intro.md</code></pre>
+            </li>
+          </ol>
+        </div>
+      </div>
+      
+      <!-- Error Cases -->
+      <div class="card">
+        <h2 class="card-title">Error Cases to Watch For</h2>
+        <div class="card-content">
+          <ol>
+            <li>Invalid URL format</li>
+            <li>Unsupported TLD</li>
+            <li>Missing or invalid certificates (for GKPS)</li>
+            <li>Security validation failures</li>
+          </ol>
+        </div>
+      </div>
+      
+      <!-- Best Practices -->
+      <div class="card">
+        <h2 class="card-title">Best Practices</h2>
+        <div class="card-content">
+          <ol>
+            <li>Use GKPS for any sensitive data</li>
+            <li>Include proper file extensions for correct content type handling</li>
+            <li>Keep URLs clean and descriptive</li>
+            <li>Use query parameters when needed for dynamic content</li>
+            <li>Verify certificate validity for secure domains</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

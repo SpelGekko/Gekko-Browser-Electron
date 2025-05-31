@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gekko Browser - Settings</title>
+  <link rel="stylesheet" href="../index.css">
+  <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+</head>
+<body>
+  <div class="internal-page">
+    <div class="internal-page-header">
+      <h1 class="internal-page-title">Settings</h1>
+      <p class="internal-page-subtitle">Customize your Gekko Browser experience</p>
+    </div>
+    
+    <div class="internal-page-content">
+      <!-- General Settings -->
+      <div class="card">
+        <h2 class="card-title">General Settings</h2>
+        
+        <div class="settings-section">
+          <div class="setting-item">
+            <div>
+              <div class="setting-label">Theme</div>
+              <div class="setting-description">Change the appearance of Gekko Browser</div>
+            </div>
+            <div class="setting-control">
+              <select id="theme-select" class="setting-select">
+                <!-- Themes will be populated dynamically -->
+              </select>
+            </div>
+          </div>
+          
+          <div class="setting-item">
+            <div>
+              <div class="setting-label">Home Page</div>
+              <div class="setting-description">Page that loads when you open a new tab or click the home button</div>
+            </div>
+            <div class="setting-control">
+              <input type="text" id="home-page-input" class="setting-input" placeholder="Enter URL">
+            </div>
+          </div>
+          
+          <div class="setting-item">
+            <div>
+              <div class="setting-label">Search Engine</div>
+              <div class="setting-description">Default search engine for address bar searches</div>
+            </div>
+            <div class="setting-control">
+              <select id="search-engine-select" class="setting-select">
+                <option value="https://www.google.com/search?q=">Google</option>
+                <option value="https://www.bing.com/search?q=">Bing</option>
+                <option value="https://duckduckgo.com/?q=">DuckDuckGo</option>
+                <option value="https://search.yahoo.com/search?p=">Yahoo</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="setting-item">
+            <div>
+              <div class="setting-label">Developer Tools</div>
+              <div class="setting-description">Enable developer tools for debugging</div>
+            </div>
+            <div class="setting-control">
+              <input type="checkbox" id="dev-tools-checkbox">
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Protocol Settings -->
+      <div class="card">
+        <h2 class="card-title">Protocol Settings</h2>
+        
+        <div class="settings-section">
+          <div class="setting-item">
+            <div>
+              <div class="setting-label">GKP and GKPS Protocols</div>
+              <div class="setting-description">Learn about the Gekko Protocols</div>
+            </div>
+            <div class="setting-control">
+              <button id="view-protocols-btn" class="setting-button">View Documentation</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Privacy Settings -->
+      <div class="card">
+        <h2 class="card-title">Privacy & Security</h2>
+        
+        <div class="settings-section">
+          <div class="setting-item">
+            <div>
+              <div class="setting-label">Browsing History</div>
+              <div class="setting-description">Clear your browsing history</div>
+            </div>
+            <div class="setting-control">
+              <button id="clear-history-btn" class="setting-button">Clear History</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- About -->
+      <div class="card">
+        <h2 class="card-title">About Gekko Browser</h2>
+        
+        <div class="settings-section">
+          <div class="setting-item">
+            <div>
+              <div class="setting-label">Version</div>
+              <div class="setting-description" id="version-text">1.0.0</div>
+            </div>
+            <div class="setting-control">
+              <button id="about-btn" class="setting-button">About</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Get settings from the API
+    const settings = window.parent.api.getSettings();
+    
+    // Populate theme selector
+    const themeSelect = document.getElementById('theme-select');
+    const themes = window.parent.api.getThemes();
+    
+    themes.forEach(theme => {
+      const option = document.createElement('option');
+      option.value = theme.id;
+      option.textContent = theme.name;
+      themeSelect.appendChild(option);
+    });
+    
+    // Set current values
+    themeSelect.value = settings.theme;
+    document.getElementById('home-page-input').value = settings.homePage;
+    document.getElementById('search-engine-select').value = settings.searchEngine;
+    document.getElementById('dev-tools-checkbox').checked = settings.enableDevTools;
+    
+    // Theme change handler
+    themeSelect.addEventListener('change', () => {
+      window.parent.api.setSetting('theme', themeSelect.value);
+      window.parent.postMessage({ type: 'themeChange', theme: themeSelect.value }, '*');
+    });
+    
+    // Home page change handler
+    document.getElementById('home-page-input').addEventListener('blur', () => {
+      const homePageInput = document.getElementById('home-page-input');
+      window.parent.api.setSetting('homePage', homePageInput.value);
+    });
+    
+    // Search engine change handler
+    document.getElementById('search-engine-select').addEventListener('change', () => {
+      const searchEngineSelect = document.getElementById('search-engine-select');
+      window.parent.api.setSetting('searchEngine', searchEngineSelect.value);
+    });
+    
+    // Developer tools change handler
+    document.getElementById('dev-tools-checkbox').addEventListener('change', () => {
+      const devToolsCheckbox = document.getElementById('dev-tools-checkbox');
+      window.parent.api.setSetting('enableDevTools', devToolsCheckbox.checked);
+    });
+    
+    // View protocols documentation
+    document.getElementById('view-protocols-btn').addEventListener('click', () => {
+      window.parent.postMessage({ type: 'navigate', url: 'gkp://protocols.gekko/' }, '*');
+    });
+    
+    // Clear history
+    document.getElementById('clear-history-btn').addEventListener('click', () => {
+      window.parent.api.clearHistory();
+      alert('Browsing history cleared!');
+    });
+    
+    // About button
+    document.getElementById('about-btn').addEventListener('click', () => {
+      window.parent.postMessage({ type: 'navigate', url: 'gkp://about.gekko/' }, '*');
+    });
+  </script>
+</body>
+</html>

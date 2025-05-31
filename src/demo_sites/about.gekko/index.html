@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Gekko Browser</title>
+  <link rel="stylesheet" href="../index.css">
+  <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+</head>
+<body>
+  <div class="internal-page">
+    <div class="internal-page-header">
+      <h1 class="internal-page-title">About Gekko Browser</h1>
+      <p class="internal-page-subtitle">A lightweight, experimental web browser built with Electron</p>
+    </div>
+    
+    <div class="internal-page-content">
+      <!-- About -->
+      <div class="card">
+        <h2 class="card-title">About</h2>
+        <div class="card-content">
+          <p>Gekko Browser is a modern, lightweight web browser built with Electron. It features a sleek, customizable interface and supports both standard web protocols (HTTP/HTTPS) and the experimental Gekko Protocol (GKP/GKPS).</p>
+          <p>Version: 1.0.0</p>
+        </div>
+      </div>
+      
+      <!-- Features -->
+      <div class="card">
+        <h2 class="card-title">Features</h2>
+        <div class="card-content">
+          <ul>
+            <li>Modern, sleek interface inspired by Opera and Opera GX</li>
+            <li>Custom GKP and GKPS protocols for demo browsing</li>
+            <li>HTTP/HTTPS support for real web browsing</li>
+            <li>Tab-based browsing</li>
+            <li>Navigation history (back/forward)</li>
+            <li>Hyperlink support</li>
+            <li>Customizable themes</li>
+            <li>Built-in settings and history pages</li>
+          </ul>
+        </div>
+      </div>
+      
+      <!-- GKP and GKPS Protocols -->
+      <div class="card">
+        <h2 class="card-title">GKP and GKPS Protocols</h2>
+        <div class="card-content">
+          <p>The Gekko Protocol (GKP) and its secure variant (GKPS) are specialized protocols for accessing resources across different domains.</p>
+          
+          <h3>Basic URL Structure</h3>
+          <p>GKP URLs follow this format: <code>gkp://&lt;domain&gt;.&lt;tld&gt;/</code></p>
+          <p>For secure connections, use GKPS: <code>gkps://&lt;domain&gt;.&lt;tld&gt;/</code></p>
+          
+          <h3>Supported Top-Level Domains (TLDs)</h3>
+          <ul>
+            <li>.rust</li>
+            <li>.gekko</li>
+            <li>.kewl</li>
+          </ul>
+          
+          <h3>Example URLs</h3>
+          <ul>
+            <li><code>gkp://home.gekko/</code> - Home page</li>
+            <li><code>gkp://about.gekko/</code> - About page</li>
+            <li><code>gkps://secure.gekko/</code> - Secure content demo</li>
+          </ul>
+          
+          <p><a href="gkp://protocols.gekko/" class="setting-button primary">View Full Documentation</a></p>
+        </div>
+      </div>
+      
+      <!-- Technical Stack -->
+      <div class="card">
+        <h2 class="card-title">Technical Stack</h2>
+        <div class="card-content">
+          <ul>
+            <li>Electron - Cross-platform desktop application framework</li>
+            <li>JavaScript - Core programming language</li>
+            <li>HTML/CSS - User interface</li>
+            <li>Custom theme system for easy UI customization</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Make links work
+    document.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const url = link.getAttribute('href');
+        window.parent.postMessage({ type: 'navigate', url: url }, '*');
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+/* Internal Pages CSS for Gekko Browser */
+
+/* Base Styles */
+:root {
+  --primary-color: #8ab4f8;
+  --secondary-color: #303134;
+  --background-color: #202124;
+  --card-background: #303134;
+  --text-color: #e8eaed;
+  --text-secondary: #9aa0a6;
+  --border-color: #3c4043;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --accent-color: #8ab4f8;
+  --success-color: #81c995;
+  --error-color: #f28b82;
+  --warning-color: #fdd663;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+.internal-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.internal-page-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.internal-page-title {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--primary-color);
+}
+
+.internal-page-subtitle {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+}
+
+.internal-page-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+}
+
+/* Card Components */
+.card {
+  background-color: var(--card-background);
+  border-radius: 10px;
+  box-shadow: 0 4px 10px var(--shadow-color);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.card-title {
+  font-size: 1.5rem;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: var(--primary-color);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+}
+
+/* Settings Styles */
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.setting-label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.setting-description {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.setting-control {
+  min-width: 200px;
+}
+
+.setting-select, .setting-input {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.setting-select:focus, .setting-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+/* Button Styles */
+.button {
+  background-color: var(--primary-color);
+  color: var(--background-color);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.button:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.button-secondary {
+  background-color: transparent;
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* Home Page Specific */
+.quick-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.quick-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: var(--text-color);
+  background-color: var(--card-background);
+  padding: 1.5rem;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.quick-link:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px var(--shadow-color);
+}
+
+.quick-link-icon {
+  font-size: 2.5rem;
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+}
+
+.quick-link-title {
+  font-weight: 600;
+  text-align: center;
+}
+
+/* History Page Specific */
+.history-list {
+  width: 100%;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.history-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.history-favicon {
+  margin-right: 1rem;
+  width: 20px;
+  height: 20px;
+}
+
+.history-details {
+  flex-grow: 1;
+}
+
+.history-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.history-url {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.history-time {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* About Page Specific */
+.protocol-details {
+  margin-top: 2rem;
+}
+
+.protocol-item {
+  margin-bottom: 2rem;
+}
+
+.protocol-name {
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+}
+
+.protocol-description {
+  margin-bottom: 1rem;
+}
+
+.code-block {
+  background-color: var(--background-color);
+  padding: 1rem;
+  border-radius: 6px;
+  font-family: monospace;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .internal-page {
+    padding: 1rem;
+  }
+  
+  .internal-page-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .setting-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .setting-control {
+    width: 100%;
+    min-width: 100%;
+  }
+}

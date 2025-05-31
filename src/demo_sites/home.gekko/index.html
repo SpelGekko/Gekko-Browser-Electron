@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gekko Browser - Home</title>
+  <link rel="stylesheet" href="../index.css">
+  <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+</head>
+<body>
+  <div class="internal-page">
+    <div class="internal-page-header">
+      <h1 class="internal-page-title">Welcome to Gekko Browser</h1>
+      <p class="internal-page-subtitle">A lightweight, experimental web browser with GKP protocol support</p>
+    </div>
+    
+    <div class="internal-page-content">
+      <div class="search-container">
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" class="search-input" id="search-input" placeholder="Search the web...">
+        </div>
+      </div>
+      
+      <div class="home-grid" id="shortcuts-grid">
+        <!-- Default shortcuts -->
+        <div class="home-shortcut" data-url="https://github.com">
+          <div class="shortcut-icon">
+            <i class="fa-brands fa-github"></i>
+          </div>
+          <div class="shortcut-title">GitHub</div>
+        </div>
+        
+        <div class="home-shortcut" data-url="https://google.com">
+          <div class="shortcut-icon">
+            <i class="fa-brands fa-google"></i>
+          </div>
+          <div class="shortcut-title">Google</div>
+        </div>
+        
+        <div class="home-shortcut" data-url="https://youtube.com">
+          <div class="shortcut-icon">
+            <i class="fa-brands fa-youtube"></i>
+          </div>
+          <div class="shortcut-title">YouTube</div>
+        </div>
+        
+        <div class="home-shortcut" data-url="https://twitter.com">
+          <div class="shortcut-icon">
+            <i class="fa-brands fa-twitter"></i>
+          </div>
+          <div class="shortcut-title">Twitter</div>
+        </div>
+        
+        <div class="home-shortcut" data-url="https://reddit.com">
+          <div class="shortcut-icon">
+            <i class="fa-brands fa-reddit"></i>
+          </div>
+          <div class="shortcut-title">Reddit</div>
+        </div>
+        
+        <div class="home-shortcut" data-url="gkp://about.gekko/">
+          <div class="shortcut-icon">
+            <i class="fa-solid fa-info-circle"></i>
+          </div>
+          <div class="shortcut-title">About Gekko</div>
+        </div>
+        
+        <div class="home-shortcut" data-url="gkps://secure.gekko/">
+          <div class="shortcut-icon">
+            <i class="fa-solid fa-shield"></i>
+          </div>
+          <div class="shortcut-title">Secure Demo</div>
+        </div>
+        
+        <div class="home-shortcut" data-url="gkp://settings.gekko/">
+          <div class="shortcut-icon">
+            <i class="fa-solid fa-gear"></i>
+          </div>
+          <div class="shortcut-title">Settings</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Handle search input
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const query = searchInput.value.trim();
+        if (query) {
+          // Pass the search query to the main window
+          window.parent.postMessage({ type: 'search', query: query }, '*');
+        }
+      }
+    });
+    
+    // Handle shortcut clicks
+    document.querySelectorAll('.home-shortcut').forEach(shortcut => {
+      shortcut.addEventListener('click', () => {
+        const url = shortcut.getAttribute('data-url');
+        if (url) {
+          window.parent.postMessage({ type: 'navigate', url: url }, '*');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
