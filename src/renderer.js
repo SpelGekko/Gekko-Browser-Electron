@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize variables
   let currentTabId = null;
   let tabs = [];
+  let history = [];
 
   // DOM Elements
   const tabBar = document.getElementById('tab-bar');
@@ -28,6 +29,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusText = document.getElementById('status-text');
   const statusSecurity = document.getElementById('status-security');
   const securityText = document.getElementById('security-text');
+
+  // Verify all required elements are present
+  if (!verifyRequiredElements()) {
+    console.error('Some required UI elements are missing');
+    return;
+  }
+
   // Apply theme from settings or default to dark
   const settings = window.api.getSettings();
   applyTheme(settings.theme || 'dark');
@@ -35,11 +43,51 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set up event listeners
   setupEventListeners();
   
-  // Create initial tab
-  createTab(settings.homePage);
+  // Create initial tab with home page
+  createTab(settings.homePage || 'gkp://home.gekko/');
+
+  // Verify all required DOM elements are present
+  function verifyRequiredElements() {
+    const requiredElements = [
+      { el: tabBar, name: 'tab-bar' },
+      { el: newTabButton, name: 'new-tab-button' },
+      { el: browserContent, name: 'browser-content' },
+      { el: addressBar, name: 'address-bar' },
+      { el: addressProtocol, name: 'address-protocol' },
+      { el: backButton, name: 'back-button' },
+      { el: forwardButton, name: 'forward-button' },
+      { el: refreshButton, name: 'refresh-button' },
+      { el: homeButton, name: 'home-button' },
+      { el: clearButton, name: 'clear-button' },
+      { el: bookmarksButton, name: 'bookmarks-button' },
+      { el: historyButton, name: 'history-button' },
+      { el: settingsButton, name: 'settings-button' },
+      { el: minimizeButton, name: 'minimize-button' },
+      { el: maximizeButton, name: 'maximize-button' },
+      { el: closeButton, name: 'close-button' },
+      { el: statusText, name: 'status-text' },
+      { el: statusSecurity, name: 'status-security' },
+      { el: securityText, name: 'security-text' }
+    ];
+
+    let allPresent = true;
+    requiredElements.forEach(({el, name}) => {
+      if (!el) {
+        console.error(`Required element not found: ${name}`);
+        allPresent = false;
+      }
+    });
+
+    return allPresent;
+  }
 
   // Set up event listeners
   function setupEventListeners() {
+    if (!minimizeButton || !maximizeButton || !closeButton) {
+      console.error('Window control buttons not found');
+      return;
+    }
+
     // Window control buttons
     minimizeButton.addEventListener('click', () => window.api.minimize());
     maximizeButton.addEventListener('click', () => window.api.maximize());
@@ -49,29 +97,63 @@ document.addEventListener('DOMContentLoaded', () => {
     newTabButton.addEventListener('click', () => createTab());
     
     // Navigation controls
-    backButton.addEventListener('click', goBack);
-    forwardButton.addEventListener('click', goForward);
-    refreshButton.addEventListener('click', refresh);
-    homeButton.addEventListener('click', goHome);
+    backButton.addEventListener('click', () => goBack());
+    forwardButton.addEventListener('click', () => goForward());
+    refreshButton.addEventListener('click', () => refresh());
+    homeButton.addEventListener('click', () => goHome());
     
-    // Address bar
+    // Address bar handling
     addressBar.addEventListener('keydown', handleAddressBarKeyDown);
     clearButton.addEventListener('click', clearAddressBar);
     
     // Browser actions
-    bookmarksButton.addEventListener('click', showBookmarks);
-    historyButton.addEventListener('click', showHistory);
-    settingsButton.addEventListener('click', showSettings);
+    bookmarksButton.addEventListener('click', () => showBookmarks());
+    historyButton.addEventListener('click', () => showHistory());
+    settingsButton.addEventListener('click', () => showSettings());
+    
+    // Listen for messages from internal pages
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'navigate' && event.data.url) {
+        handleNavigation(event.data.url);
+      } else if (event.data && event.data.type === 'themeChange') {
+        applyTheme(event.data.theme);
+      }
+    });
   }
+
+  // Handle address bar keydown events
+  function handleAddressBarKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const url = addressBar.value;
+      handleNavigation(url);
+    }
+  }
+
+  // Add entry to history
+  function addToHistory(url, title) {
+    if (!url || url.startsWith('about:') || url.startsWith('chrome:')) {
+      return;
+    }
+    
+    const historyEntry = {
+      url,
+      title: title || url,
+      timestamp: Date.now()
+    };
+    
+    window.api.addToHistory(historyEntry);
+  }
+
   // Create a new tab
   function createTab(url) {
     const settings = window.api.getSettings();
     const tabId = generateTabId();
-    const homePage = settings.homePage;
-    
+    const homePage = settings.homePage || 'gkp://home.gekko/';
+
     // Default URL if none provided
     url = url || homePage;
-    
+
     // Create tab element
     const tab = document.createElement('div');
     tab.className = 'tab';
@@ -87,25 +169,22 @@ document.addEventListener('DOMContentLoaded', () => {
         <i class="fa-solid fa-xmark"></i>
       </div>
     `;
-    
+
     // Insert tab before the new tab button
     tabBar.insertBefore(tab, newTabButton);
-    
+
     // Create webview
     const webview = document.createElement('webview');
     webview.setAttribute('id', `webview-${tabId}`);
-    webview.className = 'webview hidden';
+    webview.setAttribute('class', 'webview hidden');
     webview.setAttribute('data-tab-id', tabId);
-    webview.setAttribute('src', url);
     webview.setAttribute('nodeintegration', 'false');
-    webview.setAttribute('webpreferences', 'contextIsolation=true');
-    
+    webview.setAttribute('webpreferences', 'contextIsolation=true, worldSafeExecuteJavaScript=true');
+    webview.setAttribute('preload', './preload.js');
+
     // Add webview to the browser content
     browserContent.appendChild(webview);
-    
-    // Set up webview event listeners
-    setupWebviewEvents(webview, tabId);
-    
+
     // Store tab info
     tabs.push({
       id: tabId,
@@ -115,29 +194,38 @@ document.addEventListener('DOMContentLoaded', () => {
       element: tab,
       webview: webview
     });
-    
+
+    // Set up tab event listeners
+    const closeButton = tab.querySelector('.tab-close');
+    const tabContent = tab.querySelector('.tab-content');
+
+    // Handle tab selection
+    tabContent.addEventListener('click', () => {
+      setActiveTab(tabId);
+    });
+
+    // Handle tab closing
+    closeButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeTab(tabId);
+    });
+
+    // Set up webview events
+    setupWebviewEvents(webview, tabId);
+
     // Set as active tab
     setActiveTab(tabId);
-    
-    // Set up tab event listeners
-    tab.addEventListener('click', (e) => {
-      if (!e.target.closest('.tab-close')) {
-        setActiveTab(tabId);
-      }
-    });
-    
-    // Add event listener specifically to the close button
-    const closeButton = tab.querySelector('.tab-close');
-    if (closeButton) {
-      closeButton.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent tab selection when closing
-        closeTab(tabId);
+
+    // Set up a one-time dom-ready listener before navigating
+    webview.addEventListener('dom-ready', () => {
+      // Navigate to URL after webview is ready
+      webview.loadURL(url).catch(error => {
+        console.error('Error loading URL:', error);
+        statusText.textContent = 'Failed to load page';
       });
-    }
-    
-    // Navigate to the URL
-    navigateTo(url, tabId);
-    
+    }, { once: true });
+
     return tabId;
   }
 
@@ -160,6 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
       updateTabStatus(tabId, 'loading');
       refreshButton.innerHTML = '<i class="fa-solid fa-xmark"></i>';
       refreshButton.setAttribute('data-action', 'stop');
+      statusText.textContent = 'Loading...';
     });
     
     // Did stop loading
@@ -167,41 +256,50 @@ document.addEventListener('DOMContentLoaded', () => {
       updateTabStatus(tabId, 'complete');
       refreshButton.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i>';
       refreshButton.setAttribute('data-action', 'refresh');
+      statusText.textContent = 'Ready';
     });
     
     // Did navigate
     webview.addEventListener('did-navigate', (e) => {
-      updateAddressBar(e.url, tabId);
+      const finalUrl = e.url;
+      updateAddressBar(finalUrl, tabId);
       updateNavigationButtons(tabId);
-      addToHistory(e.url, getTabTitle(tabId));
+      addToHistory(finalUrl, getTabTitle(tabId));
+      
+      // Update protocol indicator
+      updateProtocolIndicator(finalUrl);
     });
     
-    // Did navigate in page
+    // Did navigate in page (for # anchors)
     webview.addEventListener('did-navigate-in-page', (e) => {
-      updateAddressBar(e.url, tabId);
+      const finalUrl = e.url;
+      updateAddressBar(finalUrl, tabId);
       updateNavigationButtons(tabId);
+      
+      // Don't add to history for hash changes
+      if (!e.isMainFrame) return;
+      
+      addToHistory(finalUrl, getTabTitle(tabId));
     });
     
     // New window (for target=_blank links)
     webview.addEventListener('new-window', (e) => {
-      createTab(e.url);
+      e.preventDefault(); // Prevent default handling
+      createTab(e.url); // Create new tab with the URL
     });
     
-    // Handle GKP and GKPS protocols
-    webview.addEventListener('will-navigate', (e) => {
-      const url = e.url;
-      if (url.startsWith('gkp://') || url.startsWith('gkps://')) {
-        // Allow the navigation to continue, protocol handlers will manage it
-        updateProtocolIndicator(url);
-      } else {
-        // Regular HTTP/HTTPS navigation
-        updateProtocolIndicator(url);
-      }
+    // Failed load
+    webview.addEventListener('did-fail-load', (e) => {
+      // Ignore aborted loads
+      if (e.errorCode === -3) return;
+      
+      updateTabStatus(tabId, 'error');
+      statusText.textContent = `Failed to load: ${e.errorDescription}`;
     });
     
     // Console message for debugging
     webview.addEventListener('console-message', (e) => {
-      console.log('Webview console:', e.message);
+      console.log(`[Webview ${tabId}]:`, e.message);
     });
   }
 
@@ -340,6 +438,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update the protocol indicator in the address bar
   function updateProtocolIndicator(url) {
     try {
+      if (!url) {
+        addressProtocol.innerHTML = '<i class="fa-solid fa-globe"></i>';
+        statusSecurity.innerHTML = '<div class="security-icon"><i class="fa-solid fa-globe"></i></div><span id="security-text">New Tab</span>';
+        return;
+      }
+
       // Clear previous classes
       addressProtocol.className = 'address-protocol';
       
@@ -369,6 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       console.error('Error updating protocol indicator:', error);
       addressProtocol.innerHTML = '<i class="fa-solid fa-globe"></i>';
+      statusSecurity.innerHTML = '<div class="security-icon"><i class="fa-solid fa-globe"></i></div><span id="security-text">Ready</span>';
     }
   }
 
@@ -376,7 +481,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateNavigationButtons(tabId) {
     const webview = document.querySelector(`#webview-${tabId}`);
     
-    if (webview) {
+    if (!webview || !webview.hasOwnProperty('canGoBack')) {
+      // WebView not ready yet, disable both buttons
+      backButton.classList.add('disabled');
+      forwardButton.classList.add('disabled');
+      return;
+    }
+    
+    try {
       // Back button
       if (webview.canGoBack()) {
         backButton.classList.remove('disabled');
@@ -390,6 +502,11 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         forwardButton.classList.add('disabled');
       }
+    } catch (error) {
+      console.warn('Navigation state not yet available:', error);
+      // Disable both buttons as fallback
+      backButton.classList.add('disabled');
+      forwardButton.classList.add('disabled');
     }
   }
 
@@ -415,6 +532,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function processUrl(url) {
     url = url.trim();
     
+    // Handle special URLs
+    if (url.startsWith('about:') || url.startsWith('chrome:')) {
+      return url;
+    }
+    
     // Check if it's a valid URL
     if (url.startsWith('http://') || url.startsWith('https://') || 
         url.startsWith('gkp://') || url.startsWith('gkps://') || 
@@ -422,32 +544,48 @@ document.addEventListener('DOMContentLoaded', () => {
       return url;
     }
     
-    // Check if it looks like a domain (contains a dot)
-    if (url.includes('.') && !url.includes(' ')) {
+    // Check if it's an IP address
+    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/;
+    if (ipRegex.test(url)) {
+      return 'http://' + url;
+    }
+    
+    // Check if it looks like a domain (contains a dot and no spaces)
+    if (url.includes('.') && !url.includes(' ') && !/\s/.test(url)) {
       return 'https://' + url;
     }
     
     // Get search engine from settings
     const settings = window.api.getSettings();
-    const searchEngine = settings.searchEngine;
+    const searchEngine = settings.searchEngine || 'https://www.google.com/search?q=';
     
     // Treat as a search query
     return searchEngine + encodeURIComponent(url);
   }
 
-  // Handle address bar keydown events
-  function handleAddressBarKeyDown(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const url = addressBar.value;
-      navigateTo(url);
+  // Process URL and navigate
+  function handleNavigation(url) {
+    // Get the current tab's webview
+    const tab = tabs.find(tab => tab.id === currentTabId);
+    if (!tab || !tab.webview) {
+      console.error('No active tab found');
+      return;
     }
-  }
-
-  // Clear the address bar
-  function clearAddressBar() {
-    addressBar.value = '';
-    addressBar.focus();
+    
+    try {
+      // Process the URL
+      const processedUrl = processUrl(url);
+      
+      // Update UI first to show immediate feedback
+      updateAddressBar(processedUrl, currentTabId);
+      updateTabStatus(currentTabId, 'loading');
+      
+      // Load the URL
+      tab.webview.loadURL(processedUrl);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      statusText.textContent = 'Navigation failed';
+    }
   }
 
   // Go back in history
@@ -456,6 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const webview = document.querySelector(`#webview-${currentTabId}`);
       if (webview && webview.canGoBack()) {
         webview.goBack();
+        updateNavigationButtons(currentTabId);
       }
     }
   }
@@ -466,6 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const webview = document.querySelector(`#webview-${currentTabId}`);
       if (webview && webview.canGoForward()) {
         webview.goForward();
+        updateNavigationButtons(currentTabId);
       }
     }
   }
@@ -476,11 +616,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const webview = document.querySelector(`#webview-${currentTabId}`);
       if (webview) {
         const action = refreshButton.getAttribute('data-action');
-        
         if (action === 'stop') {
           webview.stop();
+          refreshButton.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i>';
+          refreshButton.setAttribute('data-action', 'refresh');
         } else {
           webview.reload();
+          refreshButton.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+          refreshButton.setAttribute('data-action', 'stop');
         }
       }
     }
@@ -489,7 +632,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Go to the home page
   function goHome() {
     const settings = window.api.getSettings();
-    navigateTo(settings.homePage);
+    const homePage = settings.homePage || 'gkp://home.gekko/';
+    navigateTo(homePage);
   }
 
   // Show bookmarks page
@@ -505,19 +649,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // Show settings page
   function showSettings() {
     navigateTo('gkp://settings.gekko/');
-  }
-
-  // Add entry to history
-  function addToHistory(url, title) {
-    // Skip internal pages
-    if (url.startsWith('gkp://') || url.startsWith('about:') || url.startsWith('chrome:')) {
-      return;
-    }
-    
-    // Add to history
-    window.api.addToHistory({
-      url: url,
-      title: title || url
-    });
   }
 });

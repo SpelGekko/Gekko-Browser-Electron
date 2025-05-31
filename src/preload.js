@@ -17,7 +17,35 @@ const defaultSettings = {
 contextBridge.exposeInMainWorld('api', {
   // Settings
   getSettings: () => {
-    return defaultSettings;
+    return ipcRenderer.sendSync('get-settings');
+  },
+  setSetting: (key, value) => {
+    ipcRenderer.send('set-setting', key, value);
+  },
+  getThemes: () => {
+    return ipcRenderer.sendSync('get-themes');
+  },
+  
+  // History
+  getHistory: () => {
+    return ipcRenderer.sendSync('get-history');
+  },
+  addToHistory: (url, title) => {
+    ipcRenderer.send('add-history', url, title);
+  },
+  clearHistory: () => {
+    ipcRenderer.send('clear-history');
+  },
+  
+  // Window controls
+  minimize: () => {
+    ipcRenderer.send('window-minimize');
+  },
+  maximize: () => {
+    ipcRenderer.send('window-maximize');
+  },
+  close: () => {
+    ipcRenderer.send('window-close');
   },
   
   setSetting: (key, value) => {

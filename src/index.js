@@ -15,6 +15,34 @@ const defaultSettings = {
   enableDevTools: false
 };
 
+let settings = { ...defaultSettings };
+let history = [];
+
+// IPC handlers
+ipcMain.on('set-setting', (event, key, value) => {
+  settings[key] = value;
+});
+
+ipcMain.on('get-settings', (event) => {
+  event.returnValue = settings;
+});
+
+ipcMain.on('get-themes', (event) => {
+  event.returnValue = ['dark', 'light', 'blue', 'purple', 'red'];
+});
+
+ipcMain.on('get-history', (event) => {
+  event.returnValue = history;
+});
+
+ipcMain.on('add-history', (event, url, title) => {
+  history.push({ url, title, timestamp: Date.now() });
+});
+
+ipcMain.on('clear-history', () => {
+  history = [];
+});
+
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({

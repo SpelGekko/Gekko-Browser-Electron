@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' gkp: gkps:; img-src 'self' data: gkp: gkps: https:; style-src 'self' 'unsafe-inline' gkp: gkps:; font-src 'self' gkp: gkps:;">
   <title>Gekko Browser - Home</title>
-  <link rel="stylesheet" href="../index.css">
-  <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+  <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
 </head>
 <body>
   <div class="internal-page">
@@ -14,11 +16,16 @@
       <p class="internal-page-subtitle">A lightweight, experimental web browser with GKP protocol support</p>
     </div>
     
-    <div class="internal-page-content">
-      <div class="search-container">
+    <div class="internal-page-content">      <div class="search-container">
         <div class="search-box">
           <i class="fa-solid fa-magnifying-glass search-icon"></i>
-          <input type="text" class="search-input" id="search-input" placeholder="Search the web...">
+          <input type="text" class="search-input" id="search-input" placeholder="Search the web..." autofocus>
+          <select class="search-engine-select" id="search-engine-select">
+            <option value="https://www.google.com/search?q=">Google</option>
+            <option value="https://www.bing.com/search?q=">Bing</option>
+            <option value="https://duckduckgo.com/?q=">DuckDuckGo</option>
+            <option value="https://search.yahoo.com/search?p=">Yahoo</option>
+          </select>
         </div>
       </div>
       
@@ -82,18 +89,46 @@
       </div>
     </div>
   </div>
-  
-  <script>
-    // Handle search input
+    <script>
+    // Initialize search functionality
     const searchInput = document.getElementById('search-input');
+    const searchEngineSelect = document.getElementById('search-engine-select');
+    
+    // Get settings and initialize search engine
+    try {
+      const settings = window.parent.api.getSettings();
+      if (settings && settings.searchEngine) {
+        searchEngineSelect.value = settings.searchEngine;
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+    
+    // Handle search
+    function handleSearch() {
+      const query = searchInput.value.trim();
+      if (query) {
+        const searchEngine = searchEngineSelect.value;
+        const searchUrl = searchEngine + encodeURIComponent(query);
+        window.parent.postMessage({ type: 'navigate', url: searchUrl }, '*');
+        searchInput.value = ''; // Clear the search input after search
+      }
+    }
+    
+    // Listen for Enter key in search input
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        const query = searchInput.value.trim();
-        if (query) {
-          // Pass the search query to the main window
-          window.parent.postMessage({ type: 'search', query: query }, '*');
-        }
+        handleSearch();
+      }
+    });
+    
+    // Save search engine preference when changed
+    searchEngineSelect.addEventListener('change', () => {
+      try {
+        window.parent.api.setSetting('searchEngine', searchEngineSelect.value);
+      } catch (error) {
+        console.error('Error saving search engine preference:', error);
       }
     });
     

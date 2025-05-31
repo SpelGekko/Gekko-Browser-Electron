@@ -1,0 +1,132 @@
+/* Button Styles */
+.button {
+  background-color: var(--accent-color);
+  color: var(--background-color);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 4px var(--shadow-color);
+  text-decoration: none;
+}
+
+.button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px var(--shadow-color);
+  filter: brightness(1.1);
+}
+
+.button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px var(--shadow-color);
+}
+
+.button-secondary {
+  background-color: transparent;
+  border: 2px solid var(--accent-color);
+  color: var(--accent-color);
+}
+
+.button-secondary:hover {
+  background-color: var(--accent-color);
+  color: var(--background-color);
+}
+
+.button-small {
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+}
+
+.button-large {
+  padding: 1rem 2rem;
+  font-size: 1rem;
+}
+
+.button-icon {
+  padding: 0.75rem;
+  border-radius: 50%;
+  aspect-ratio: 1;
+}
+
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Form Controls */
+.form-control {
+  background-color: var(--card-background);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: var(--text-color);
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-color-alpha);
+}
+
+.form-control:hover {
+  border-color: var(--accent-color);
+}
+
+select.form-control {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1em;
+  padding-right: 2.5rem;
+}
+
+/* Theme Specific Button Variants */
+.button-success {
+  background-color: var(--success-color);
+  color: var(--background-color);
+}
+
+.button-error {
+  background-color: var(--error-color);
+  color: var(--background-color);
+}
+
+.button-warning {
+  background-color: var(--warning-color);
+  color: var(--background-color);
+}
+
+/* Button Loading State */
+.button.loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.button.loading::after {
+  content: '';
+  position: absolute;
+  width: 1em;
+  height: 1em;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  border-top-color: currentColor;
+  animation: button-loading 0.6s linear infinite;
+  margin-left: 0.5rem;
+}
+
+@keyframes button-loading {
+  to {
+    transform: rotate(360deg);
+  }
+}

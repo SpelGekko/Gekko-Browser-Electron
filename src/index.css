@@ -119,31 +119,36 @@ body, html {
   overflow-x: auto;
   background-color: var(--primary);
   height: 36px;
+  padding-left: 4px;
+  scrollbar-width: none;
 }
 
 .tab-bar::-webkit-scrollbar {
-  height: 0;
-  width: 0;
-  background: transparent;
+  display: none;
 }
 
 .tab {
   display: flex;
   align-items: center;
   min-width: 180px;
-  max-width: 220px;
-  height: 36px;
+  max-width: 240px;
+  height: 32px;
+  margin: 4px 1px 0 0;
   background-color: var(--tabInactive);
-  border-right: 1px solid var(--tabBorder);
-  padding: 0 10px;
+  border-radius: 8px 8px 0 0;
+  padding: 0 8px;
   cursor: pointer;
   position: relative;
-  overflow: hidden;
-  transition: background-color 0.1s ease;
+  transition: all 0.2s ease;
+  border: 1px solid var(--tabBorder);
+  border-bottom: none;
 }
 
 .tab.active {
   background-color: var(--tabActive);
+  height: 34px;
+  margin-top: 2px;
+  z-index: 1;
 }
 
 .tab:hover {
@@ -151,121 +156,175 @@ body, html {
 }
 
 .tab-content {
+  flex: 1;
   display: flex;
   align-items: center;
-  flex: 1;
-  overflow: hidden;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 4px;
 }
 
 .tab-icon {
-  min-width: 16px;
-  height: 16px;
-  margin-right: 8px;
-}
-
-.tab-title {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 12px;
-  color: var(--textPrimary);
-}
-
-.tab-close {
+  flex-shrink: 0;
   width: 16px;
   height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--navIcon);
-  border-radius: 50%;
-  margin-left: 8px;
 }
 
-.tab-close:hover {
-  background-color: var(--button);
-  color: var(--navIconHover);
+.tab-icon img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  border-radius: 2px;
 }
 
-.new-tab-button {
-  min-width: 36px;
-  height: 36px;
+.tab-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--textPrimary);
+  user-select: none;
+}
+
+.tab-close {
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--primary);
   color: var(--navIcon);
+  border-radius: 50%;
+  margin-left: 4px;
+  transition: all 0.15s ease;
+  background-color: transparent;
+}
+
+.tab-close:hover {
+  background-color: var(--buttonHover);
+  color: var(--textPrimary);
+}
+
+.new-tab-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 4px 4px 0 0;
+  background-color: transparent;
+  border-radius: 8px 8px 0 0;
   cursor: pointer;
-  flex-shrink: 0;
+  color: var(--navIcon);
+  transition: all 0.2s ease;
+  border: none;
 }
 
 .new-tab-button:hover {
-  color: var(--navIconHover);
+  background-color: var(--tabHover);
+  color: var(--textPrimary);
 }
 
 /* Navigation Bar */
 .nav-bar {
   display: flex;
   align-items: center;
-  height: 42px;
-  padding: 0 10px;
+  height: 44px;
+  padding: 0 8px;
   background-color: var(--secondary);
+  border-bottom: 1px solid var(--divider);
 }
 
 .nav-controls {
   display: flex;
   align-items: center;
-  margin-right: 10px;
+  gap: 2px;
+  margin-right: 8px;
 }
 
 .nav-button {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--navIcon);
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  margin-right: 4px;
+  transition: all 0.2s ease;
+  background-color: transparent;
 }
 
-.nav-button:hover {
+.nav-button:hover:not(.disabled) {
   background-color: var(--buttonHover);
   color: var(--navIconHover);
 }
 
-.nav-button.disabled {
-  color: var(--navIcon);
-  opacity: 0.5;
-  cursor: default;
+.nav-button.active {
+  color: var(--navIconActive);
 }
 
-.nav-button.disabled:hover {
+.nav-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.browser-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 8px;
+}
+
+.browser-action {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--navIcon);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
   background-color: transparent;
+}
+
+.browser-action:hover {
+  background-color: var(--buttonHover);
+  color: var(--navIconHover);
+}
+
+.browser-action.active {
+  color: var(--navIconActive);
 }
 
 /* Address Bar */
 .address-bar-container {
   display: flex;
   flex: 1;
+  align-items: center;
   background-color: var(--addressBar);
   border-radius: 24px;
-  height: 32px;
+  height: 34px;
   border: 1px solid var(--addressBarBorder);
-  transition: border-color 0.1s ease;
-  overflow: hidden;
+  transition: all 0.2s ease;
+  margin: 0 4px;
 }
 
 .address-bar-container:focus-within {
   border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .address-protocol {
   display: flex;
   align-items: center;
-  padding: 0 8px;
-  font-size: 12px;
+  padding: 0 10px;
+  font-size: 14px;
   color: var(--textSecondary);
 }
 
@@ -290,24 +349,26 @@ body, html {
 
 .address-bar::placeholder {
   color: var(--textSecondary);
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 .address-bar-actions {
   display: flex;
   align-items: center;
-  padding: 0 8px;
+  padding: 0 6px;
 }
 
 .address-bar-action {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--navIcon);
   border-radius: 50%;
   cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: transparent;
 }
 
 .address-bar-action:hover {
@@ -341,9 +402,11 @@ body, html {
 /* Main Content */
 .content-container {
   flex: 1;
-  position: relative;
+  display: flex;
+  flex-direction: column;
   background-color: var(--primary);
   overflow: hidden;
+  position: relative;
 }
 
 .browser-view {
@@ -352,6 +415,8 @@ body, html {
   left: 0;
   right: 0;
   bottom: 0;
+  display: flex;
+  flex-direction: column;
   background-color: white;
 }
 
@@ -359,6 +424,12 @@ body, html {
   width: 100%;
   height: 100%;
   border: none;
+  display: flex;
+  flex: 1;
+}
+
+.webview.hidden {
+  display: none;
 }
 
 /* Status Bar */

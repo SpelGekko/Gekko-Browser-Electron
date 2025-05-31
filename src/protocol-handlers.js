@@ -25,8 +25,25 @@ function registerProtocolHandlers() {
         'jpg': 'image/jpeg',
         'jpeg': 'image/jpeg',
         'gif': 'image/gif',
-        'svg': 'image/svg+xml'
+        'svg': 'image/svg+xml',
+        'woff': 'application/font-woff',
+        'woff2': 'application/font-woff2',
+        'ttf': 'font/ttf',
+        'eot': 'application/vnd.ms-fontobject',
+        'otf': 'font/otf'
       };
+      
+      // Handle shared resources (fonts, styles, etc.)
+      if (domain === 'shared.gekko') {
+        const sharedPath = path.join(__dirname, 'demo_sites', 'shared', urlPath);
+        if (fs.existsSync(sharedPath)) {
+          callback({
+            path: sharedPath,
+            mimeType: mimeTypes[extension] || 'application/octet-stream'
+          });
+          return;
+        }
+      }
       
       // Check for supported TLDs
       const tld = domain.split('.').pop();
@@ -40,6 +57,14 @@ function registerProtocolHandlers() {
       
       // Map the request to a local file in the demo_sites directory
       let filePath = path.join(__dirname, 'demo_sites', domain, urlPath);
+      
+      // If file doesn't exist, check in shared directory
+      if (!fs.existsSync(filePath) && domain !== 'shared.gekko') {
+        const sharedPath = path.join(__dirname, 'demo_sites', 'shared', urlPath);
+        if (fs.existsSync(sharedPath)) {
+          filePath = sharedPath;
+        }
+      }
       
       // Check if the file exists
       if (fs.existsSync(filePath)) {
@@ -84,7 +109,12 @@ function registerProtocolHandlers() {
         'jpg': 'image/jpeg',
         'jpeg': 'image/jpeg',
         'gif': 'image/gif',
-        'svg': 'image/svg+xml'
+        'svg': 'image/svg+xml',
+        'woff': 'application/font-woff',
+        'woff2': 'application/font-woff2',
+        'ttf': 'font/ttf',
+        'eot': 'application/vnd.ms-fontobject',
+        'otf': 'font/otf'
       };
       
       // Check for supported TLDs
