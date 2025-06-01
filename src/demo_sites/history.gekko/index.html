@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">  <title>Gekko Browser - History</title>  <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
+  <script src="gkp://shared.gekko/theme-utils.js"></script>
 </head>
 <body>
   <div class="internal-page">
@@ -36,8 +37,10 @@
       </div>
     </div>
   </div>
-  
-  <script>
+    <script>
+    // Initialize theme handling
+    initThemeHandling();
+    
     // Get history from the API
     const history = window.parent.api.getHistory();
     

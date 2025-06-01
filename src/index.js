@@ -1,29 +1,27 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const registerProtocolHandlers = require('./protocol-handlers');
+const historyStorage = require('./history-storage');
+const settingsStorage = require('./settings-storage');
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
-// Define default settings
-const defaultSettings = {
-  theme: 'dark',
-  homePage: 'gkp://home.gekko/',
-  searchEngine: 'https://www.google.com/search?q=',
-  enableDevTools: false
-};
-
-let settings = { ...defaultSettings };
-let history = [];
+// Get initial settings
+let settings = settingsStorage.getSettings();
 
 // IPC handlers
 ipcMain.on('set-setting', (event, key, value) => {
-  settings[key] = value;
+  settingsStorage.setSetting(key, value);
+  // Update local settings
+  settings = settingsStorage.getSettings();
 });
 
 ipcMain.on('get-settings', (event) => {
+  // Refresh settings from storage
+  settings = settingsStorage.getSettings();
   event.returnValue = settings;
 });
 
@@ -33,6 +31,7 @@ ipcMain.on('get-themes', (event) => {
 
 ipcMain.on('apply-theme', (event, themeId) => {
   // Save theme setting
+  settingsStorage.setSetting('theme', themeId);
   settings.theme = themeId;
   
   // Broadcast theme change to all windows
@@ -46,15 +45,15 @@ ipcMain.on('apply-theme', (event, themeId) => {
 });
 
 ipcMain.on('get-history', (event) => {
-  event.returnValue = history;
+  event.returnValue = historyStorage.getHistory();
 });
 
 ipcMain.on('add-history', (event, url, title) => {
-  history.push({ url, title, timestamp: Date.now() });
+  historyStorage.addHistoryEntry(url, title);
 });
 
 ipcMain.on('clear-history', () => {
-  history = [];
+  historyStorage.clearHistory();
 });
 
 const createWindow = () => {
@@ -84,13 +83,27 @@ const createWindow = () => {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
-
   // Open the DevTools in development
-  if (process.env.NODE_ENV === 'development' || defaultSettings.enableDevTools) {
+  if (process.env.NODE_ENV === 'development' || settings.enableDevTools) {
     mainWindow.webContents.openDevTools();
   }
+    // Handle window control events
+  ipcMain.on('window-minimize', () => {
+    mainWindow.minimize();
+  });
   
-  // Handle window control events
+  ipcMain.on('window-maximize', () => {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  });
+  
+  ipcMain.on('window-close', () => {
+    mainWindow.close();
+  });
+  // Also support the new format
   ipcMain.on('window:minimize', () => {
     mainWindow.minimize();
   });
@@ -114,6 +127,10 @@ const createWindow = () => {
 app.whenReady().then(() => {
   // Register custom protocol handlers
   registerProtocolHandlers();
+  
+  // Initialize history and settings storage
+  historyStorage.ensureHistoryFile();
+  settingsStorage.ensureSettingsFile();
   
   createWindow();
 

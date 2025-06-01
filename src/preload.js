@@ -3,15 +3,6 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Default settings
-const defaultSettings = {
-  theme: 'dark',
-  homePage: 'gkp://home.gekko/',
-  searchEngine: 'https://www.google.com/search?q=',
-  enableDevTools: false,
-  history: []
-};
-
 // Listen for theme change events from main process
 ipcRenderer.on('theme-changed', (event, themeId) => {
   // Post message to the window to update the theme
@@ -45,57 +36,7 @@ contextBridge.exposeInMainWorld('api', {
   clearHistory: () => {
     ipcRenderer.send('clear-history');
   },
-  
   // Window controls
-  minimize: () => {
-    ipcRenderer.send('window-minimize');
-  },
-  maximize: () => {
-    ipcRenderer.send('window-maximize');
-  },
-  close: () => {
-    ipcRenderer.send('window-close');
-  },
-  
-  setSetting: (key, value) => {
-    if (defaultSettings.hasOwnProperty(key)) {
-      defaultSettings[key] = value;
-      return true;
-    }
-    return false;
-  },
-  
-  // Browser history
-  getHistory: () => {
-    return defaultSettings.history || [];
-  },
-  
-  addToHistory: (entry) => {
-    const history = defaultSettings.history || [];
-    const newEntry = { 
-      url: entry.url, 
-      title: entry.title, 
-      timestamp: Date.now() 
-    };
-    
-    // Add at the beginning (most recent first)
-    history.unshift(newEntry);
-    
-    // Limit history to 1000 entries
-    if (history.length > 1000) {
-      history.pop();
-    }
-    
-    defaultSettings.history = history;
-    return true;
-  },
-  
-  clearHistory: () => {
-    defaultSettings.history = [];
-    return true;
-  },
-  
-  // Window management
   minimize: () => ipcRenderer.send('window:minimize'),
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),

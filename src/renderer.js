@@ -34,20 +34,20 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('Some required UI elements are missing');
     return;
   }
-
   // Try to get theme from localStorage first, fallback to settings, then default to dark
   let theme = 'dark';
+  let settings;
   try {
+    settings = window.api.getSettings();
     const savedTheme = localStorage.getItem('gekko-theme');
     if (savedTheme) {
       theme = savedTheme;
     } else {
-      const settings = window.api.getSettings();
       theme = settings.theme || 'dark';
     }
   } catch (error) {
     console.error('Error retrieving theme:', error);
-    const settings = window.api.getSettings();
+    settings = window.api.getSettings();
     theme = settings.theme || 'dark';
   }
   
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
   
   // Create initial tab with home page
-  createTab(settings.homePage || 'gkp://home.gekko/');
+  createTab(settings?.homePage || 'gkp://home.gekko/');
 
   // Verify all required DOM elements are present
   function verifyRequiredElements() {
@@ -199,8 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     window.api.addToHistory(historyEntry);
-  }
-  // Create a new tab
+  }  // Create a new tab
   function createTab(url) {
     const settings = window.api.getSettings();
     const tabId = generateTabId();
@@ -208,6 +207,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Default URL if none provided
     url = url || homePage;
+    
+    console.log(`Creating new tab with URL: ${url}`);
 
     // Create tab element
     const tab = document.createElement('div');
@@ -312,13 +313,24 @@ document.addEventListener('DOMContentLoaded', () => {
       refreshButton.setAttribute('data-action', 'stop');
       statusText.textContent = 'Loading...';
     });
-    
-    // Did stop loading
+      // Did stop loading
     webview.addEventListener('did-stop-loading', () => {
       updateTabStatus(tabId, 'complete');
       refreshButton.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i>';
       refreshButton.setAttribute('data-action', 'refresh');
       statusText.textContent = 'Ready';
+      
+      // Apply theme if it's an internal page (GKP protocol)
+      try {
+        const currentUrl = webview.getURL();
+        if (currentUrl && (currentUrl.startsWith('gkp://') || currentUrl.startsWith('gkps://'))) {
+          console.log('Internal page loaded, applying theme');
+          const currentTheme = localStorage.getItem('gekko-theme') || 'dark';
+          applyThemeToWebview(webview, currentTheme);
+        }
+      } catch (error) {
+        console.error('Error applying theme after page load:', error);
+      }
     });
     
     // Did navigate
@@ -378,7 +390,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function generateTabId() {
     return 'tab-' + Date.now();
   }
-
   // Set the active tab
   function setActiveTab(tabId) {
     // Update current tab ID
@@ -403,9 +414,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (activeWebview) {
       activeWebview.classList.remove('hidden');
       
+      // Get the current URL from the webview
+      const currentUrl = activeWebview.getAttribute('src');
+      
       // Update address bar and navigation buttons
-      updateAddressBar(activeWebview.getAttribute('src'), tabId);
+      updateAddressBar(currentUrl, tabId);
       updateNavigationButtons(tabId);
+      
+      // Ensure the webview has loaded the URL
+      if (currentUrl && !activeWebview.getURL()) {
+        console.log(`Ensuring URL is loaded: ${currentUrl}`);
+        safeLoadURL(activeWebview, currentUrl);
+      }
     }
   }
 
@@ -677,8 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Expose handleNavigation to webviews
-  window.handleNavigation = handleNavigation;
-  // Update webview methods to use consistent loadURL and error handling
+  window.handleNavigation = handleNavigation;  // Update webview methods to use consistent loadURL and error handling
   function safeLoadURL(webview, url) {
     console.log(`Attempting to load URL: ${url}`);
     
@@ -688,6 +707,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
+      // Ensure the URL is processed
+      url = processUrl(url);
+      
       // Try direct navigation first if the webview is connected and loadURL is available
       if (webview.isConnected && typeof webview.loadURL === 'function') {
         // Use loadURL if the webview is ready
@@ -798,8 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
     addressBar.value = '';
     addressBar.focus();
   }
-  
-  // Apply theme to a specific webview
+    // Apply theme to a specific webview
   function applyThemeToWebview(webview, themeId) {
     if (!webview || !webview.isConnected) {
       console.error('Cannot apply theme to invalid webview');
@@ -825,15 +846,35 @@ document.addEventListener('DOMContentLoaded', () => {
             document.documentElement.setAttribute('data-theme', '${themeId}');
             document.documentElement.style.cssText += '${cssVars}';
             
-            // If there's a gkp-theme-applied element, update it
-            let themeMarker = document.getElementById('gkp-theme-applied');
-            if (!themeMarker) {
-              themeMarker = document.createElement('div');
-              themeMarker.id = 'gkp-theme-applied';
+            // If there's a theme utils script, call its function
+            if (typeof initThemeHandling === 'function') {
+              console.log('Found theme handling function, calling it');
+              initThemeHandling();
+            } else {
+              console.log('No theme handling function found, using basic theme application');
+              // If there's a gkp-theme-applied element, update it
+              let themeMarker = document.getElementById('gkp-theme-applied');
+              if (!themeMarker) {
+                themeMarker = document.createElement('div');              themeMarker.id = 'gkp-theme-applied';
               themeMarker.style.display = 'none';
               document.body.appendChild(themeMarker);
             }
             themeMarker.setAttribute('data-theme', '${themeId}');
+            
+            // Apply to any .shortcut-icon or .card-icon elements for consistent accent colors
+            const iconColorMap = {
+              'dark': '#8ab4f8',
+              'light': '#1a73e8',
+              'purple': '#b388ff',
+              'blue': '#64b5f6',
+              'red': '#ff8a80'
+            };
+            
+            const accentColor = iconColorMap['${themeId}'] || iconColorMap.dark;
+            document.querySelectorAll('.shortcut-icon i, .card-icon i').forEach(icon => {
+              icon.style.color = accentColor;
+            });
+            }
             
             console.log('Theme applied:', '${themeId}');
             return true;

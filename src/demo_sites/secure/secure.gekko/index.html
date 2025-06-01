@@ -5,6 +5,7 @@
   <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
+  <script src="gkp://shared.gekko/theme-utils.js"></script>
   <style>
     .secure-badge {
       display: inline-flex;
@@ -157,8 +158,10 @@ Cipher Suite: GKPS_ECDHE_RSA_WITH_AES_256_GCM_SHA384</pre>
       </div>
     </div>
   </div>
-  
-  <script>
+    <script>
+    // Initialize theme handling
+    initThemeHandling();
+    
     // Make links work
     document.querySelectorAll('a').forEach(link => {
       link.addEventListener('click', (e) => {
