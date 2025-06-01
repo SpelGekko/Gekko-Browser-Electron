@@ -2,10 +2,134 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <title>Gekko Browser - Settings</title>  <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <title>Gekko Browser - Settings</title>
+  <link rel="stylesheet" href="gkp://shared.gekko/theme-vars.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
   <script src="gkp://shared.gekko/theme-utils.js"></script>
+  <style>
+    /* Theme select styling */
+    #theme-select {
+      appearance: none;
+      padding-right: 30px;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      background-size: 16px;
+    }
+
+    #theme-select option {
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #theme-select span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #theme-select i {
+      font-size: 14px;
+      width: 16px;
+      text-align: center;
+    }
+
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      width: 100%;
+    }
+
+    .theme-option {
+      cursor: pointer;
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+
+    .theme-option:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+
+    .theme-option.active {
+      border: 2px solid var(--accent);
+    }
+
+    .theme-preview {
+      height: 120px;
+      width: 100%;
+      position: relative;
+      padding: 12px;
+    }
+
+    .theme-browser-mock {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .theme-browser-header {
+      padding: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .theme-browser-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+    }
+
+    .theme-browser-tab {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      height: 8px;
+      width: 60px;
+    }
+
+    .theme-browser-tab.active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .theme-browser-content {
+      flex: 1;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .theme-browser-line {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+    }
+
+    .theme-browser-line:nth-child(2) {
+      width: 70%;
+    }
+
+    .theme-info {
+      padding: 12px;
+      background: var(--card-background);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theme-info i {
+      width: 20px;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
   <div class="internal-page">
@@ -25,10 +149,10 @@
               <div class="setting-label">Theme</div>
               <div class="setting-description">Change the appearance of Gekko Browser</div>
             </div>
-            <div class="setting-control">
-              <select id="theme-select" class="setting-select">
-                <!-- Themes will be populated dynamically -->
-              </select>
+      <div class="setting-control theme-options">
+              <div id="theme-grid" class="theme-grid">
+                <!-- Theme options will be populated dynamically -->
+              </div>
             </div>
           </div>
           
@@ -127,18 +251,101 @@
     
     // Get settings from the API
     const settings = window.parent.api.getSettings();
-    
-    // Populate theme selector
-    const themeSelect = document.getElementById('theme-select');
+      // Populate theme grid
+    const themeGrid = document.getElementById('theme-grid');
     const themes = window.parent.api.getThemes();
     
     themes.forEach(theme => {
-      const option = document.createElement('option');
-      option.value = theme.id;
-      option.textContent = theme.name;
-      themeSelect.appendChild(option);
+      const themeOption = document.createElement('div');
+      themeOption.className = 'theme-option';
+      themeOption.setAttribute('data-theme', theme.id);
+      
+      const preview = document.createElement('div');
+      preview.className = 'theme-preview';
+      preview.style.background = getThemePreviewColor(theme.id);
+      
+      // Create browser mockup
+      preview.innerHTML = `
+        <div class="theme-browser-mock">
+          <div class="theme-browser-header">
+            <div class="theme-browser-tabs">
+              <div class="theme-browser-tab"></div>
+              <div class="theme-browser-tab active"></div>
+              <div class="theme-browser-tab"></div>
+            </div>
+          </div>
+          <div class="theme-browser-content">
+            <div class="theme-browser-line"></div>
+            <div class="theme-browser-line"></div>
+            <div class="theme-browser-line"></div>
+          </div>
+        </div>
+      `;
+      
+      const info = document.createElement('div');
+      info.className = 'theme-info';
+      info.innerHTML = `
+        <i class="fa-solid ${getThemeIcon(theme.id)}"></i>
+        <span>${theme.name}</span>
+      `;
+      
+      themeOption.appendChild(preview);
+      themeOption.appendChild(info);
+      themeGrid.appendChild(themeOption);
+      
+      // Add click handler
+      themeOption.addEventListener('click', () => {
+        document.querySelectorAll('.theme-option').forEach(opt => opt.classList.remove('active'));
+        themeOption.classList.add('active');
+        handleThemeChange(theme.id);
+      });
     });
-    
+
+    // Helper function to get theme colors
+    function getThemePreviewColor(themeId) {
+      const colors = {
+        'dark': '#202124',
+        'light': '#f8f9fa',
+        'purple': '#20123a',
+        'blue': '#0d2149',
+        'red': '#3c1014'
+      };
+      return colors[themeId] || colors.dark;
+    }
+
+    // Helper function to get theme icon
+    function getThemeIcon(themeId) {
+      const icons = {
+        'dark': 'fa-moon',
+        'light': 'fa-sun',
+        'purple': 'fa-palette',
+        'blue': 'fa-water',
+        'red': 'fa-fire'
+      };
+      return icons[themeId] || 'fa-circle';
+    }
+
+    // Handle theme change
+    function handleThemeChange(themeId) {
+      // Apply theme to settings page
+      document.documentElement.setAttribute('data-theme', themeId);
+      
+      // Save setting and notify parent
+      window.parent.api.setSetting('theme', themeId);
+      
+      // Use postMessage to notify parent
+      window.parent.postMessage({ type: 'themeChange', theme: themeId }, '*');
+      
+      // Use direct api if available
+      if (window.parent.api.applyTheme) {
+        window.parent.api.applyTheme(themeId);
+      }
+    }
+
+    // Mark current theme as active
+    const currentTheme = settings.theme || 'dark';
+    document.querySelector(`[data-theme="${currentTheme}"]`)?.classList.add('active');
+
     // Set current values
     themeSelect.value = settings.theme;
     document.getElementById('home-page-input').value = settings.homePage;

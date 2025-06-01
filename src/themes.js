@@ -9,6 +9,7 @@ const themes = {
   // Dark Theme (Default)
   dark: {
     name: 'Dark Theme',
+    icon: 'fa-moon',
     colors: {
       // Base colors
       primary: '#202124',
@@ -54,10 +55,10 @@ const themes = {
       overlay: 'rgba(0, 0, 0, 0.5)'
     }
   },
-  
-  // Light Theme
+    // Light Theme
   light: {
     name: 'Light Theme',
+    icon: 'fa-sun',
     colors: {
       // Base colors
       primary: '#f8f9fa',
@@ -103,10 +104,10 @@ const themes = {
       overlay: 'rgba(0, 0, 0, 0.2)'
     }
   },
-  
-  // Purple Theme
+    // Purple Theme
   purple: {
     name: 'Purple Theme',
+    icon: 'fa-palette',
     colors: {
       // Base colors
       primary: '#20123a',
@@ -152,10 +153,10 @@ const themes = {
       overlay: 'rgba(0, 0, 0, 0.5)'
     }
   },
-  
-  // Blue Theme
+    // Blue Theme
   blue: {
     name: 'Blue Theme',
+    icon: 'fa-water',
     colors: {
       // Base colors
       primary: '#0d2149',
@@ -201,10 +202,10 @@ const themes = {
       overlay: 'rgba(0, 0, 0, 0.5)'
     }
   },
-  
-  // Red Theme
+    // Red Theme
   red: {
     name: 'Red Theme',
+    icon: 'fa-fire',
     colors: {
       // Base colors
       primary: '#3c1014',

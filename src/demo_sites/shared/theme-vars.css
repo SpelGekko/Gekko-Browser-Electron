@@ -1,0 +1,33 @@
+/* Theme Variables */
+:root {
+  /* These will be set by theme-utils.js */
+  --background: #202124;
+  --card-background: #303134;
+  --text-color: #e8eaed;
+  --accent-color: #8ab4f8;
+  --text-secondary: #9aa0a6;
+  --border-color: #3c4043;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+
+  /* Map theme variables to existing names */
+  --primary-color: var(--accent-color);
+  --secondary-color: var(--card-background);
+  --background-color: var(--background);
+}
+
+/* Theme-specific styles */
+[data-theme="light"] {
+  --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] {
+  --shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Apply transitions */
+* {
+  transition: background-color 0.3s ease,
+              color 0.3s ease,
+              border-color 0.3s ease,
+              box-shadow 0.3s ease;
+}
