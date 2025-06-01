@@ -1,0 +1,54 @@
+/* Additional styles for categorized shortcuts */
+.shortcut-category {
+  font-size: 1.2rem;
+  margin: 2rem 0 1rem;
+  color: var(--text-color);
+  font-weight: 500;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
+}
+
+.shortcut-category:after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 60px;
+  height: 3px;
+  background-color: var(--accent-color);
+  border-radius: 3px;
+}
+
+.home-grid {
+  margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.home-shortcut {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-shortcut:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Make shortcut grids more responsive */
+@media (max-width: 768px) {
+  .home-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .home-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .shortcut-category {
+    font-size: 1rem;
+  }
+}

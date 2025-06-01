@@ -25,13 +25,16 @@ contextBridge.exposeInMainWorld('api', {
   getThemes: () => {
     return ipcRenderer.sendSync('get-themes');
   },
-  
-  // History
+    // History
   getHistory: () => {
     return ipcRenderer.sendSync('get-history');
   },
-  addToHistory: (url, title) => {
-    ipcRenderer.send('add-history', url, title);
+  addToHistory: (historyEntry) => {
+    if (typeof historyEntry === 'object') {
+      ipcRenderer.send('add-history', historyEntry.url, historyEntry.title);
+    } else {
+      console.error('Invalid history entry:', historyEntry);
+    }
   },
   clearHistory: () => {
     ipcRenderer.send('clear-history');

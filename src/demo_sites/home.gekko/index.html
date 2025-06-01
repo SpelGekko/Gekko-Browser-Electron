@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' gkp: gkps:; img-src 'self' data: gkp: gkps: https:; style-src 'self' 'unsafe-inline' gkp: gkps:; font-src 'self' gkp: gkps:;">
-  <title>Gekko Browser - Home</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' gkp: gkps:; img-src 'self' data: gkp: gkps: https:; style-src 'self' 'unsafe-inline' gkp: gkps:; font-src 'self' gkp: gkps:;">  <title>Gekko Browser - Home</title>
   <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/category-styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
 </head>
 <body>
@@ -15,8 +15,8 @@
       <h1 class="internal-page-title">Welcome to Gekko Browser</h1>
       <p class="internal-page-subtitle">A lightweight, experimental web browser with GKP protocol support</p>
     </div>
-    
-    <div class="internal-page-content">      <div class="search-container">
+      <div class="internal-page-content">
+      <div class="search-container">
         <div class="search-box">
           <i class="fa-solid fa-magnifying-glass search-icon"></i>
           <input type="text" class="search-input" id="search-input" placeholder="Search the web..." autofocus>
@@ -29,8 +29,9 @@
         </div>
       </div>
       
-      <div class="home-grid" id="shortcuts-grid">
-        <!-- Default shortcuts -->
+      <!-- Popular Sites Category -->
+      <h2 class="shortcut-category">Popular Sites</h2>
+      <div class="home-grid" id="popular-sites">
         <div class="home-shortcut" data-url="https://github.com">
           <div class="shortcut-icon">
             <i class="fa-brands fa-github"></i>
@@ -66,6 +67,19 @@
           <div class="shortcut-title">Reddit</div>
         </div>
         
+        <div class="home-shortcut" data-url="https://linkedin.com">
+          <div class="shortcut-icon">
+            <i class="fa-brands fa-linkedin"></i>
+          </div>
+          <div class="shortcut-title">LinkedIn</div>
+        </div>
+      </div>
+      
+      <!-- Gekko Browser Category -->
+      <h2 class="shortcut-category">Gekko Browser</h2>
+      <div class="home-grid" id="gekko-sites"      <!-- Gekko Browser Category -->
+      <h2 class="shortcut-category">Gekko Browser</h2>
+      <div class="home-grid" id="gekko-sites">
         <div class="home-shortcut" data-url="gkp://about.gekko/">
           <div class="shortcut-icon">
             <i class="fa-solid fa-info-circle"></i>
@@ -86,6 +100,52 @@
           </div>
           <div class="shortcut-title">Settings</div>
         </div>
+        
+        <div class="home-shortcut" data-url="gkp://history.gekko/">
+          <div class="shortcut-icon">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <div class="shortcut-title">History</div>
+        </div>
+        
+        <div class="home-shortcut" data-url="gkp://protocols.gekko/">
+          <div class="shortcut-icon">
+            <i class="fa-solid fa-book"></i>
+          </div>
+          <div class="shortcut-title">Protocols</div>
+        </div>
+      </div>
+      
+      <!-- Tools & Utilities Category -->
+      <h2 class="shortcut-category">Tools & Utilities</h2>
+      <div class="home-grid" id="tools-sites">
+        <div class="home-shortcut" data-url="https://translate.google.com">
+          <div class="shortcut-icon">
+            <i class="fa-solid fa-language"></i>
+          </div>
+          <div class="shortcut-title">Translate</div>
+        </div>
+        
+        <div class="home-shortcut" data-url="https://drive.google.com">
+          <div class="shortcut-icon">
+            <i class="fa-brands fa-google-drive"></i>
+          </div>
+          <div class="shortcut-title">Google Drive</div>
+        </div>
+        
+        <div class="home-shortcut" data-url="https://maps.google.com">
+          <div class="shortcut-icon">
+            <i class="fa-solid fa-map"></i>
+          </div>
+          <div class="shortcut-title">Maps</div>
+        </div>
+        
+        <div class="home-shortcut" data-url="https://calendar.google.com">
+          <div class="shortcut-icon">
+            <i class="fa-solid fa-calendar"></i>
+          </div>
+          <div class="shortcut-title">Calendar</div>
+        </div>
       </div>
     </div>
   </div>
@@ -102,16 +162,39 @@
       }
     } catch (error) {
       console.error('Error loading settings:', error);
-    }
-    
-    // Handle search
+    }    // Handle search
     function handleSearch() {
       const query = searchInput.value.trim();
       if (query) {
         const searchEngine = searchEngineSelect.value;
         const searchUrl = searchEngine + encodeURIComponent(query);
-        window.parent.postMessage({ type: 'navigate', url: searchUrl }, '*');
-        searchInput.value = ''; // Clear the search input after search
+        console.log('Sending navigation message:', searchUrl);
+        
+        try {
+          // Direct approach - access webview parent
+          if (window.parent && window.parent.handleNavigation) {
+            window.parent.handleNavigation(searchUrl);
+            searchInput.value = ''; // Clear the search input after search
+            return;
+          }
+          
+          // Try postMessage approach
+          window.parent.postMessage({ type: 'navigate', url: searchUrl }, '*');
+          
+          // Add direct DOM navigation as a more aggressive fallback
+          const webview = window.frameElement;
+          if (webview && webview.loadURL) {
+            webview.loadURL(searchUrl);
+          } else if (window.parent && window.parent.location) {
+            window.parent.location.href = searchUrl;
+          }
+          
+          searchInput.value = ''; // Clear the search input after search
+        } catch (error) {
+          console.error('Error during search navigation:', error);
+          // Last resort fallback
+          window.open(searchUrl, '_blank');
+        }
       }
     }
     
@@ -122,14 +205,47 @@
         handleSearch();
       }
     });
-    
-    // Save search engine preference when changed
+      // Save search engine preference when changed
     searchEngineSelect.addEventListener('change', () => {
       try {
         window.parent.api.setSetting('searchEngine', searchEngineSelect.value);
       } catch (error) {
         console.error('Error saving search engine preference:', error);
       }
+    });
+    
+    // Initialize shortcut navigation
+    document.querySelectorAll('.home-shortcut').forEach(shortcut => {
+      shortcut.addEventListener('click', (e) => {
+        e.preventDefault();
+        const url = shortcut.getAttribute('data-url');
+        if (url) {
+          console.log('Shortcut clicked, navigating to:', url);
+          
+          try {
+            // Direct approach - access webview parent
+            if (window.parent && window.parent.handleNavigation) {
+              window.parent.handleNavigation(url);
+              return;
+            }
+            
+            // Try postMessage approach
+            window.parent.postMessage({ type: 'navigate', url: url }, '*');
+            
+            // Add direct DOM navigation as a more aggressive fallback
+            const webview = window.frameElement;
+            if (webview && webview.loadURL) {
+              webview.loadURL(url);
+            } else if (window.parent && window.parent.location) {
+              window.parent.location.href = url;
+            }
+          } catch (error) {
+            console.error('Error during shortcut navigation:', error);
+            // Last resort fallback
+            window.open(url, '_blank');
+          }
+        }
+      });
     });
     
     // Handle shortcut clicks

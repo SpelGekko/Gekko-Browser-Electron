@@ -109,13 +109,41 @@ document.addEventListener('DOMContentLoaded', () => {
     // Browser actions
     bookmarksButton.addEventListener('click', () => showBookmarks());
     historyButton.addEventListener('click', () => showHistory());
-    settingsButton.addEventListener('click', () => showSettings());
-    
-    // Listen for messages from internal pages
+    settingsButton.addEventListener('click', () => showSettings());    // Listen for messages from internal pages
     window.addEventListener('message', (event) => {
+      console.log('Message received:', event.data);
+      
+      // Navigation messages
       if (event.data && event.data.type === 'navigate' && event.data.url) {
-        handleNavigation(event.data.url);
-      } else if (event.data && event.data.type === 'themeChange') {
+        console.log('Navigation request received for URL:', event.data.url);
+        try {
+          // Call the handleNavigation function directly
+          handleNavigation(event.data.url);
+        } catch (error) {
+          console.error('Error handling navigation message:', error);
+          
+          // Fallback approach for navigation - try multiple methods
+          const tab = tabs.find(tab => tab.id === currentTabId);
+          if (tab && tab.webview) {
+            try {
+              // Try direct loadURL
+              const processedUrl = processUrl(event.data.url);
+              safeLoadURL(tab.webview, processedUrl);
+            } catch (innerError) {
+              console.error('Fallback navigation also failed:', innerError);
+              
+              // Last resort fallback - set src attribute directly
+              try {
+                tab.webview.setAttribute('src', processUrl(event.data.url));
+              } catch (finalError) {
+                console.error('All navigation attempts failed:', finalError);
+              }
+            }
+          }
+        }
+      } 
+      // Theme change messages
+      else if (event.data && event.data.type === 'themeChange') {
         applyTheme(event.data.theme);
       }
     });
@@ -144,7 +172,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     window.api.addToHistory(historyEntry);
   }
-
   // Create a new tab
   function createTab(url) {
     const settings = window.api.getSettings();
@@ -181,6 +208,9 @@ document.addEventListener('DOMContentLoaded', () => {
     webview.setAttribute('nodeintegration', 'false');
     webview.setAttribute('webpreferences', 'contextIsolation=true, worldSafeExecuteJavaScript=true');
     webview.setAttribute('preload', './preload.js');
+    
+    // Set the src attribute initially
+    webview.setAttribute('src', url);
 
     // Add webview to the browser content
     browserContent.appendChild(webview);
@@ -217,20 +247,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set as active tab
     setActiveTab(tabId);
 
-    // Set up a one-time dom-ready listener before navigating
-    webview.addEventListener('dom-ready', () => {
-      // Navigate to URL after webview is ready
-      webview.loadURL(url).catch(error => {
-        console.error('Error loading URL:', error);
-        statusText.textContent = 'Failed to load page';
-      });
-    }, { once: true });
-
     return tabId;
   }
 
   // Set up webview events
   function setupWebviewEvents(webview, tabId) {
+    // DOM ready
+    webview.addEventListener('dom-ready', () => {
+      console.log(`WebView DOM ready for tab ${tabId}`);
+      updateNavigationButtons(tabId);
+    });
+    
     // Page title updated
     webview.addEventListener('page-title-updated', (e) => {
       updateTabTitle(tabId, e.title);
@@ -264,7 +291,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const finalUrl = e.url;
       updateAddressBar(finalUrl, tabId);
       updateNavigationButtons(tabId);
-      addToHistory(finalUrl, getTabTitle(tabId));
+      
+      try {
+        addToHistory(finalUrl, getTabTitle(tabId));
+      } catch (error) {
+        console.error('Error adding to history:', error);
+      }
       
       // Update protocol indicator
       updateProtocolIndicator(finalUrl);
@@ -279,7 +311,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // Don't add to history for hash changes
       if (!e.isMainFrame) return;
       
-      addToHistory(finalUrl, getTabTitle(tabId));
+      try {
+        addToHistory(finalUrl, getTabTitle(tabId));
+      } catch (error) {
+        console.error('Error adding to history:', error);
+      }
     });
     
     // New window (for target=_blank links)
@@ -481,14 +517,22 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateNavigationButtons(tabId) {
     const webview = document.querySelector(`#webview-${tabId}`);
     
-    if (!webview || !webview.hasOwnProperty('canGoBack')) {
-      // WebView not ready yet, disable both buttons
+    if (!webview) {
+      console.error('No webview found for tab:', tabId);
       backButton.classList.add('disabled');
       forwardButton.classList.add('disabled');
       return;
     }
     
     try {
+      // Check if DOM is ready and methods are available
+      if (!webview.isConnected || typeof webview.canGoBack !== 'function') {
+        console.log('WebView not fully initialized yet, disabling navigation buttons');
+        backButton.classList.add('disabled');
+        forwardButton.classList.add('disabled');
+        return;
+      }
+      
       // Back button
       if (webview.canGoBack()) {
         backButton.classList.remove('disabled');
@@ -508,23 +552,29 @@ document.addEventListener('DOMContentLoaded', () => {
       backButton.classList.add('disabled');
       forwardButton.classList.add('disabled');
     }
-  }
-
-  // Navigate to a URL in the current tab
+  }  // Navigate to a URL in the current tab
   function navigateTo(url, tabId) {
     // If no tabId is provided, use the current tab
     const targetTabId = tabId || currentTabId;
     
     // Process URL
     url = processUrl(url);
+    console.log('Navigating to processed URL:', url);
     
     // Get the webview
     const webview = document.querySelector(`#webview-${targetTabId}`);
     
     if (webview) {
-      // Load the URL
-      webview.setAttribute('src', url);
+      // Update UI first to show immediate feedback
       updateAddressBar(url, targetTabId);
+      updateTabStatus(targetTabId, 'loading');
+      
+      // Use safe loading method
+      if (!safeLoadURL(webview, url)) {
+        statusText.textContent = 'Navigation failed';
+      }
+    } else {
+      console.error('No webview found for tab:', targetTabId);
     }
   }
 
@@ -561,10 +611,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Treat as a search query
     return searchEngine + encodeURIComponent(url);
-  }
-
-  // Process URL and navigate
+  }  // Process URL and navigate
   function handleNavigation(url) {
+    console.log('handleNavigation called with:', url);
+    
     // Get the current tab's webview
     const tab = tabs.find(tab => tab.id === currentTabId);
     if (!tab || !tab.webview) {
@@ -573,18 +623,75 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     try {
-      // Process the URL
+      // Process the URL (make sure it's properly formatted)
       const processedUrl = processUrl(url);
+      console.log('Processed URL:', processedUrl);
       
       // Update UI first to show immediate feedback
       updateAddressBar(processedUrl, currentTabId);
       updateTabStatus(currentTabId, 'loading');
       
-      // Load the URL
-      tab.webview.loadURL(processedUrl);
+      // Use safe loading method
+      if (!safeLoadURL(tab.webview, processedUrl)) {
+        statusText.textContent = 'Navigation failed';
+      }
     } catch (error) {
       console.error('Navigation error:', error);
       statusText.textContent = 'Navigation failed';
+    }
+  }
+
+  // Expose handleNavigation to webviews
+  window.handleNavigation = handleNavigation;
+  // Update webview methods to use consistent loadURL and error handling
+  function safeLoadURL(webview, url) {
+    console.log(`Attempting to load URL: ${url}`);
+    
+    if (!webview) {
+      console.error('No webview provided');
+      return false;
+    }
+
+    try {
+      // Try direct navigation first if the webview is connected and loadURL is available
+      if (webview.isConnected && typeof webview.loadURL === 'function') {
+        // Use loadURL if the webview is ready
+        webview.loadURL(url).catch(error => {
+          console.error(`loadURL failed, falling back to src attribute: ${error.message}`);
+          // Fall back to src attribute
+          try {
+            webview.setAttribute('src', url);
+          } catch (attrError) {
+            console.error(`Failed to set src attribute: ${attrError.message}`);
+          }
+        });
+      } else {
+        // Fall back to src attribute if webview is not fully initialized
+        console.log('Webview not ready for loadURL, using src attribute');
+        webview.setAttribute('src', url);
+      }
+      return true;
+    } catch (error) {
+      console.error(`Error in safeLoadURL: ${error.message}`);
+      // Final fallback: try a different approach to set the URL
+      try {
+        // Try one more time with src attribute
+        webview.setAttribute('src', url);
+        console.log('Used setAttribute fallback for navigation');
+        return true;
+      } catch (finalError) {
+        console.error(`Complete failure loading URL: ${finalError.message}`);
+        
+        // Extreme fallback: try to reload the webview with the new URL
+        try {
+          setTimeout(() => {
+            webview.setAttribute('src', url);
+          }, 100);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
     }
   }
 
@@ -649,5 +756,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Show settings page
   function showSettings() {
     navigateTo('gkp://settings.gekko/');
+  }
+
+  // Clear the address bar
+  function clearAddressBar() {
+    addressBar.value = '';
+    addressBar.focus();
   }
 });
