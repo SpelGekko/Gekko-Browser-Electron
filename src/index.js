@@ -31,6 +31,20 @@ ipcMain.on('get-themes', (event) => {
   event.returnValue = ['dark', 'light', 'blue', 'purple', 'red'];
 });
 
+ipcMain.on('apply-theme', (event, themeId) => {
+  // Save theme setting
+  settings.theme = themeId;
+  
+  // Broadcast theme change to all windows
+  BrowserWindow.getAllWindows().forEach(window => {
+    try {
+      window.webContents.send('theme-changed', themeId);
+    } catch (error) {
+      console.error('Error broadcasting theme change:', error);
+    }
+  });
+});
+
 ipcMain.on('get-history', (event) => {
   event.returnValue = history;
 });

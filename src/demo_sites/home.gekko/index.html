@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
+<head>  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' gkp: gkps:; img-src 'self' data: gkp: gkps: https:; style-src 'self' 'unsafe-inline' gkp: gkps:; font-src 'self' gkp: gkps:;">  <title>Gekko Browser - Home</title>
-  <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' gkp: gkps:; img-src 'self' data: gkp: gkps: https:; style-src 'self' 'unsafe-inline' gkp: gkps:; font-src 'self' gkp: gkps: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval';">
+  <title>Gekko Browser - Home</title><link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/category-styles.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/home-shortcuts.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
 </head>
 <body>
@@ -213,8 +213,7 @@
         console.error('Error saving search engine preference:', error);
       }
     });
-    
-    // Initialize shortcut navigation
+      // Initialize shortcut navigation
     document.querySelectorAll('.home-shortcut').forEach(shortcut => {
       shortcut.addEventListener('click', (e) => {
         e.preventDefault();
@@ -246,7 +245,45 @@
           }
         }
       });
+      
+      // Add hover animation class
+      shortcut.classList.add('animated-shortcut');
     });
+    
+    // Check theme and apply specific styling based on theme
+    function applyThemeSpecificStyles() {
+      const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+      document.body.classList.remove('theme-dark', 'theme-light', 'theme-purple', 'theme-blue', 'theme-red');
+      document.body.classList.add(`theme-${theme}`);
+      
+      // Apply theme-specific icon colors
+      const iconColorMap = {
+        'dark': '#8ab4f8',
+        'light': '#1a73e8',
+        'purple': '#a374db',
+        'blue': '#4285f4',
+        'red': '#ea4335'
+      };
+      
+      const accentColor = iconColorMap[theme] || iconColorMap.dark;
+      document.querySelectorAll('.shortcut-icon i').forEach(icon => {
+        icon.style.color = accentColor;
+      });
+    }
+    
+    // Apply theme-specific styles on load
+    applyThemeSpecificStyles();
+    
+    // Listen for theme changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-theme') {
+          applyThemeSpecificStyles();
+        }
+      });
+    });
+    
+    observer.observe(document.documentElement, { attributes: true });
     
     // Handle shortcut clicks
     document.querySelectorAll('.home-shortcut').forEach(shortcut => {

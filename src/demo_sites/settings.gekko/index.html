@@ -141,11 +141,23 @@
     document.getElementById('home-page-input').value = settings.homePage;
     document.getElementById('search-engine-select').value = settings.searchEngine;
     document.getElementById('dev-tools-checkbox').checked = settings.enableDevTools;
-    
-    // Theme change handler
+      // Theme change handler
     themeSelect.addEventListener('change', () => {
-      window.parent.api.setSetting('theme', themeSelect.value);
-      window.parent.postMessage({ type: 'themeChange', theme: themeSelect.value }, '*');
+      const selectedTheme = themeSelect.value;
+      
+      // Apply theme to settings page
+      document.documentElement.setAttribute('data-theme', selectedTheme);
+      
+      // Save setting and notify parent
+      window.parent.api.setSetting('theme', selectedTheme);
+      
+      // Use postMessage to notify parent
+      window.parent.postMessage({ type: 'themeChange', theme: selectedTheme }, '*');
+      
+      // Use direct API if available
+      if (window.parent.api.applyTheme) {
+        window.parent.api.applyTheme(selectedTheme);
+      }
     });
     
     // Home page change handler

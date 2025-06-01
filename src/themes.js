@@ -265,5 +265,31 @@ function applyTheme(themeId) {
   // Update the data-theme attribute for potential CSS selectors
   document.body.setAttribute('data-theme', themeId);
   
+  // Save theme to localStorage for persistence
+  try {
+    localStorage.setItem('gekko-theme', themeId);
+  } catch (error) {
+    console.error('Failed to save theme to localStorage:', error);
+  }
+  
+  // Apply to all webviews in the page
+  try {
+    const webviews = document.querySelectorAll('webview');
+    webviews.forEach(webview => {
+      if (webview.isConnected && webview.executeJavaScript) {
+        webview.executeJavaScript(`
+          if (document.documentElement) {
+            document.documentElement.setAttribute('data-theme', '${themeId}');
+            ${Object.entries(theme.colors).map(([key, value]) => 
+              `document.documentElement.style.setProperty('--${key}', '${value}');`
+            ).join('\n')}
+          }
+        `).catch(err => console.error('Error applying theme to webview:', err));
+      }
+    });
+  } catch (error) {
+    console.error('Error applying theme to webviews:', error);
+  }
+  
   return theme;
 }

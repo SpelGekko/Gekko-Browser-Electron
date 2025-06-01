@@ -1,0 +1,98 @@
+/* Home Page Shortcuts with better icon support */
+.home-shortcut {
+  background-color: var(--card-background);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 2px 8px var(--shadow-color);
+  position: relative;
+  overflow: hidden;
+}
+
+.home-shortcut:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--accent-color);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+}
+
+.home-shortcut:hover {
+  transform: translateY(-5px) scale(1.03);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.home-shortcut:hover:before {
+  opacity: 0.1;
+}
+
+.home-shortcut:hover .shortcut-icon i {
+  color: var(--background-color);
+}
+
+.home-shortcut:hover .shortcut-title {
+  color: var(--accent-color);
+}
+
+.shortcut-icon {
+  width: 60px;
+  height: 60px;
+  background-color: var(--background-color);
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.home-shortcut:hover .shortcut-icon {
+  background-color: var(--accent-color);
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.shortcut-icon i {
+  font-size: 24px;
+  color: var(--accent-color);
+  transition: all 0.3s ease;
+}
+
+.shortcut-title {
+  font-weight: 600;
+  margin-top: 0.5rem;
+  color: var(--text-color);
+  transition: color 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+/* Animation for shortcuts when clicking */
+.animated-shortcut:active .shortcut-icon {
+  transform: scale(0.9);
+  transition: transform 0.2s ease;
+}
+
+/* Theme-specific colors */
+.theme-dark .shortcut-icon i { color: #8ab4f8; }
+.theme-light .shortcut-icon i { color: #1a73e8; }
+.theme-purple .shortcut-icon i { color: #a374db; }
+.theme-blue .shortcut-icon i { color: #4285f4; }
+.theme-red .shortcut-icon i { color: #ea4335; }
+
+/* Theme-specific hover colors */
+.theme-dark .home-shortcut:hover .shortcut-icon { background-color: #8ab4f8; }
+.theme-light .home-shortcut:hover .shortcut-icon { background-color: #1a73e8; }
+.theme-purple .home-shortcut:hover .shortcut-icon { background-color: #a374db; }
+.theme-blue .home-shortcut:hover .shortcut-icon { background-color: #4285f4; }
+.theme-red .home-shortcut:hover .shortcut-icon { background-color: #ea4335; }

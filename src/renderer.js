@@ -29,16 +29,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusText = document.getElementById('status-text');
   const statusSecurity = document.getElementById('status-security');
   const securityText = document.getElementById('security-text');
-
   // Verify all required elements are present
   if (!verifyRequiredElements()) {
     console.error('Some required UI elements are missing');
     return;
   }
 
-  // Apply theme from settings or default to dark
-  const settings = window.api.getSettings();
-  applyTheme(settings.theme || 'dark');
+  // Try to get theme from localStorage first, fallback to settings, then default to dark
+  let theme = 'dark';
+  try {
+    const savedTheme = localStorage.getItem('gekko-theme');
+    if (savedTheme) {
+      theme = savedTheme;
+    } else {
+      const settings = window.api.getSettings();
+      theme = settings.theme || 'dark';
+    }
+  } catch (error) {
+    console.error('Error retrieving theme:', error);
+    const settings = window.api.getSettings();
+    theme = settings.theme || 'dark';
+  }
+  
+  // Apply theme
+  applyTheme(theme);
   
   // Set up event listeners
   setupEventListeners();
@@ -144,7 +158,21 @@ document.addEventListener('DOMContentLoaded', () => {
       } 
       // Theme change messages
       else if (event.data && event.data.type === 'themeChange') {
-        applyTheme(event.data.theme);
+        const newTheme = event.data.theme;
+        console.log('Theme change requested:', newTheme);
+        
+        // Save theme to localStorage
+        localStorage.setItem('gekko-theme', newTheme);
+        
+        // Apply theme to main UI
+        applyTheme(newTheme);
+        
+        // Apply theme to all webviews
+        tabs.forEach(tab => {
+          if (tab && tab.webview && tab.webview.isConnected) {
+            applyThemeToWebview(tab.webview, newTheme);
+          }
+        });
       }
     });
   }
@@ -251,11 +279,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Set up webview events
-  function setupWebviewEvents(webview, tabId) {
-    // DOM ready
+  function setupWebviewEvents(webview, tabId) {    // DOM ready
     webview.addEventListener('dom-ready', () => {
       console.log(`WebView DOM ready for tab ${tabId}`);
       updateNavigationButtons(tabId);
+      
+      // Apply current theme to the webview
+      try {
+        const currentTheme = localStorage.getItem('gekko-theme') || 'dark';
+        applyThemeToWebview(webview, currentTheme);
+      } catch (error) {
+        console.error('Error applying theme to webview:', error);
+      }
     });
     
     // Page title updated
@@ -762,5 +797,101 @@ document.addEventListener('DOMContentLoaded', () => {
   function clearAddressBar() {
     addressBar.value = '';
     addressBar.focus();
+  }
+  
+  // Apply theme to a specific webview
+  function applyThemeToWebview(webview, themeId) {
+    if (!webview || !webview.isConnected) {
+      console.error('Cannot apply theme to invalid webview');
+      return false;
+    }
+    
+    try {
+      const theme = getThemeObject(themeId);
+      if (!theme) {
+        console.error('Invalid theme:', themeId);
+        return false;
+      }
+      
+      // Generate CSS variables for the theme
+      const cssVars = Object.entries(theme.colors)
+        .map(([key, value]) => `--${key}: ${value};`)
+        .join(' ');
+      
+      // Apply theme to webview
+      webview.executeJavaScript(`
+        (function() {
+          try {
+            document.documentElement.setAttribute('data-theme', '${themeId}');
+            document.documentElement.style.cssText += '${cssVars}';
+            
+            // If there's a gkp-theme-applied element, update it
+            let themeMarker = document.getElementById('gkp-theme-applied');
+            if (!themeMarker) {
+              themeMarker = document.createElement('div');
+              themeMarker.id = 'gkp-theme-applied';
+              themeMarker.style.display = 'none';
+              document.body.appendChild(themeMarker);
+            }
+            themeMarker.setAttribute('data-theme', '${themeId}');
+            
+            console.log('Theme applied:', '${themeId}');
+            return true;
+          } catch (e) {
+            console.error('Error applying theme in webview:', e);
+            return false;
+          }
+        })();
+      `).catch(error => {
+        console.error('Failed to execute theme script in webview:', error);
+        return false;
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error applying theme to webview:', error);
+      return false;
+    }
+  }
+  
+  // Get a theme object by ID
+  function getThemeObject(themeId) {
+    // Try to load from our themes module
+    try {
+      const { themes } = require('./themes');
+      return themes[themeId] || themes.dark;
+    } catch (error) {
+      console.error('Error loading theme from module:', error);
+      
+      // Fallback to basic themes
+      const basicThemes = {
+        dark: {
+          colors: {
+            primary: '#202124',
+            secondary: '#303134',
+            accent: '#8ab4f8',
+            textPrimary: '#e8eaed',
+            textSecondary: '#9aa0a6',
+            divider: '#3c4043',
+            background: '#202124',
+            card: '#303134'
+          }
+        },
+        light: {
+          colors: {
+            primary: '#f8f9fa',
+            secondary: '#ffffff',
+            accent: '#1a73e8',
+            textPrimary: '#202124',
+            textSecondary: '#5f6368',
+            divider: '#dadce0',
+            background: '#f8f9fa',
+            card: '#ffffff'
+          }
+        }
+      };
+      
+      return basicThemes[themeId] || basicThemes.dark;
+    }
   }
 });
