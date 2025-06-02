@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>  <meta charset="UTF-8">
+<head>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' gkp: gkps:; img-src 'self' data: gkp: gkps: https:; style-src 'self' 'unsafe-inline' gkp: gkps:; font-src 'self' gkp: gkps: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval';">  <title>Gekko Browser - Home</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' gkp: gkps:; img-src 'self' data: gkp: gkps: https:; style-src 'self' 'unsafe-inline' gkp: gkps:; font-src 'self' gkp: gkps: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval';">
+  <title>Gekko Browser - Home</title>
   <link rel="stylesheet" href="gkp://shared.gekko/theme-vars.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
@@ -10,6 +12,7 @@
   <link rel="stylesheet" href="gkp://shared.gekko/home-shortcuts.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
   <script src="gkp://shared.gekko/theme-utils.js"></script>
+  <script src="gkp://shared.gekko/webview-navigation-helper.js"></script>
 </head>
 <body>
   <div class="internal-page">
@@ -17,7 +20,7 @@
       <h1 class="internal-page-title">Welcome to Gekko Browser</h1>
       <p class="internal-page-subtitle">A lightweight, experimental web browser with GKP protocol support</p>
     </div>
-      <div class="internal-page-content">
+    <div class="internal-page-content">
       <div class="search-container">
         <div class="search-box">
           <i class="fa-solid fa-magnifying-glass search-icon"></i>
@@ -78,8 +81,6 @@
       </div>
       
       <!-- Gekko Browser Category -->
-      <h2 class="shortcut-category">Gekko Browser</h2>
-      <div class="home-grid" id="gekko-sites"      <!-- Gekko Browser Category -->
       <h2 class="shortcut-category">Gekko Browser</h2>
       <div class="home-grid" id="gekko-sites">
         <div class="home-shortcut" data-url="gkp://about.gekko/">
@@ -151,22 +152,36 @@
       </div>
     </div>
   </div>
-    <script>
+  
+  <script>
     // Initialize search functionality
     const searchInput = document.getElementById('search-input');
     const searchEngineSelect = document.getElementById('search-engine-select');
-      // Initialize theme handling at the beginning of the script
-    initThemeHandling();
+    
+    // Apply theme using the shared theme utilities
+    if (typeof applyThemeStyles === 'function') {
+      applyThemeStyles();
+    }
+    
+    // Fix FontAwesome icons if they're not loading properly
+    if (window.browserAction && typeof window.browserAction.fixIcons === 'function') {
+      console.log('Fixing icons on homepage');
+      window.browserAction.fixIcons();
+    }
     
     // Get settings and initialize search engine
     try {
-      const settings = window.parent.api.getSettings();
-      if (settings && settings.searchEngine) {
-        searchEngineSelect.value = settings.searchEngine;
+      if (window.parent && window.parent.api && window.parent.api.getSettings) {
+        const settings = window.parent.api.getSettings();
+        if (settings && settings.searchEngine) {
+          searchEngineSelect.value = settings.searchEngine;
+        }
       }
     } catch (error) {
       console.error('Error loading settings:', error);
-    }    // Handle search
+    }
+    
+    // Handle search
     function handleSearch() {
       const query = searchInput.value.trim();
       if (query) {
@@ -175,6 +190,13 @@
         console.log('Sending navigation message:', searchUrl);
         
         try {
+          // Use browserAction API if available
+          if (window.browserAction && typeof window.browserAction.navigate === 'function') {
+            window.browserAction.navigate(searchUrl);
+            searchInput.value = ''; // Clear the search input after search
+            return;
+          }
+          
           // Direct approach - access webview parent
           if (window.parent && window.parent.handleNavigation) {
             window.parent.handleNavigation(searchUrl);
@@ -209,15 +231,19 @@
         handleSearch();
       }
     });
-      // Save search engine preference when changed
+    
+    // Save search engine preference when changed
     searchEngineSelect.addEventListener('change', () => {
       try {
-        window.parent.api.setSetting('searchEngine', searchEngineSelect.value);
+        if (window.parent && window.parent.api && window.parent.api.setSetting) {
+          window.parent.api.setSetting('searchEngine', searchEngineSelect.value);
+        }
       } catch (error) {
         console.error('Error saving search engine preference:', error);
       }
     });
-      // Initialize shortcut navigation
+    
+    // Initialize shortcut navigation
     document.querySelectorAll('.home-shortcut').forEach(shortcut => {
       shortcut.addEventListener('click', (e) => {
         e.preventDefault();
@@ -226,6 +252,12 @@
           console.log('Shortcut clicked, navigating to:', url);
           
           try {
+            // Use browserAction API if available
+            if (window.browserAction && typeof window.browserAction.navigate === 'function') {
+              window.browserAction.navigate(url);
+              return;
+            }
+            
             // Direct approach - access webview parent
             if (window.parent && window.parent.handleNavigation) {
               window.parent.handleNavigation(url);
@@ -249,20 +281,9 @@
           }
         }
       });
-        // Add hover animation class
+      
+      // Add hover animation class
       shortcut.classList.add('animated-shortcut');
-    });
-    
-    // No need for custom theme handling as we're using the shared theme utilities now
-    
-    // Handle shortcut clicks
-    document.querySelectorAll('.home-shortcut').forEach(shortcut => {
-      shortcut.addEventListener('click', () => {
-        const url = shortcut.getAttribute('data-url');
-        if (url) {
-          window.parent.postMessage({ type: 'navigate', url: url }, '*');
-        }
-      });
     });
   </script>
 </body>

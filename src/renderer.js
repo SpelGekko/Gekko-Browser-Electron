@@ -56,9 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Set up event listeners
   setupEventListeners();
-  
-  // Create initial tab with home page
+    // Create initial tab with home page
   createTab(settings?.homePage || 'gkp://home.gekko/');
+
+  // Make handleNavigation function available to window object for internal pages
+  window.handleNavigation = handleNavigation;
 
   // Verify all required DOM elements are present
   function verifyRequiredElements() {
@@ -227,16 +229,14 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     // Insert tab before the new tab button
-    tabBar.insertBefore(tab, newTabButton);
-
-    // Create webview
+    tabBar.insertBefore(tab, newTabButton);    // Create webview
     const webview = document.createElement('webview');
     webview.setAttribute('id', `webview-${tabId}`);
     webview.setAttribute('class', 'webview hidden');
     webview.setAttribute('data-tab-id', tabId);
     webview.setAttribute('nodeintegration', 'false');
     webview.setAttribute('webpreferences', 'contextIsolation=true, worldSafeExecuteJavaScript=true');
-    webview.setAttribute('preload', './preload.js');
+    webview.setAttribute('preload', './webview-preload.js'); // Use our enhanced webview preload
     
     // Set the src attribute initially
     webview.setAttribute('src', url);
@@ -694,10 +694,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Navigation error:', error);
       statusText.textContent = 'Navigation failed';
     }
-  }
-
-  // Expose handleNavigation to webviews
-  window.handleNavigation = handleNavigation;  // Update webview methods to use consistent loadURL and error handling
+  }  // Update webview methods to use consistent loadURL and error handling
   function safeLoadURL(webview, url) {
     console.log(`Attempting to load URL: ${url}`);
     

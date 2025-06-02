@@ -35,11 +35,10 @@ contextBridge.exposeInMainWorld('api', {
   },
   clearHistory: () => {
     ipcRenderer.send('clear-history');
-  },
-  // Window controls
-  minimize: () => ipcRenderer.send('window:minimize'),
-  maximize: () => ipcRenderer.send('window:maximize'),
-  close: () => ipcRenderer.send('window:close'),
+  },  // Window controls
+  minimize: () => ipcRenderer.send('window-minimize'),
+  maximize: () => ipcRenderer.send('window-maximize'),
+  close: () => ipcRenderer.send('window-close'),
     // Theme management
   getThemes: () => {
     return [

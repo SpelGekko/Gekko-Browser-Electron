@@ -139,8 +139,7 @@ function applyThemeStyles(theme) {
   const body = document.body;
   body.classList.remove('theme-dark', 'theme-light', 'theme-purple', 'theme-blue', 'theme-red');
   body.classList.add(`theme-${theme}`);
-  
-  // Add a ripple effect for theme change
+    // Add a ripple effect for theme change
   const ripple = document.createElement('div');
   ripple.className = 'theme-ripple';
   ripple.style.cssText = `
@@ -149,7 +148,7 @@ function applyThemeStyles(theme) {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: ${accentColor};
+    background-color: ${colors.accent};
     opacity: 0.1;
     pointer-events: none;
     animation: theme-ripple 0.5s ease-out forwards;

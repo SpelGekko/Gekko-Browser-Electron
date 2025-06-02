@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <title>Gekko Browser - Settings</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gekko Browser - Settings</title>
   <link rel="stylesheet" href="gkp://shared.gekko/theme-vars.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
@@ -10,34 +11,6 @@
   <script src="gkp://shared.gekko/theme-utils.js"></script>
   <style>
     /* Theme select styling */
-    #theme-select {
-      appearance: none;
-      padding-right: 30px;
-      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-      background-repeat: no-repeat;
-      background-position: right 8px center;
-      background-size: 16px;
-    }
-
-    #theme-select option {
-      padding: 8px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    #theme-select span {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    #theme-select i {
-      font-size: 14px;
-      width: 16px;
-      text-align: center;
-    }
-
     .theme-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -59,7 +32,7 @@
     }
 
     .theme-option.active {
-      border: 2px solid var(--accent);
+      border: 2px solid var(--accent-color);
     }
 
     .theme-preview {
@@ -149,7 +122,7 @@
               <div class="setting-label">Theme</div>
               <div class="setting-description">Change the appearance of Gekko Browser</div>
             </div>
-      <div class="setting-control theme-options">
+            <div class="setting-control theme-options">
               <div id="theme-grid" class="theme-grid">
                 <!-- Theme options will be populated dynamically -->
               </div>
@@ -245,16 +218,113 @@
       </div>
     </div>
   </div>
-    <script>
+  
+  <script>
     // Initialize theme handling
-    initThemeHandling();
+    if (typeof initThemeHandling === 'function') {
+      initThemeHandling();
+    }
     
     // Get settings from the API
-    const settings = window.parent.api.getSettings();
-      // Populate theme grid
-    const themeGrid = document.getElementById('theme-grid');
-    const themes = window.parent.api.getThemes();
+    let settings = { theme: 'dark', homePage: '', searchEngine: 'https://www.google.com/search?q=', enableDevTools: false };
     
+    try {
+      if (window.api && typeof window.api.getSettings === 'function') {
+        settings = window.api.getSettings();
+      } else if (window.parent && window.parent.api && typeof window.parent.api.getSettings === 'function') {
+        settings = window.parent.api.getSettings();
+      }
+    } catch (error) {
+      console.error('Error getting settings:', error);
+    }
+    
+    // Populate theme grid
+    const themeGrid = document.getElementById('theme-grid');
+    let themes = [
+      { id: "dark", name: "Dark Theme" },
+      { id: "light", name: "Light Theme" },
+      { id: "purple", name: "Purple Theme" },
+      { id: "blue", name: "Blue Theme" },
+      { id: "red", name: "Red Theme" },
+      { id: "green", name: "Green Theme" },
+      { id: "monokai", name: "Monokai Theme" },
+      { id: "nord", name: "Nord Theme" }
+    ];
+    
+    try {
+      if (window.api && typeof window.api.getThemes === 'function') {
+        const apiThemes = window.api.getThemes();
+        if (Array.isArray(apiThemes) && apiThemes.length > 0) {
+          themes = apiThemes;
+        }
+      } else if (window.parent && window.parent.api && typeof window.parent.api.getThemes === 'function') {
+        const apiThemes = window.parent.api.getThemes();
+        if (Array.isArray(apiThemes) && apiThemes.length > 0) {
+          themes = apiThemes;
+        }
+      }
+    } catch (error) {
+      console.error('Error getting themes:', error);
+    }
+    
+    // Helper function to get theme colors
+    function getThemePreviewColor(themeId) {
+      const colors = {
+        'dark': '#202124',
+        'light': '#f8f9fa',
+        'purple': '#20123a',
+        'blue': '#0d2149',
+        'red': '#3c1014',
+        'green': '#0d3114',
+        'monokai': '#272822',
+        'nord': '#2e3440'
+      };
+      return colors[themeId] || colors.dark;
+    }
+
+    // Helper function to get theme icon
+    function getThemeIcon(themeId) {
+      const icons = {
+        'dark': 'fa-moon',
+        'light': 'fa-sun',
+        'purple': 'fa-palette',
+        'blue': 'fa-water',
+        'red': 'fa-fire',
+        'green': 'fa-leaf',
+        'monokai': 'fa-code',
+        'nord': 'fa-snowflake'
+      };
+      return icons[themeId] || 'fa-circle';
+    }
+
+    // Handle theme change
+    function handleThemeChange(themeId) {
+      // Apply theme to settings page
+      document.documentElement.setAttribute('data-theme', themeId);
+      
+      try {
+        // Save setting
+        if (window.api && typeof window.api.setSetting === 'function') {
+          window.api.setSetting('theme', themeId);
+        } else if (window.parent && window.parent.api && typeof window.parent.api.setSetting === 'function') {
+          window.parent.api.setSetting('theme', themeId);
+        }
+        
+        // Apply theme
+        if (window.api && typeof window.api.applyTheme === 'function') {
+          window.api.applyTheme(themeId);
+        } else if (window.parent && window.parent.api && typeof window.parent.api.applyTheme === 'function') {
+          window.parent.api.applyTheme(themeId);
+        }
+        
+        // Use postMessage as a fallback
+        window.parent.postMessage({ type: 'themeChange', theme: themeId }, '*');
+      } catch (error) {
+        console.error('Error applying theme:', error);
+      }
+    }
+    
+    // Create theme options
     themes.forEach(theme => {
       const themeOption = document.createElement('div');
       themeOption.className = 'theme-option';
@@ -301,107 +371,99 @@
       });
     });
 
-    // Helper function to get theme colors
-    function getThemePreviewColor(themeId) {
-      const colors = {
-        'dark': '#202124',
-        'light': '#f8f9fa',
-        'purple': '#20123a',
-        'blue': '#0d2149',
-        'red': '#3c1014'
-      };
-      return colors[themeId] || colors.dark;
-    }
-
-    // Helper function to get theme icon
-    function getThemeIcon(themeId) {
-      const icons = {
-        'dark': 'fa-moon',
-        'light': 'fa-sun',
-        'purple': 'fa-palette',
-        'blue': 'fa-water',
-        'red': 'fa-fire'
-      };
-      return icons[themeId] || 'fa-circle';
-    }
-
-    // Handle theme change
-    function handleThemeChange(themeId) {
-      // Apply theme to settings page
-      document.documentElement.setAttribute('data-theme', themeId);
-      
-      // Save setting and notify parent
-      window.parent.api.setSetting('theme', themeId);
-      
-      // Use postMessage to notify parent
-      window.parent.postMessage({ type: 'themeChange', theme: themeId }, '*');
-      
-      // Use direct api if available
-      if (window.parent.api.applyTheme) {
-        window.parent.api.applyTheme(themeId);
-      }
-    }
-
     // Mark current theme as active
     const currentTheme = settings.theme || 'dark';
-    document.querySelector(`[data-theme="${currentTheme}"]`)?.classList.add('active');
+    const activeThemeOption = document.querySelector(`[data-theme="${currentTheme}"]`);
+    if (activeThemeOption) {
+      activeThemeOption.classList.add('active');
+    }
 
     // Set current values
-    themeSelect.value = settings.theme;
-    document.getElementById('home-page-input').value = settings.homePage;
-    document.getElementById('search-engine-select').value = settings.searchEngine;
-    document.getElementById('dev-tools-checkbox').checked = settings.enableDevTools;
-      // Theme change handler
-    themeSelect.addEventListener('change', () => {
-      const selectedTheme = themeSelect.value;
-      
-      // Apply theme to settings page
-      document.documentElement.setAttribute('data-theme', selectedTheme);
-      
-      // Save setting and notify parent
-      window.parent.api.setSetting('theme', selectedTheme);
-      
-      // Use postMessage to notify parent
-      window.parent.postMessage({ type: 'themeChange', theme: selectedTheme }, '*');
-      
-      // Use direct API if available
-      if (window.parent.api.applyTheme) {
-        window.parent.api.applyTheme(selectedTheme);
-      }
-    });
+    document.getElementById('home-page-input').value = settings.homePage || '';
+    document.getElementById('search-engine-select').value = settings.searchEngine || 'https://www.google.com/search?q=';
+    document.getElementById('dev-tools-checkbox').checked = settings.enableDevTools || false;
     
     // Home page change handler
     document.getElementById('home-page-input').addEventListener('blur', () => {
       const homePageInput = document.getElementById('home-page-input');
-      window.parent.api.setSetting('homePage', homePageInput.value);
+      try {
+        if (window.api && typeof window.api.setSetting === 'function') {
+          window.api.setSetting('homePage', homePageInput.value);
+        } else if (window.parent && window.parent.api && typeof window.parent.api.setSetting === 'function') {
+          window.parent.api.setSetting('homePage', homePageInput.value);
+        }
+      } catch (error) {
+        console.error('Error saving home page setting:', error);
+      }
     });
     
     // Search engine change handler
     document.getElementById('search-engine-select').addEventListener('change', () => {
       const searchEngineSelect = document.getElementById('search-engine-select');
-      window.parent.api.setSetting('searchEngine', searchEngineSelect.value);
+      try {
+        if (window.api && typeof window.api.setSetting === 'function') {
+          window.api.setSetting('searchEngine', searchEngineSelect.value);
+        } else if (window.parent && window.parent.api && typeof window.parent.api.setSetting === 'function') {
+          window.parent.api.setSetting('searchEngine', searchEngineSelect.value);
+        }
+      } catch (error) {
+        console.error('Error saving search engine setting:', error);
+      }
     });
     
     // Developer tools change handler
     document.getElementById('dev-tools-checkbox').addEventListener('change', () => {
       const devToolsCheckbox = document.getElementById('dev-tools-checkbox');
-      window.parent.api.setSetting('enableDevTools', devToolsCheckbox.checked);
+      try {
+        if (window.api && typeof window.api.setSetting === 'function') {
+          window.api.setSetting('enableDevTools', devToolsCheckbox.checked);
+        } else if (window.parent && window.parent.api && typeof window.parent.api.setSetting === 'function') {
+          window.parent.api.setSetting('enableDevTools', devToolsCheckbox.checked);
+        }
+      } catch (error) {
+        console.error('Error saving developer tools setting:', error);
+      }
     });
     
     // View protocols documentation
     document.getElementById('view-protocols-btn').addEventListener('click', () => {
-      window.parent.postMessage({ type: 'navigate', url: 'gkp://protocols.gekko/' }, '*');
+      try {
+        if (window.browserAction && typeof window.browserAction.navigate === 'function') {
+          window.browserAction.navigate('gkp://protocols.gekko/');
+        } else {
+          window.parent.postMessage({ type: 'navigate', url: 'gkp://protocols.gekko/' }, '*');
+        }
+      } catch (error) {
+        console.error('Error navigating to protocols page:', error);
+      }
     });
     
     // Clear history
     document.getElementById('clear-history-btn').addEventListener('click', () => {
-      window.parent.api.clearHistory();
-      alert('Browsing history cleared!');
+      try {
+        if (window.api && typeof window.api.clearHistory === 'function') {
+          window.api.clearHistory();
+        } else if (window.parent && window.parent.api && typeof window.parent.api.clearHistory === 'function') {
+          window.parent.api.clearHistory();
+        }
+        alert('Browsing history cleared!');
+      } catch (error) {
+        console.error('Error clearing history:', error);
+        alert('Error clearing browsing history. Please try again.');
+      }
     });
     
     // About button
     document.getElementById('about-btn').addEventListener('click', () => {
-      window.parent.postMessage({ type: 'navigate', url: 'gkp://about.gekko/' }, '*');
+      try {
+        if (window.browserAction && typeof window.browserAction.navigate === 'function') {
+          window.browserAction.navigate('gkp://about.gekko/');
+        } else {
+          window.parent.postMessage({ type: 'navigate', url: 'gkp://about.gekko/' }, '*');
+        }
+      } catch (error) {
+        console.error('Error navigating to about page:', error);
+      }
     });
   </script>
 </body>
