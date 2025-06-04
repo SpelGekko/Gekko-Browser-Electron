@@ -299,29 +299,90 @@
 
     // Handle theme change
     function handleThemeChange(themeId) {
-      // Apply theme to settings page
-      document.documentElement.setAttribute('data-theme', themeId);
+      console.group('Theme Change');
+      console.log('Theme change requested:', themeId);
       
-      try {
-        // Save setting
-        if (window.api && typeof window.api.setSetting === 'function') {
-          window.api.setSetting('theme', themeId);
-        } else if (window.parent && window.parent.api && typeof window.parent.api.setSetting === 'function') {
-          window.parent.api.setSetting('theme', themeId);
-        }
-        
-        // Apply theme
-        if (window.api && typeof window.api.applyTheme === 'function') {
-          window.api.applyTheme(themeId);
-        } else if (window.parent && window.parent.api && typeof window.parent.api.applyTheme === 'function') {
-          window.parent.api.applyTheme(themeId);
-        }
-        
-        // Use postMessage as a fallback
-        window.parent.postMessage({ type: 'themeChange', theme: themeId }, '*');
-      } catch (error) {
-        console.error('Error applying theme:', error);
+      if (!themeId) {
+        console.error('No theme ID provided');
+        console.groupEnd();
+        return;
       }
+
+      // Set theme attribute on current document
+      document.documentElement.setAttribute('data-theme', themeId);
+      console.log('Theme attribute set on document');
+
+      const saveTheme = async () => {
+        console.group('Save Theme');
+        try {
+          // Try direct API access
+          if (window.api && typeof window.api.setSetting === 'function') {
+            console.log('Using direct API access');
+            await window.api.setSetting('theme', themeId);
+            console.log('Theme saved via setSetting');
+            if (typeof window.api.applyTheme === 'function') {
+              const result = window.api.applyTheme(themeId);
+              console.log('Theme applied via API:', result);
+            }
+          } 
+          // Try parent window API access
+          else if (window.parent && window.parent.api) {
+            console.log('Using parent window API access');
+            if (typeof window.parent.api.setSetting === 'function') {
+              await window.parent.api.setSetting('theme', themeId);
+              console.log('Theme saved via parent setSetting');
+            }
+            if (typeof window.parent.api.applyTheme === 'function') {
+              const result = window.parent.api.applyTheme(themeId);
+              console.log('Theme applied via parent API:', result);
+            }
+          }
+
+          console.log('Sending postMessage for theme change');
+          window.parent.postMessage({ type: 'themeChange', theme: themeId }, '*');
+          
+          // Save to localStorage as backup
+          try {
+            localStorage.setItem('gekko-theme', themeId);
+            console.log('Theme saved to localStorage');
+          } catch (e) {
+            console.warn('Could not save theme to localStorage:', e);
+          }
+
+          console.groupEnd();
+          return true;
+        } catch (error) {
+          console.error('Error saving theme:', error);
+          console.groupEnd();
+          return false;
+        }
+      };
+
+      // Try to save theme with retries
+      const saveWithRetry = async (retries = 3) => {
+        console.group(`Save attempt (${4 - retries}/3)`);
+        try {
+          const success = await saveTheme();
+          if (!success && retries > 0) {
+            console.log(`Save failed, retrying in 500ms... (${retries} attempts left)`);
+            setTimeout(() => saveWithRetry(retries - 1), 500);
+          } else if (success) {
+            console.log('Save successful');
+          } else {
+            console.error('Save failed, no more retries');
+          }
+        } catch (error) {
+          console.error('Error in saveWithRetry:', error);
+          if (retries > 0) {
+            console.log(`Error occurred, retrying in 500ms... (${retries} attempts left)`);
+            setTimeout(() => saveWithRetry(retries - 1), 500);
+          }
+        }
+        console.groupEnd();
+      };
+
+      saveWithRetry();
+      console.groupEnd();
     }
     
     // Create theme options

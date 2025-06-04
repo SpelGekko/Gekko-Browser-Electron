@@ -8,6 +8,15 @@ const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
 
+// Add error type definitions
+const ERROR_TYPES = {
+  CANNOT_CREATE_DIR: 'cannot_create_dir',
+  CANNOT_CREATE_FILE: 'cannot_create_file',
+  CANNOT_WRITE: 'cannot_write',
+  CANNOT_READ: 'cannot_read',
+  INVALID_JSON: 'invalid_json'
+};
+
 // Default settings
 const defaultSettings = {
   theme: 'dark',
@@ -28,16 +37,45 @@ const getSettingsFilePath = () => {
   return path.join(userDataPath, 'settings.json');
 };
 
+// Try to create settings directory
+const ensureSettingsDirectory = () => {
+  const dirPath = getUserDataPath();
+  try {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+    return true;
+  } catch (error) {
+    console.error('Error creating settings directory:', error);
+    return {
+      success: false,
+      error: ERROR_TYPES.CANNOT_CREATE_DIR,
+      details: error.message
+    };
+  }
+};
+
 // Create settings file if it doesn't exist
 const ensureSettingsFile = () => {
   const settingsFilePath = getSettingsFilePath();
+  
   if (!fs.existsSync(settingsFilePath)) {
+    // First ensure directory exists
+    const dirResult = ensureSettingsDirectory();
+    if (dirResult !== true) {
+      return dirResult;
+    }
+    
     try {
-      fs.writeFileSync(settingsFilePath, JSON.stringify(defaultSettings));
+      fs.writeFileSync(settingsFilePath, JSON.stringify(defaultSettings, null, 2));
       return true;
     } catch (error) {
       console.error('Error creating settings file:', error);
-      return false;
+      return {
+        success: false,
+        error: ERROR_TYPES.CANNOT_CREATE_FILE,
+        details: error.message
+      };
     }
   }
   return true;
@@ -45,23 +83,39 @@ const ensureSettingsFile = () => {
 
 // Load settings from file
 const loadSettings = () => {
-  ensureSettingsFile();
+  const createResult = ensureSettingsFile();
+  if (createResult !== true) {
+    return {
+      ...defaultSettings,
+      _error: createResult
+    };
+  }
+  
   const settingsFilePath = getSettingsFilePath();
   
   try {
     const settingsData = fs.readFileSync(settingsFilePath, 'utf8');
     try {
       const loadedSettings = JSON.parse(settingsData);
-      // Ensure all default settings exist (in case new ones were added)
+      // Ensure all default settings exist
       return { ...defaultSettings, ...loadedSettings };
     } catch (parseError) {
-      console.error('Error parsing settings data, resetting to defaults:', parseError);
-      saveSettings(defaultSettings);
-      return { ...defaultSettings };
+      console.error('Error parsing settings data:', parseError);
+      const error = {
+        success: false,
+        error: ERROR_TYPES.INVALID_JSON,
+        details: parseError.message
+      };
+      return { ...defaultSettings, _error: error };
     }
   } catch (error) {
     console.error('Error loading settings:', error);
-    return { ...defaultSettings };
+    const readError = {
+      success: false,
+      error: ERROR_TYPES.CANNOT_READ,
+      details: error.message
+    };
+    return { ...defaultSettings, _error: readError };
   }
 };
 
@@ -70,17 +124,27 @@ const saveSettings = (settings) => {
   const settingsFilePath = getSettingsFilePath();
   
   try {
-    fs.writeFileSync(settingsFilePath, JSON.stringify(settings));
+    fs.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2));
     return true;
   } catch (error) {
     console.error('Error saving settings:', error);
-    return false;
+    return {
+      success: false,
+      error: ERROR_TYPES.CANNOT_WRITE,
+      details: error.message
+    };
   }
 };
 
 // Update a specific setting
 const setSetting = (key, value) => {
   const settings = loadSettings();
+  
+  // Check for errors from loadSettings
+  if (settings._error) {
+    return settings._error;
+  }
+  
   settings[key] = value;
   return saveSettings(settings);
 };
@@ -91,6 +155,7 @@ const getSettings = () => {
 };
 
 module.exports = {
+  ERROR_TYPES,
   defaultSettings,
   setSetting,
   getSettings,

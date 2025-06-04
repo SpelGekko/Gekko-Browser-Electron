@@ -294,3 +294,10 @@ function applyTheme(themeId) {
   
   return theme;
 }
+
+// Export the themes object and applyTheme function for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { themes, applyTheme };
+} else if (typeof window !== 'undefined') {
+  window.GekkoThemes = { themes, applyTheme };
+}

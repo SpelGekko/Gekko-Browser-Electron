@@ -3,6 +3,85 @@
  * Handles all browser UI interactions
  */
 
+// Get user-friendly error message for settings errors
+function getSettingsErrorMessage(error) {
+  const messages = {
+    cannot_create_dir: 'Could not create settings directory',
+    cannot_create_file: 'Could not create settings file',
+    cannot_write: 'Could not save settings',
+    cannot_read: 'Could not read settings',
+    invalid_json: 'Settings file is corrupted'
+  };
+  
+  return messages[error.error] || 'Unknown settings error';
+}
+
+// Helper to safely load settings
+function loadSettingsSafely() {
+  try {
+    const settings = window.api.getSettings();
+    
+    // Check for settings errors
+    if (settings._error) {
+      const error = settings._error;
+      console.error('Settings error:', error);
+      
+      // Try to get theme from localStorage first
+      const savedTheme = localStorage.getItem('gekko-theme');
+      if (savedTheme) {
+        console.log('Using theme from localStorage:', savedTheme);
+        // Persist the theme back to settings storage when possible
+        try {
+          window.api.setSetting('theme', savedTheme);
+        } catch (e) {
+          console.warn('Could not persist theme to settings:', e);
+        }
+        return { ...settings, theme: savedTheme };
+      }
+      
+      // Show error notification
+      statusText.textContent = 'Settings Error: ' + getSettingsErrorMessage(error);
+      statusText.style.color = 'var(--error)';
+      
+      // Return settings without error field
+      const { _error, ...cleanSettings } = settings;
+      return cleanSettings;
+    }
+    
+    // If we have a theme in settings but not localStorage, sync it
+    const localTheme = localStorage.getItem('gekko-theme');
+    if (settings.theme && !localTheme) {
+      console.log('Syncing settings theme to localStorage:', settings.theme);
+      try {
+        localStorage.setItem('gekko-theme', settings.theme);
+      } catch (e) {
+        console.warn('Could not save theme to localStorage:', e);
+      }
+    }
+    // If we have a theme in localStorage that differs from settings, sync it
+    else if (localTheme && localTheme !== settings.theme) {
+      console.log('Syncing localStorage theme to settings:', localTheme);
+      try {
+        window.api.setSetting('theme', localTheme);
+        return { ...settings, theme: localTheme };
+      } catch (e) {
+        console.warn('Could not sync theme to settings:', e);
+      }
+    }
+    
+    return settings;
+  } catch (error) {
+    console.error('Error loading settings:', error);
+    // Try to get theme from localStorage as ultimate fallback
+    try {
+      const savedTheme = localStorage.getItem('gekko-theme');
+      return { theme: savedTheme || 'dark' };
+    } catch (e) {
+      return { theme: 'dark' };
+    }
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize variables
   let currentTabId = null;
@@ -29,28 +108,96 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusText = document.getElementById('status-text');
   const statusSecurity = document.getElementById('status-security');
   const securityText = document.getElementById('security-text');
+
   // Verify all required elements are present
   if (!verifyRequiredElements()) {
     console.error('Some required UI elements are missing');
     return;
   }
-  // Try to get theme from localStorage first, fallback to settings, then default to dark
-  let theme = 'dark';
-  let settings;
-  try {
-    settings = window.api.getSettings();
-    const savedTheme = localStorage.getItem('gekko-theme');
-    if (savedTheme) {
-      theme = savedTheme;
-    } else {
-      theme = settings.theme || 'dark';
-    }
-  } catch (error) {
-    console.error('Error retrieving theme:', error);
-    settings = window.api.getSettings();
-    theme = settings.theme || 'dark';
+
+  // Get user-friendly error message for settings errors
+  function getSettingsErrorMessage(error) {
+    const messages = {
+      cannot_create_dir: 'Could not create settings directory',
+      cannot_create_file: 'Could not create settings file',
+      cannot_write: 'Could not save settings',
+      cannot_read: 'Could not read settings',
+      invalid_json: 'Settings file is corrupted'
+    };
+    
+    return messages[error.error] || 'Unknown settings error';
   }
-  
+
+  // Helper to safely load settings
+  function loadSettingsSafely() {
+    try {
+      const settings = window.api.getSettings();
+      
+      // Check for settings errors
+      if (settings._error) {
+        const error = settings._error;
+        console.error('Settings error:', error);
+        
+        // Try to get theme from localStorage first
+        const savedTheme = localStorage.getItem('gekko-theme');
+        if (savedTheme) {
+          console.log('Using theme from localStorage:', savedTheme);
+          // Persist the theme back to settings storage when possible
+          try {
+            window.api.setSetting('theme', savedTheme);
+          } catch (e) {
+            console.warn('Could not persist theme to settings:', e);
+          }
+          return { ...settings, theme: savedTheme };
+        }
+        
+        // Show error notification
+        statusText.textContent = 'Settings Error: ' + getSettingsErrorMessage(error);
+        statusText.style.color = 'var(--error)';
+        
+        // Return settings without error field
+        const { _error, ...cleanSettings } = settings;
+        return cleanSettings;
+      }
+      
+      // If we have a theme in settings but not localStorage, sync it
+      const localTheme = localStorage.getItem('gekko-theme');
+      if (settings.theme && !localTheme) {
+        console.log('Syncing settings theme to localStorage:', settings.theme);
+        try {
+          localStorage.setItem('gekko-theme', settings.theme);
+        } catch (e) {
+          console.warn('Could not save theme to localStorage:', e);
+        }
+      }
+      // If we have a theme in localStorage that differs from settings, sync it
+      else if (localTheme && localTheme !== settings.theme) {
+        console.log('Syncing localStorage theme to settings:', localTheme);
+        try {
+          window.api.setSetting('theme', localTheme);
+          return { ...settings, theme: localTheme };
+        } catch (e) {
+          console.warn('Could not sync theme to settings:', e);
+        }
+      }
+      
+      return settings;
+    } catch (error) {
+      console.error('Error loading settings:', error);
+      // Try to get theme from localStorage as ultimate fallback
+      try {
+        const savedTheme = localStorage.getItem('gekko-theme');
+        return { theme: savedTheme || 'dark' };
+      } catch (e) {
+        return { theme: 'dark' };
+      }
+    }
+  }
+
+  // Try to get theme from localStorage first, fallback to settings
+  let settings = loadSettingsSafely();
+  let theme = localStorage.getItem('gekko-theme') || settings.theme || 'dark';
+
   // Apply theme
   applyTheme(theme);
   
@@ -156,23 +303,25 @@ document.addEventListener('DOMContentLoaded', () => {
               }
             }
           }
-        }
-      } 
-      // Theme change messages
-      else if (event.data && event.data.type === 'themeChange') {
+        }      } else if (event.data && event.data.type === 'themeChange') {
         const newTheme = event.data.theme;
         console.log('Theme change requested:', newTheme);
         
-        // Save theme to localStorage
+        // Save theme to both localStorage and permanent storage
         localStorage.setItem('gekko-theme', newTheme);
+        window.api.setSetting('theme', newTheme);
         
         // Apply theme to main UI
         applyTheme(newTheme);
         
-        // Apply theme to all webviews
+      // Apply theme to all webviews
         tabs.forEach(tab => {
           if (tab && tab.webview && tab.webview.isConnected) {
-            applyThemeToWebview(tab.webview, newTheme);
+            // Only apply theme to internal pages
+            const url = tab.webview.getURL();
+            if (url && (url.startsWith('gkp://') || url.startsWith('gkps://'))) {
+              applyThemeToWebview(tab.webview, newTheme);
+            }
           }
         });
       }
@@ -229,14 +378,41 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     // Insert tab before the new tab button
-    tabBar.insertBefore(tab, newTabButton);    // Create webview
+    tabBar.insertBefore(tab, newTabButton);
+
+    // Create webview with secure settings
     const webview = document.createElement('webview');
     webview.setAttribute('id', `webview-${tabId}`);
     webview.setAttribute('class', 'webview hidden');
-    webview.setAttribute('data-tab-id', tabId);
-    webview.setAttribute('nodeintegration', 'false');
-    webview.setAttribute('webpreferences', 'contextIsolation=true, worldSafeExecuteJavaScript=true');
-    webview.setAttribute('preload', './webview-preload.js'); // Use our enhanced webview preload
+    webview.setAttribute('data-tab-id', tabId);    webview.setAttribute('nodeintegration', 'false');
+    webview.setAttribute('contextIsolation', 'true');
+    webview.setAttribute('webpreferences', 'contextIsolation=true, sandbox=true, javascript=true, webviewTag=false, nodeIntegration=false');
+    webview.setAttribute('preload', window.api.getPaths().webviewPreload);
+    webview.setAttribute('httpreferrer', 'strict-origin-when-cross-origin');    webview.setAttribute('allowpopups', 'false');
+    webview.setAttribute('enableremotemodule', 'false');
+    
+    // Set content security policy for internal pages
+    if (url.startsWith('gkp://') || url.startsWith('gkps://')) {
+      webview.setAttribute('contentSecurityPolicy', `
+        default-src 'self' gkp: gkps:;
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' gkp: gkps:;
+        style-src 'self' 'unsafe-inline' gkp: gkps:;
+        img-src 'self' data: gkp: gkps: https:;
+        font-src 'self' gkp: gkps: data:;
+        connect-src 'self' gkp: gkps:;
+      `);
+    } else {
+      // For external pages, use a stricter CSP
+      webview.setAttribute('contentSecurityPolicy',
+        "default-src 'self' 'unsafe-inline' 'unsafe-eval' gkp: gkps: file: data: blob:; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' gkp: gkps: chrome: file: data: blob:; " +
+        "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' gkp: gkps: chrome: file: data: blob:; " +
+        "style-src 'self' 'unsafe-inline' gkp: gkps: file: data: blob:; " +
+        "style-src-elem 'self' 'unsafe-inline' gkp: gkps: file: data: blob:; " +
+        "font-src 'self' 'unsafe-inline' gkp: gkps: file: data: blob:; " +
+        "img-src 'self' gkp: gkps: file: data: blob:;"
+      );
+    }
     
     // Set the src attribute initially
     webview.setAttribute('src', url);
@@ -277,21 +453,35 @@ document.addEventListener('DOMContentLoaded', () => {
     setActiveTab(tabId);
 
     return tabId;
-  }
-
-  // Set up webview events
+  }    // Set up webview events
   function setupWebviewEvents(webview, tabId) {    // DOM ready
     webview.addEventListener('dom-ready', () => {
       console.log(`WebView DOM ready for tab ${tabId}`);
-      updateNavigationButtons(tabId);
       
-      // Apply current theme to the webview
-      try {
-        const currentTheme = localStorage.getItem('gekko-theme') || 'dark';
-        applyThemeToWebview(webview, currentTheme);
-      } catch (error) {
-        console.error('Error applying theme to webview:', error);
-      }
+      // Wait for webview to be fully initialized
+      const initWebview = async () => {
+        try {
+          // Wait for webview to be properly connected
+          if (!webview.isConnected) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+
+          // Initialize navigation
+          updateNavigationButtons(tabId);
+          
+          // Get URL and check if it's an internal page
+          const url = webview.getURL();
+          if (url && (url.startsWith('gkp://') || url.startsWith('gkps://'))) {
+            // Apply theme to internal page
+            const currentTheme = localStorage.getItem('gekko-theme') || 'dark';
+            await applyThemeToWebview(webview, currentTheme);
+          }
+        } catch (error) {
+          console.error('Error in webview initialization:', error);
+        }
+      };
+      
+      initWebview();
     });
     
     // Page title updated
@@ -416,13 +606,16 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Get the current URL from the webview
       const currentUrl = activeWebview.getAttribute('src');
-      
-      // Update address bar and navigation buttons
+        // Update address bar
       updateAddressBar(currentUrl, tabId);
-      updateNavigationButtons(tabId);
+      
+      // Only update navigation buttons if webview is ready
+      if (activeWebview.isConnected && typeof activeWebview.canGoBack === 'function') {
+        updateNavigationButtons(tabId);
+      }
       
       // Ensure the webview has loaded the URL
-      if (currentUrl && !activeWebview.getURL()) {
+      if (currentUrl && (!activeWebview.getURL || !activeWebview.getURL())) {
         console.log(`Ensuring URL is loaded: ${currentUrl}`);
         safeLoadURL(activeWebview, currentUrl);
       }
@@ -817,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', () => {
     addressBar.value = '';
     addressBar.focus();
   }
-    // Apply theme to a specific webview
+  // Apply theme to a specific webview
   function applyThemeToWebview(webview, themeId) {
     if (!webview || !webview.isConnected) {
       console.error('Cannot apply theme to invalid webview');
@@ -836,28 +1029,32 @@ document.addEventListener('DOMContentLoaded', () => {
         .map(([key, value]) => `--${key}: ${value};`)
         .join(' ');
       
-      // Apply theme to webview
+      // Apply theme to webview using the safeDOM API
       webview.executeJavaScript(`
         (function() {
           try {
-            document.documentElement.setAttribute('data-theme', '${themeId}');
-            document.documentElement.style.cssText += '${cssVars}';
-            
-            // If there's a theme utils script, call its function
-            if (typeof initThemeHandling === 'function') {
-              console.log('Found theme handling function, calling it');
-              initThemeHandling();
+            if (window.safeDOM) {
+              // Use safe DOM API
+              window.safeDOM.setThemeAttribute('${themeId}');
+              window.safeDOM.addStyleSheet(':root { ${cssVars} }');
             } else {
-              console.log('No theme handling function found, using basic theme application');
-              // If there's a gkp-theme-applied element, update it
+              // Fallback for older pages
+              document.documentElement.setAttribute('data-theme', '${themeId}');
+              const style = document.createElement('style');
+              style.textContent = ':root { ${cssVars} }';
+              document.head.appendChild(style);
+              
+              // Update theme marker
               let themeMarker = document.getElementById('gkp-theme-applied');
               if (!themeMarker) {
-                themeMarker = document.createElement('div');              themeMarker.id = 'gkp-theme-applied';
-              themeMarker.style.display = 'none';
-              document.body.appendChild(themeMarker);
+                themeMarker = document.createElement('div');
+                themeMarker.id = 'gkp-theme-applied';
+                themeMarker.style.display = 'none';
+                document.body.appendChild(themeMarker);
+              }
+              themeMarker.setAttribute('data-theme', '${themeId}');
             }
-            themeMarker.setAttribute('data-theme', '${themeId}');
-            
+
             // Apply to any .shortcut-icon or .card-icon elements for consistent accent colors
             const iconColorMap = {
               'dark': '#8ab4f8',
@@ -866,12 +1063,10 @@ document.addEventListener('DOMContentLoaded', () => {
               'blue': '#64b5f6',
               'red': '#ff8a80'
             };
-            
-            const accentColor = iconColorMap['${themeId}'] || iconColorMap.dark;
-            document.querySelectorAll('.shortcut-icon i, .card-icon i').forEach(icon => {
+              const accentColor = iconColorMap['${themeId}'] || theme.colors.accent || iconColorMap.dark;
+            document.querySelectorAll('.shortcut-icon i, .card-icon i, .setting-icon i').forEach(icon => {
               icon.style.color = accentColor;
             });
-            }
             
             console.log('Theme applied:', '${themeId}');
             return true;
@@ -890,46 +1085,249 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error applying theme to webview:', error);
       return false;
     }
-  }
-  
-  // Get a theme object by ID
+  }    // Get a theme object by ID
   function getThemeObject(themeId) {
-    // Try to load from our themes module
     try {
-      const { themes } = require('./themes');
-      return themes[themeId] || themes.dark;
-    } catch (error) {
-      console.error('Error loading theme from module:', error);
-      
-      // Fallback to basic themes
-      const basicThemes = {
-        dark: {
-          colors: {
-            primary: '#202124',
-            secondary: '#303134',
-            accent: '#8ab4f8',
-            textPrimary: '#e8eaed',
-            textSecondary: '#9aa0a6',
-            divider: '#3c4043',
-            background: '#202124',
-            card: '#303134'
-          }
-        },
-        light: {
-          colors: {
-            primary: '#f8f9fa',
-            secondary: '#ffffff',
-            accent: '#1a73e8',
-            textPrimary: '#202124',
-            textSecondary: '#5f6368',
-            divider: '#dadce0',
-            background: '#f8f9fa',
-            card: '#ffffff'
-          }
+      // Get themes from window.api
+      let themes = window.api.getThemes();
+        // Handle case where themes is undefined
+      if (!themes || typeof themes !== 'object') {
+        console.warn('Invalid themes object, using fallback themes');
+        themes = getFallbackThemes();
+      }
+
+      // If the requested theme exists and is valid, return it
+      if (themes[themeId] && themes[themeId].colors && typeof themes[themeId].colors === 'object') {
+        return themes[themeId];
+      }
+
+      // If dark theme is available and valid, use it as fallback
+      if (themes.dark && themes.dark.colors && typeof themes.dark.colors === 'object') {
+        console.warn(`Theme ${themeId} not found, falling back to dark theme`);
+        return themes.dark;
+      }
+
+      // Ultimate fallback - basic dark theme
+      console.warn('Using basic dark theme as fallback');
+      return {
+        name: 'Dark Theme',
+        colors: {
+          primary: '#202124',
+          secondary: '#303134',
+          accent: '#8ab4f8',
+          textPrimary: '#e8eaed',
+          textSecondary: '#9aa0a6',
+          divider: '#3c4043',
+          background: '#202124',
+          card: '#303134',
+          error: '#f28b82',
+          warning: '#fdd663',
+          success: '#81c995',
+          secure: '#81c995',
+          insecure: '#f28b82'
         }
       };
-      
-      return basicThemes[themeId] || basicThemes.dark;
+    } catch (error) {
+      console.error('Error getting theme:', error);
+      // Return basic dark theme on error
+      return {
+        name: 'Dark Theme',
+        colors: {
+          primary: '#202124',
+          secondary: '#303134',
+          accent: '#8ab4f8',
+          textPrimary: '#e8eaed',
+          textSecondary: '#9aa0a6',
+          divider: '#3c4043',
+          background: '#202124',
+          card: '#303134',
+          error: '#f28b82',
+          warning: '#fdd663',
+          success: '#81c995',
+          secure: '#81c995',
+          insecure: '#f28b82'
+        }
+      };
     }
   }
-});
+
+  // Get fallback themes when API themes are not available
+  function getFallbackThemes() {
+    return {
+      dark: {
+        name: 'Dark Theme',
+        colors: {
+          primary: '#202124',
+          secondary: '#303134',
+          accent: '#8ab4f8',
+          textPrimary: '#e8eaed',
+          textSecondary: '#9aa0a6',
+          divider: '#3c4043',
+          background: '#202124',
+          card: '#303134',
+          error: '#f28b82',
+          warning: '#fdd663',
+          success: '#81c995',
+          secure: '#81c995',
+          insecure: '#f28b82'
+        }
+      },
+      light: {
+        name: 'Light Theme',
+        colors: {
+          primary: '#f8f9fa',
+          secondary: '#ffffff',
+          accent: '#1a73e8',
+          textPrimary: '#202124',
+          textSecondary: '#5f6368',
+          divider: '#dadce0',
+          background: '#f8f9fa',
+          card: '#ffffff',
+          error: '#ea4335',
+          warning: '#fbbc04',
+          success: '#34a853',
+          secure: '#34a853',
+          insecure: '#ea4335'
+        }
+      },
+      red: {
+        name: 'Red Theme',
+        colors: {
+          primary: '#3c1014',
+          secondary: '#541b1f',
+          accent: '#ff8a80',
+          textPrimary: '#e8eaed',
+          textSecondary: '#9aa0a6',
+          divider: '#661e24',
+          background: '#3c1014',
+          card: '#541b1f',
+          error: '#f28b82',
+          warning: '#fdd663',
+          success: '#81c995',
+          secure: '#81c995',
+          insecure: '#f28b82'
+        }
+      }
+    };
+  }
+
+  // Apply theme to entire browser UI
+  function applyTheme(themeId) {
+    console.group('Apply Theme');
+    console.log('Theme application requested:', themeId);
+    
+    if (!themeId) {
+      console.error('No theme ID provided');
+      themeId = 'dark';
+      console.log('Falling back to dark theme');
+    }
+
+    try {
+      const theme = getThemeObject(themeId);
+      if (!theme) {
+        console.error('Could not get theme object for:', themeId);
+        console.groupEnd();
+        return;
+      }
+      console.log('Theme object retrieved:', { name: theme.name, colors: Object.keys(theme.colors) });
+
+      // Save theme with retries for both storage mechanisms
+      const saveTheme = () => {
+        console.group('Save Theme State');
+        try {
+          localStorage.setItem('gekko-theme', themeId);
+          console.log('Theme saved to localStorage');
+        } catch (e) {
+          console.warn('Could not save theme to localStorage:', e);
+        }
+
+        try {
+          window.api.setSetting('theme', themeId);
+          console.log('Theme saved to permanent storage');
+        } catch (e) {
+          console.warn('Could not save theme to settings:', e);
+          console.log('Scheduling retry in 1000ms');
+          setTimeout(() => {
+            console.group('Theme Save Retry');
+            try {
+              window.api.setSetting('theme', themeId);
+              console.log('Theme save retry successful');
+            } catch (retryError) {
+              console.error('Theme save retry failed:', retryError);
+            }
+            console.groupEnd();
+          }, 1000);
+        }
+        console.groupEnd();
+      };
+      saveTheme();
+
+      // Apply CSS variables to root
+      console.log('Applying CSS variables');
+      const root = document.documentElement;
+      Object.entries(theme.colors).forEach(([key, value]) => {
+        root.style.setProperty(`--${key}`, value);
+      });
+
+      // Set theme attribute
+      console.log('Setting theme attribute on document');
+      document.documentElement.setAttribute('data-theme', themeId);
+
+      // Apply to all webviews with retry mechanism
+      console.log('Applying theme to webviews');
+      console.group('Webview Updates');
+      tabs.forEach((tab, index) => {
+        if (tab && tab.webview) {
+          console.log(`Processing webview for tab ${index + 1}/${tabs.length}`);
+          const applyThemeToWebviewWithRetry = (retries = 3) => {
+            console.group(`Webview apply attempt (${4 - retries}/3)`);
+            if (retries <= 0) {
+              console.warn('No more retries left for this webview');
+              console.groupEnd();
+              return;
+            }
+            
+            if (!tab.webview.isConnected) {
+              console.log('Webview not connected, retrying in 100ms');
+              setTimeout(() => applyThemeToWebviewWithRetry(retries - 1), 100);
+              console.groupEnd();
+              return;
+            }
+
+            try {
+              const url = tab.webview.getURL();
+              console.log('Webview URL:', url);
+              if (url && (url.startsWith('gkp://') || url.startsWith('gkps://'))) {
+                console.log('Applying theme to internal page');
+                const success = applyThemeToWebview(tab.webview, themeId);
+                if (!success) {
+                  console.log('Theme application failed, retrying in 100ms');
+                  setTimeout(() => applyThemeToWebviewWithRetry(retries - 1), 100);
+                } else {
+                  console.log('Theme applied successfully');
+                }
+              } else {
+                console.log('Skipping external page');
+              }
+            } catch (error) {
+              console.error('Error applying theme to webview:', error);
+              setTimeout(() => applyThemeToWebviewWithRetry(retries - 1), 100);
+            }
+            console.groupEnd();
+          };
+          applyThemeToWebviewWithRetry();
+        }
+      });
+      console.groupEnd();
+
+      console.log('Theme application complete');
+      console.groupEnd();
+      return true;
+    } catch (error) {
+      console.error('Error applying theme:', error);
+      console.groupEnd();
+      return false;
+    }
+  }
+
+}); // End DOMContentLoaded event listener
