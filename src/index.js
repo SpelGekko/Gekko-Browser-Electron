@@ -14,7 +14,31 @@ let settings = settingsStorage.getSettings();
 
 // IPC handlers
 ipcMain.on('set-setting', (event, key, value) => {
-  settingsStorage.setSetting(key, value);
+  console.log(`Main process: Setting "${key}" to:`, value);
+  
+  // Handle settings with special cases for important ones like theme
+  if (key === 'theme') {
+    // For theme, apply an extra layer of validation and reliability
+    if (!value || typeof value !== 'string') {
+      console.error('Invalid theme value:', value);
+      return;
+    }
+    
+    // Try to save with multiple attempts for theme setting
+    const result = settingsStorage.setSetting(key, value);
+    if (result !== true) {
+      console.error('Error saving theme setting:', result);
+      // Retry after a short delay
+      setTimeout(() => {
+        const retryResult = settingsStorage.setSetting(key, value);
+        console.log('Theme save retry result:', retryResult === true ? 'Success' : 'Failed');
+      }, 500);
+    }
+  } else {
+    // For other settings, standard behavior
+    settingsStorage.setSetting(key, value);
+  }
+  
   // Update local settings
   settings = settingsStorage.getSettings();
 });
@@ -29,9 +53,29 @@ ipcMain.on('get-themes', (event) => {
   event.returnValue = ['dark', 'light', 'blue', 'purple', 'red'];
 });
 
+// Handle theme changes with priority and reliability
 ipcMain.on('apply-theme', (event, themeId) => {
-  // Save theme setting
-  settingsStorage.setSetting('theme', themeId);
+  console.log('Main process: Theme change requested to', themeId);
+  
+  // Validate theme
+  if (!themeId || typeof themeId !== 'string') {
+    console.error('Invalid theme ID:', themeId);
+    themeId = 'dark'; // fallback to default
+  }
+  
+  // Save theme setting with high priority
+  const saveResult = settingsStorage.setSetting('theme', themeId);
+  if (saveResult !== true) {
+    console.error('Error saving theme setting:', saveResult);
+    
+    // Retry saving theme after a short delay
+    setTimeout(() => {
+      const retryResult = settingsStorage.setSetting('theme', themeId);
+      console.log('Theme save retry result:', retryResult === true ? 'Success' : 'Failed');
+    }, 500);
+  }
+  
+  // Update in-memory settings
   settings.theme = themeId;
   
   // Broadcast theme change to all windows

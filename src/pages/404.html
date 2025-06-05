@@ -17,12 +17,6 @@
     <p class="error-code">Error Code: GKP_ERR_NOT_FOUND</p>
     <button class="error-action" id="go-home">Return to Home</button>
   </div>
-  
-  <script>
-    // Return to home
-    document.getElementById('go-home').addEventListener('click', () => {
-      window.parent.postMessage({ type: 'navigate', url: 'gkp://home.gekko/' }, '*');
-    });
-  </script>
+    <script src="error.js"></script>
 </body>
 </html>

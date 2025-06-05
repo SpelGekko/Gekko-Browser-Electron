@@ -158,18 +158,7 @@ Cipher Suite: GKPS_ECDHE_RSA_WITH_AES_256_GCM_SHA384</pre>
       </div>
     </div>
   </div>
-    <script>
-    // Initialize theme handling
-    initThemeHandling();
-    
-    // Make links work
-    document.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const url = link.getAttribute('href');
-        window.parent.postMessage({ type: 'navigate', url: url }, '*');
-      });
-    });
-  </script>
+  
+  <script src="secure.js"></script>
 </body>
 </html>

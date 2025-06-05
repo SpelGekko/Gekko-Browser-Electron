@@ -16,6 +16,29 @@ function getSettingsErrorMessage(error) {
   return messages[error.error] || 'Unknown settings error';
 }
 
+// Helper to create/update DOM-based theme marker
+function createThemeMarker(themeId) {
+  try {
+    // Save in a meta tag for immediate DOM storage
+    let themeMarker = document.getElementById('gekko-theme-marker');
+    if (!themeMarker) {
+      themeMarker = document.createElement('meta');
+      themeMarker.id = 'gekko-theme-marker';
+      document.head.appendChild(themeMarker);
+    }
+    themeMarker.setAttribute('content', themeId);
+    themeMarker.setAttribute('name', 'theme');
+    console.log('Theme saved to DOM element');
+    
+    // Also store in data attribute on HTML element
+    document.documentElement.dataset.savedTheme = themeId;
+    return true;
+  } catch (domError) {
+    console.warn('DOM storage error:', domError);
+    return false;
+  }
+}
+
 // Helper to safely load settings
 function loadSettingsSafely() {
   try {
@@ -26,26 +49,63 @@ function loadSettingsSafely() {
       const error = settings._error;
       console.error('Settings error:', error);
       
-      // Try to get theme from localStorage first
-      const savedTheme = localStorage.getItem('gekko-theme');
-      if (savedTheme) {
-        console.log('Using theme from localStorage:', savedTheme);
-        // Persist the theme back to settings storage when possible
-        try {
-          window.api.setSetting('theme', savedTheme);
-        } catch (e) {
-          console.warn('Could not persist theme to settings:', e);
+      // Multi-layered theme recovery approach
+      // 1. Try localStorage
+      let savedTheme = null;
+      try {
+        savedTheme = localStorage.getItem('gekko-theme');
+        if (savedTheme) {
+          console.log('Using theme from localStorage:', savedTheme);
         }
-        return { ...settings, theme: savedTheme };
+      } catch (localStorageError) {
+        console.warn('Could not access localStorage:', localStorageError);
+      }
+      
+      // 2. Try sessionStorage if localStorage failed
+      if (!savedTheme) {
+        try {
+          savedTheme = sessionStorage.getItem('gekko-theme');
+          if (savedTheme) {
+            console.log('Using theme from sessionStorage:', savedTheme);
+          }
+        } catch (sessionStorageError) {
+          console.warn('Could not access sessionStorage:', sessionStorageError);
+        }
+      }
+      
+      // 3. Try DOM-based storage
+      if (!savedTheme) {
+        try {
+          const marker = document.getElementById('gekko-theme-marker');
+          if (marker && marker.getAttribute('content')) {
+            savedTheme = marker.getAttribute('content');
+            console.log('Using theme from DOM marker:', savedTheme);
+          }
+        } catch (domError) {
+          console.warn('Could not access DOM storage:', domError);
+        }
+      }
+      
+      // 4. Default to 'dark' if all else fails
+      if (!savedTheme) {
+        savedTheme = 'dark';
+        console.log('Using default theme as fallback');
+      }
+      
+      // Persist the theme back to settings storage when possible
+      try {
+        window.api.setSetting('theme', savedTheme);
+      } catch (e) {
+        console.warn('Could not persist theme to settings:', e);
       }
       
       // Show error notification
       statusText.textContent = 'Settings Error: ' + getSettingsErrorMessage(error);
       statusText.style.color = 'var(--error)';
       
-      // Return settings without error field
+      // Return settings without error field but with recovered theme
       const { _error, ...cleanSettings } = settings;
-      return cleanSettings;
+      return { ...cleanSettings, theme: savedTheme };
     }
     
     // If we have a theme in settings but not localStorage, sync it
@@ -126,6 +186,29 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     return messages[error.error] || 'Unknown settings error';
+  }
+
+  // Helper to create/update DOM-based theme marker
+  function createThemeMarker(themeId) {
+    try {
+      // Save in a meta tag for immediate DOM storage
+      let themeMarker = document.getElementById('gekko-theme-marker');
+      if (!themeMarker) {
+        themeMarker = document.createElement('meta');
+        themeMarker.id = 'gekko-theme-marker';
+        document.head.appendChild(themeMarker);
+      }
+      themeMarker.setAttribute('content', themeId);
+      themeMarker.setAttribute('name', 'theme');
+      console.log('Theme saved to DOM element');
+      
+      // Also store in data attribute on HTML element
+      document.documentElement.dataset.savedTheme = themeId;
+      return true;
+    } catch (domError) {
+      console.warn('DOM storage error:', domError);
+      return false;
+    }
   }
 
   // Helper to safely load settings
@@ -1229,35 +1312,69 @@ document.addEventListener('DOMContentLoaded', () => {
         console.groupEnd();
         return;
       }
-      console.log('Theme object retrieved:', { name: theme.name, colors: Object.keys(theme.colors) });
-
-      // Save theme with retries for both storage mechanisms
+      console.log('Theme object retrieved:', { name: theme.name, colors: Object.keys(theme.colors) });      // Save theme with multiple redundant mechanisms
       const saveTheme = () => {
         console.group('Save Theme State');
+          // Create a reliable DOM-based storage as a fallback
+        try {
+          // Store theme in a custom data attribute
+          document.documentElement.dataset.savedTheme = themeId;
+          
+          // Use the central theme marker function for consistency
+          createThemeMarker(themeId);
+          
+          // Legacy marker for backward compatibility
+          let legacyMarker = document.getElementById('main-theme-storage');
+          if (!legacyMarker) {
+            legacyMarker = document.createElement('meta');
+            legacyMarker.id = 'main-theme-storage';
+            document.head.appendChild(legacyMarker);
+          }
+          legacyMarker.setAttribute('content', themeId);
+          legacyMarker.setAttribute('name', 'theme');
+          console.log('Theme saved to DOM');
+        } catch (domError) {
+          console.warn('DOM storage error:', domError);
+        }
+        
+        // Always prioritize saving to the main process via API
+        let apiSuccess = false;
+        try {
+          window.api.setSetting('theme', themeId);
+          console.log('Theme saved to permanent storage via API');
+          apiSuccess = true;
+        } catch (apiError) {
+          console.warn('API storage error:', apiError);
+          // Retry API save after a delay
+          setTimeout(() => {
+            try {
+              window.api.setSetting('theme', themeId);
+              console.log('Delayed API save successful');
+            } catch (retryError) {
+              console.error('Delayed API save failed:', retryError);
+            }
+          }, 500);
+        }
+        
+        // Try browser storage as additional backup
+        let browserStorageSuccess = false;
         try {
           localStorage.setItem('gekko-theme', themeId);
           console.log('Theme saved to localStorage');
-        } catch (e) {
-          console.warn('Could not save theme to localStorage:', e);
+          browserStorageSuccess = true;
+        } catch (localError) {
+          console.warn('localStorage error:', localError);
+          try {
+            sessionStorage.setItem('gekko-theme', themeId);
+            console.log('Theme saved to sessionStorage');
+            browserStorageSuccess = true;
+          } catch (sessionError) {
+            console.warn('sessionStorage error:', sessionError);
+          }
         }
-
-        try {
-          window.api.setSetting('theme', themeId);
-          console.log('Theme saved to permanent storage');
-        } catch (e) {
-          console.warn('Could not save theme to settings:', e);
-          console.log('Scheduling retry in 1000ms');
-          setTimeout(() => {
-            console.group('Theme Save Retry');
-            try {
-              window.api.setSetting('theme', themeId);
-              console.log('Theme save retry successful');
-            } catch (retryError) {
-              console.error('Theme save retry failed:', retryError);
-            }
-            console.groupEnd();
-          }, 1000);
-        }
+        
+        console.log('Theme persistence status - API: ' + (apiSuccess ? 'Success' : 'Failed') + 
+                  ', Browser Storage: ' + (browserStorageSuccess ? 'Success' : 'Failed'));
         console.groupEnd();
       };
       saveTheme();

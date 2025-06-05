@@ -857,3 +857,55 @@ body, html {
 .error-action:hover {
   background-color: var(--buttonHover);
 }
+
+/* FontAwesome Fallbacks for when font loading fails */
+.font-load-error .fa, 
+.font-load-error .fas, 
+.font-load-error .far, 
+.font-load-error .fab, 
+.font-load-error .fa-solid, 
+.font-load-error .fa-regular, 
+.font-load-error .fa-brands,
+.font-load-error [class*="fa-"] {
+  font-family: system-ui, -apple-system, sans-serif !important;
+  display: inline-block;
+  text-align: center;
+  width: 1.25em;
+  line-height: 1;
+}
+
+/* Common icon fallbacks */
+.font-load-error .fa-solid.fa-house:before, 
+.font-load-error .fa-house:before { content: "🏠"; }
+.font-load-error .fa-solid.fa-gear:before, 
+.font-load-error .fa-gear:before, 
+.font-load-error .fa-cog:before { content: "⚙️"; }
+.font-load-error .fa-solid.fa-clock-rotate-left:before, 
+.font-load-error .fa-clock-rotate-left:before, 
+.font-load-error .fa-history:before { content: "⏱️"; }
+.font-load-error .fa-solid.fa-globe:before, 
+.font-load-error .fa-globe:before { content: "🌐"; }
+.font-load-error .fa-solid.fa-lock:before, 
+.font-load-error .fa-lock:before { content: "🔒"; }
+.font-load-error .fa-solid.fa-lock-open:before, 
+.font-load-error .fa-lock-open:before { content: "🔓"; }
+.font-load-error .fa-solid.fa-shield:before, 
+.font-load-error .fa-shield:before { content: "🛡️"; }
+.font-load-error .fa-solid.fa-arrows-rotate:before, 
+.font-load-error .fa-arrows-rotate:before, 
+.font-load-error .fa-refresh:before { content: "🔄"; }
+.font-load-error .fa-solid.fa-xmark:before, 
+.font-load-error .fa-xmark:before, 
+.font-load-error .fa-times:before { content: "✕"; }
+.font-load-error .fa-solid.fa-arrow-left:before, 
+.font-load-error .fa-arrow-left:before { content: "←"; }
+.font-load-error .fa-solid.fa-arrow-right:before, 
+.font-load-error .fa-arrow-right:before { content: "→"; }
+.font-load-error .fa-solid.fa-window-minimize:before, 
+.font-load-error .fa-window-minimize:before { content: "─"; }
+.font-load-error .fa-solid.fa-window-maximize:before, 
+.font-load-error .fa-window-maximize:before { content: "□"; }
+.font-load-error .fa-solid.fa-plus:before, 
+.font-load-error .fa-plus:before { content: "+"; }
+
+/* Import Fonts */

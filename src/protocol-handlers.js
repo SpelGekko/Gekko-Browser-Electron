@@ -28,8 +28,7 @@ function serveFile(filePath, callback, extraHeaders = {}) {
   try {
     const extension = path.extname(filePath);
     const isFontFile = ['.woff', '.woff2', '.ttf', '.eot', '.otf'].includes(extension);
-    
-    if (!fs.existsSync(filePath)) {
+      if (!fs.existsSync(filePath)) {
       callback({ error: -2 }); // File not found
       return;
     }
@@ -38,13 +37,19 @@ function serveFile(filePath, callback, extraHeaders = {}) {
     const headers = {
       'Content-Type': getMimeType(extension),
       'Access-Control-Allow-Origin': '*',
+      'Cross-Origin-Resource-Policy': 'cross-origin',
+      'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Cache-Control': isFontFile ? 'public, max-age=31536000' : 'no-cache',
       ...extraHeaders
     };
 
     // Add specific headers for fonts
     if (isFontFile) {
-      headers['Access-Control-Allow-Methods'] = 'GET';
+      headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
       headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept';
+      headers['Cross-Origin-Embedder-Policy'] = 'require-corp';
+      headers['Cross-Origin-Opener-Policy'] = 'same-origin';
     }
 
     callback({

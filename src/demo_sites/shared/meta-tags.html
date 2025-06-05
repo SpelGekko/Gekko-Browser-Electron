@@ -4,3 +4,51 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' gkp: gkps:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self' gkp: gkps:">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
+<!-- Theme marker for storage -->
+<meta id="gekko-theme-marker" name="theme" content="">
+<script>
+// Initialize theme from available sources
+(function() {
+    function initTheme() {
+        // Check URL hash first
+        const hash = location.hash.slice(1);
+        if (hash.startsWith('theme=')) {
+            return hash.split('=')[1];
+        }
+        
+        // Check cookie
+        const match = document.cookie.match(/(?:^|;)\s*gekko-theme=([^;]+)/);
+        if (match) {
+            return match[1];
+        }
+        
+        // Check marker
+        const marker = document.getElementById('gekko-theme-marker');
+        if (marker && marker.getAttribute('content')) {
+            return marker.getAttribute('content');
+        }
+        
+        // Check localStorage
+        try {
+            const theme = localStorage.getItem('gekko-theme');
+            if (theme) return theme;
+        } catch (e) {}
+        
+        return 'dark'; // Default theme
+    }
+    
+    // Set the theme as soon as possible
+    const theme = initTheme();
+    document.documentElement.setAttribute('data-theme', theme);
+    
+    // Listen for theme changes from other pages
+    try {
+        const bc = new BroadcastChannel('gekko-theme');
+        bc.onmessage = (event) => {
+            if (event.data.theme) {
+                document.documentElement.setAttribute('data-theme', event.data.theme);
+            }
+        };
+    } catch (e) {}
+})();
+</script>

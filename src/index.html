@@ -3,11 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' gkp: gkps:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' gkp: gkps: https://fonts.googleapis.com; font-src 'self' gkp: gkps: https://fonts.gstatic.com; connect-src 'self' gkp: gkps:; img-src 'self' data: https: gkp: gkps:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' gkp: gkps:; 
+        script-src 'self' 'unsafe-inline' 'unsafe-eval'; 
+        style-src 'self' 'unsafe-inline' gkp: gkps: https://fonts.googleapis.com; 
+        font-src 'self' gkp: gkps: https://fonts.gstatic.com data: blob: file: resource:; 
+        connect-src 'self' gkp: gkps:; 
+        img-src 'self' data: https: gkp: gkps:;">
+  <!-- Theme storage marker -->
+  <meta id="gekko-theme-marker" name="theme" content="">
   <title>Gekko Browser</title>
+  <!-- Preload and load fonts with proper CORS and error handling -->
+  <link rel="preload" 
+        href="../node_modules/@fortawesome/fontawesome-free/webfonts/fa-solid-900.woff2" 
+        as="font" 
+        type="font/woff2" 
+        fetchpriority="high" 
+        crossorigin="anonymous">
+  <link rel="preload" 
+        href="../node_modules/@fortawesome/fontawesome-free/webfonts/fa-regular-400.woff2" 
+        as="font" 
+        type="font/woff2" 
+        fetchpriority="high" 
+        crossorigin="anonymous">
+  
+  <!-- Primary stylesheets -->
   <link rel="stylesheet" href="index.css" />
-  <link rel="stylesheet" href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css" />
+  <link rel="stylesheet" 
+        href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css" 
+        onerror="handleFontLoadError()" 
+        onload="document.documentElement.classList.add('fa-loaded')" 
+        crossorigin="anonymous" />
   <script src="themes.js" defer></script>
+    <!-- Script to handle font loading errors -->
+  <script>
+    function handleFontLoadError() {
+      console.warn('Font loading failed, applying fallbacks');
+      document.documentElement.classList.add('font-load-error');
+      
+      // Try to detect font availability after a delay
+      setTimeout(() => {
+        if (window.api?.fixIcons) {
+          window.api.fixIcons();
+        }
+        
+        // Check if FontAwesome is actually available despite the error
+        if (document.fonts) {
+          document.fonts.ready.then(() => {
+            const fontAvailable = document.fonts.check('1em "Font Awesome 5 Free"') || 
+                                document.fonts.check('1em FontAwesome');
+            if (fontAvailable) {
+              document.documentElement.classList.remove('font-load-error');
+            }
+          });
+        }
+      }, 500);
+    }
+  </script>
 </head>
 <body>
   <div class="container">
