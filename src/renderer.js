@@ -371,19 +371,23 @@ document.addEventListener('DOMContentLoaded', () => {
           // Fallback approach for navigation - try multiple methods
           const tab = tabs.find(tab => tab.id === currentTabId);
           if (tab && tab.webview) {
-            try {
-              // Try direct loadURL
-              const processedUrl = processUrl(event.data.url);
-              safeLoadURL(tab.webview, processedUrl);
-            } catch (innerError) {
-              console.error('Fallback navigation also failed:', innerError);
-              
-              // Last resort fallback - set src attribute directly
+            // Check if WebView is ready before navigating
+            if (tab.webview.isConnected) {
               try {
-                tab.webview.setAttribute('src', processUrl(event.data.url));
-              } catch (finalError) {
-                console.error('All navigation attempts failed:', finalError);
+                // Try direct loadURL
+                const processedUrl = processUrl(event.data.url);
+                safeLoadURL(tab.webview, processedUrl);
+              } catch (innerError) {
+                console.error('Fallback navigation also failed:', innerError);
+                // Last resort fallback - set src attribute directly
+                try {
+                  tab.webview.setAttribute('src', processUrl(event.data.url));
+                } catch (finalError) {
+                  console.error('All navigation attempts failed:', finalError);
+                }
               }
+            } else {
+              console.warn('WebView is not ready for navigation');
             }
           }
         }      } else if (event.data && event.data.type === 'themeChange') {
@@ -1446,5 +1450,94 @@ document.addEventListener('DOMContentLoaded', () => {
       return false;
     }
   }
+
+  // Handle navigation from webviews
+window.api.on('navigate', (event, url) => {
+  console.log('Navigation request received:', url);
+  try {
+    // Get the active tab's webview
+    const activeTab = document.querySelector('.browser-tab.active');
+    if (activeTab) {
+      const webview = document.querySelector(`webview[data-tab-id="${activeTab.dataset.tabId}"]`);
+      if (webview) {
+        console.log('Navigating webview to:', url);
+        webview.loadURL(url);
+      }
+    }
+  } catch (error) {
+    console.error('Navigation error:', error);
+  }
+});
+
+// Handle navigation requests from webviews
+window.api.on('do-navigate', (url) => {
+  console.log('Processing navigation request:', url);
+  
+  // Get the active tab's webview
+  const activeTab = document.querySelector('.browser-tab.active');
+  if (!activeTab) {
+    console.error('No active tab found');
+    return;
+  }
+
+  const webview = document.querySelector(`webview[data-tab-id="${activeTab.dataset.tabId}"]`);
+  if (!webview) {
+    console.error('No webview found for active tab');
+    return;
+  }
+
+  // Handle different URL types
+  try {
+    if (url.startsWith('gkp://') || url.startsWith('gkps://')) {
+      console.log('Loading internal URL:', url);
+      webview.loadURL(url);
+    } else if (url.startsWith('http://') || url.startsWith('https://')) {
+      console.log('Loading external URL:', url);
+      webview.loadURL(url);
+    } else {
+      // Assume it's a search if it's not a URL
+      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(url)}`;
+      console.log('Loading search URL:', searchUrl);
+      webview.loadURL(searchUrl);
+    }
+  } catch (error) {
+    console.error('Navigation error:', error);
+  }
+});
+
+// Handle navigation messages from webviews
+function handleNavigationRequest(url) {
+  console.log('Navigation request received for URL:', url);
+  
+  // Get the current active tab and its webview
+  const activeTab = document.querySelector('.browser-tab.active');
+  if (!activeTab) {
+    console.log('No active tab found, creating new tab');
+    createTab(url);
+    return;
+  }
+
+  const webview = document.querySelector(`webview[data-tab-id="${activeTab.dataset.tabId}"]`);
+  if (!webview) {
+    console.error('No webview found for active tab');
+    return;
+  }
+
+  try {
+    console.log('Loading URL in webview:', url);
+    webview.loadURL(url).catch(err => {
+      console.error('Error loading URL:', err);
+    });
+  } catch (error) {
+    console.error('Error during navigation:', error);
+  }
+}
+
+// Listen for navigation events from webviews
+window.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'navigate' && event.data.url) {
+    handleNavigationRequest(event.data.url);
+  }
+});
 
 }); // End DOMContentLoaded event listener

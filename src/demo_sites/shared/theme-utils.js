@@ -5,7 +5,7 @@
  */
 
 // Initialize theme handling for internal pages
-function initThemeHandling() {
+export function initThemeHandling() {
   // Add transition styles for smooth theme changes
   const style = document.createElement('style');
   style.textContent = `
@@ -44,7 +44,7 @@ function initThemeHandling() {
 }
 
 // Apply the current theme based on parent window
-function applyCurrentTheme() {
+export function applyCurrentTheme() {
   try {
     // Try to get the theme from the parent window
     if (window.parent && window.parent.api) {
@@ -59,7 +59,7 @@ function applyCurrentTheme() {
 }
 
 // Apply theme to the page
-function applyTheme(theme) {
+export function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   applyThemeStyles(theme);
   
@@ -79,7 +79,7 @@ function applyTheme(theme) {
 }
 
 // Apply specific theme styles
-function applyThemeStyles(theme) {
+export function applyThemeStyles(theme) {
   // Theme-specific accent colors for icons
   const iconColorMap = {
     'dark': '#8ab4f8',

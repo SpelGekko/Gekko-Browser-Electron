@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
+const indexedDB = require('electron').indexedDB;
 
 // Add error type definitions
 const ERROR_TYPES = {
@@ -154,10 +155,55 @@ const getSettings = () => {
   return loadSettings();
 };
 
+// Add IndexedDB-based storage for theme persistence
+const dbName = 'GekkoSettingsDB';
+const storeName = 'settings';
+
+const openDatabase = () => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(dbName, 1);
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(storeName)) {
+        db.createObjectStore(storeName, { keyPath: 'key' });
+      }
+    };
+
+    request.onsuccess = (event) => {
+      resolve(event.target.result);
+    };
+
+    request.onerror = (event) => {
+      reject(event.target.error);
+    };
+  });
+};
+
+const saveSettingToDB = async (key, value) => {
+  const db = await openDatabase();
+  const transaction = db.transaction(storeName, 'readwrite');
+  const store = transaction.objectStore(storeName);
+  store.put({ key, value });
+};
+
+const getSettingFromDB = async (key) => {
+  const db = await openDatabase();
+  const transaction = db.transaction(storeName, 'readonly');
+  const store = transaction.objectStore(storeName);
+  return new Promise((resolve, reject) => {
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result?.value || null);
+    request.onerror = () => reject(request.error);
+  });
+};
+
 module.exports = {
   ERROR_TYPES,
   defaultSettings,
   setSetting,
   getSettings,
-  ensureSettingsFile
+  ensureSettingsFile,
+  saveSettingToDB,
+  getSettingFromDB
 };

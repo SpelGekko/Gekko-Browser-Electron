@@ -10,9 +10,7 @@
   <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
   
-  <!-- Font loading with preload and onload error handling -->
-  <link rel="preload" href="gkp://shared.gekko/fontawesome/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="gkp://shared.gekko/fontawesome/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- Font loading with onload error handling -->
   <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" onerror="window.safeDOM?.applyFontFallbacks()" />
   
   <script src="gkp://shared.gekko/theme-utils.js"></script>
@@ -122,6 +120,12 @@
       width: 20px;
       text-align: center;
     }
+
+    @font-face {
+      font-family: 'FallbackFont';
+      src: local('Arial'), local('Segoe UI'), local('Roboto');
+      font-display: swap;
+    }
   </style>
 </head>
 <body>
@@ -142,9 +146,10 @@
               <div class="setting-label">Theme</div>
               <div class="setting-description">Change the appearance of Gekko Browser</div>
             </div>
-            <div class="setting-control theme-options">
-              <div id="theme-grid" class="theme-grid">
-                <!-- Theme options will be populated dynamically -->
+            <div class="setting-control">
+              <!-- Replace theme grid with dropdown menu -->
+              <div id="theme-container" class="setting-control">
+                <!-- Dropdown will be populated dynamically -->
               </div>
             </div>
           </div>

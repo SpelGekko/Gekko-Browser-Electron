@@ -123,13 +123,20 @@ function handleThemeChange(themeId) {
       try {
         localStorage.setItem('gekko-theme', themeId);
         console.log('Theme saved to localStorage');
-      } catch (e) {
-        console.warn('Could not save theme to localStorage:', e);
+      } catch (storageError) {
+        console.warn('Error saving theme to localStorage:', storageError);
         try {
           sessionStorage.setItem('gekko-theme', themeId);
           console.log('Theme saved to sessionStorage instead');
-        } catch (e2) {
-          console.warn('Could not save theme to sessionStorage either:', e2);
+        } catch (sessionError) {
+          console.warn('Error saving theme to sessionStorage:', sessionError);
+          console.log('Attempting fallback to DOM storage');
+          try {
+            document.documentElement.dataset.savedTheme = themeId;
+            console.log('Theme saved to DOM storage');
+          } catch (domError) {
+            console.error('Error saving theme to DOM storage:', domError);
+          }
         }
       }
       // Mark success if any method worked, especially the API method
@@ -170,10 +177,49 @@ function handleThemeChange(themeId) {
   console.groupEnd();
 }
 
-// Initialize when DOM is ready
+// Function to fetch favicon dynamically from homepage metadata
+async function getFavicon(url) {
+  try {
+    const response = await fetch(url);
+    const html = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // Look for favicon link tags
+    const faviconLink = doc.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
+    if (faviconLink && faviconLink.href) {
+      return faviconLink.href;
+    } else {
+      console.warn('No favicon found in metadata, falling back to default:', url);
+      return 'default-favicon.ico'; // Fallback to default favicon
+    }
+  } catch (error) {
+    console.error('Error fetching favicon:', error);
+    return 'default-favicon.ico'; // Fallback to default favicon
+  }
+}
+
+// Example usage: Replace FontAwesome icons with favicons
+async function updateFavicons() {
+  const links = document.querySelectorAll('.website-link');
+  for (const link of links) {
+    const url = link.getAttribute('href');
+    const faviconUrl = await getFavicon(url);
+    const faviconImg = document.createElement('img');
+    faviconImg.src = faviconUrl;
+    faviconImg.alt = 'Favicon';
+    faviconImg.className = 'favicon';
+    link.prepend(faviconImg);
+  }
+}
+
+// Call updateFavicons when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  // Populate theme grid
-  const themeGrid = document.getElementById('theme-grid');
+  // Replace theme grid with a dropdown menu
+  const themeDropdown = document.createElement('select');
+  themeDropdown.id = 'theme-dropdown';
+
+  // Populate dropdown with themes
   let themes = [
     { id: "dark", name: "Dark Theme" },
     { id: "light", name: "Light Theme" },
@@ -201,59 +247,30 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('Error getting themes:', error);
   }
 
-  // Create theme options
+  // Add options to dropdown
   themes.forEach(theme => {
-    const themeOption = document.createElement('div');
-    themeOption.className = 'theme-option';
-    themeOption.setAttribute('data-theme', theme.id);
-    
-    const preview = document.createElement('div');
-    preview.className = 'theme-preview';
-    preview.style.background = getThemePreviewColor(theme.id);
-    
-    // Create browser mockup
-    preview.innerHTML = `
-      <div class="theme-browser-mock">
-        <div class="theme-browser-header">
-          <div class="theme-browser-tabs">
-            <div class="theme-browser-tab"></div>
-            <div class="theme-browser-tab active"></div>
-            <div class="theme-browser-tab"></div>
-          </div>
-        </div>
-        <div class="theme-browser-content">
-          <div class="theme-browser-line"></div>
-          <div class="theme-browser-line"></div>
-          <div class="theme-browser-line"></div>
-        </div>
-      </div>
-    `;
-    
-    const info = document.createElement('div');
-    info.className = 'theme-info';
-    info.innerHTML = `
-      <i class="fa-solid ${getThemeIcon(theme.id)}"></i>
-      <span>${theme.name}</span>
-    `;
-    
-    themeOption.appendChild(preview);
-    themeOption.appendChild(info);
-    themeGrid.appendChild(themeOption);
-    
-    // Add click handler
-    themeOption.addEventListener('click', () => {
-      document.querySelectorAll('.theme-option').forEach(opt => opt.classList.remove('active'));
-      themeOption.classList.add('active');
-      handleThemeChange(theme.id);
-    });
+    const option = document.createElement('option');
+    option.value = theme.id;
+    option.textContent = theme.name;
+    themeDropdown.appendChild(option);
   });
 
-  // Mark current theme as active
-  const currentTheme = settings.theme || 'dark';
-  const activeThemeOption = document.querySelector(`[data-theme="${currentTheme}"]`);
-  if (activeThemeOption) {
-    activeThemeOption.classList.add('active');
+  // Append dropdown to settings page
+  const themeContainer = document.getElementById('theme-container');
+  if (themeContainer) {
+    themeContainer.innerHTML = ''; // Clear existing content
+    themeContainer.appendChild(themeDropdown);
   }
+
+  // Set current theme as selected
+  const currentTheme = settings.theme || 'dark';
+  themeDropdown.value = currentTheme;
+
+  // Add change handler for dropdown
+  themeDropdown.addEventListener('change', () => {
+    const selectedTheme = themeDropdown.value;
+    handleThemeChange(selectedTheme);
+  });
 
   // Set current values
   document.getElementById('home-page-input').value = settings.homePage || '';
@@ -342,4 +359,6 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error navigating to about page:', error);
     }
   });
+
+  updateFavicons();
 });

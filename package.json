@@ -24,9 +24,11 @@
   "license": "MIT",
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.7.2",
+    "@material-design-icons/svg": "^0.14.15",
     "custom-electron-titlebar": "^4.2.8",
     "electron-squirrel-startup": "^1.0.1",
-    "electron-store": "^10.0.1"
+    "electron-store": "^10.0.1",
+    "simple-icons": "^15.0.0"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.8.1",

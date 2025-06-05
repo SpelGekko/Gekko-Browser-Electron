@@ -99,5 +99,29 @@ contextBridge.exposeInMainWorld('api', {
   // Window controls
   minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),
-  close: () => ipcRenderer.send('window-close')
+  close: () => ipcRenderer.send('window-close'),
+  // Navigation API
+  navigate: (url) => {
+    console.log('Preload: Navigation request for:', url);
+    ipcRenderer.send('navigate', url);
+  },
+  on: (channel, callback) => {
+    // Whitelist channels we will listen to
+    const validChannels = ['theme-changed', 'settings-changed', 'navigate'];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.on(channel, (event, ...args) => callback(...args));
+    }
+  },
+  onNavigate: (callback) => {
+    ipcRenderer.on('navigate-from-main', (event, url) => {
+      callback(url);
+    });
+  },
+  // For removing listeners when needed
+  removeListener: (channel, callback) => {
+    const validChannels = ['theme-changed', 'settings-changed', 'navigate'];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.removeListener(channel, callback);
+    }
+  }
 });

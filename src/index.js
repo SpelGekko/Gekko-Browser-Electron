@@ -100,6 +100,15 @@ ipcMain.on('clear-history', () => {
   historyStorage.clearHistory();
 });
 
+// Navigation handler
+ipcMain.on('navigate', (event, url) => {
+  console.log('Main process: Navigation request received for:', url);
+  // Send it back to all renderer processes
+  BrowserWindow.getAllWindows().forEach(window => {
+    window.webContents.send('navigate-from-main', url);
+  });
+});
+
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({

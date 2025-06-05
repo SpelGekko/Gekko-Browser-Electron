@@ -68,10 +68,10 @@ function registerProtocolHandlers() {
   const CSP_HEADER = {
     'Content-Security-Policy': [
       "default-src 'self' gkp: gkps: blob: data:",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' gkp: gkps:",
+      "script-src 'self' 'unsafe-inline' gkp: gkps:",
       "style-src 'self' 'unsafe-inline' gkp: gkps:",
       "img-src 'self' data: gkp: gkps: https: blob:",
-      "font-src 'self' gkp: gkps: data: blob:",
+      "font-src 'self' gkp: gkps: https: data: blob:",
       "connect-src 'self' gkp: gkps:",
       "frame-src 'self' gkp: gkps:",
       "media-src 'self' gkp: gkps: blob:",

@@ -1,4 +1,4 @@
-/* Home Page Shortcuts with better icon support */
+/* Home Page Shortcuts with SVG icon support */
 .home-shortcut {
   background-color: var(--card-background);
   border-radius: 12px;
@@ -33,54 +33,116 @@
   opacity: 0.1;
 }
 
-.home-shortcut:hover .shortcut-icon i {
-  color: var(--background-color);
-}
-
-.home-shortcut:hover .shortcut-title {
-  color: var(--accent-color);
-}
-
 .shortcut-icon {
-  width: 60px;
-  height: 60px;
-  background-color: var(--background-color);
-  border-radius: 50%;
-  margin: 0 auto 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s ease;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px auto;
+  border-radius: 12px;
+  background-color: var(--card-background-lighter);
   position: relative;
   z-index: 1;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
-.home-shortcut:hover .shortcut-icon {
-  background-color: var(--accent-color);
-  transform: scale(1.1) rotate(5deg);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
-}
-
-.shortcut-icon i {
-  font-size: 24px;
+/* SVG icon styles */
+.shortcut-icon svg {
+  width: 28px;
+  height: 28px;
   color: var(--accent-color);
   transition: all 0.3s ease;
 }
 
+.shortcut-icon.internal-icon {
+  background-color: var(--accent-color);
+}
+
+.shortcut-icon.internal-icon svg {
+  color: var(--button-text, #fff);
+  opacity: 0.9;
+}
+
+/* Image (favicon) styles */
+.shortcut-icon img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 4px;
+  transition: transform 0.3s ease;
+}
+
+/* Hover effects */
+.home-shortcut:hover .shortcut-icon.internal-icon {
+  transform: scale(1.1);
+}
+
+.home-shortcut:hover .shortcut-icon.internal-icon svg {
+  opacity: 1;
+}
+
+.home-shortcut:hover .shortcut-icon img {
+  transform: scale(1.1);
+}
+
 .shortcut-title {
-  font-weight: 600;
-  margin-top: 0.5rem;
+  font-size: 14px;
+  margin-top: 8px;
   color: var(--text-color);
-  transition: color 0.3s ease;
   position: relative;
   z-index: 1;
+  transition: color 0.3s ease;
+  font-weight: 500;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.shortcut-category {
+  font-size: 18px;
+  margin: 24px 0 8px 16px;
+  color: var(--accent-color);
+  position: relative;
+}
+
+.shortcut-category:after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 32px;
+  height: 2px;
+  background-color: var(--accent-color);
+  border-radius: 2px;
 }
 
 /* Animation for shortcuts when clicking */
 .animated-shortcut:active .shortcut-icon {
   transform: scale(0.9);
   transition: transform 0.2s ease;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .home-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .home-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .shortcut-category {
+    font-size: 16px;
+  }
 }
 
 /* Theme-specific colors */
@@ -96,3 +158,13 @@
 .theme-purple .home-shortcut:hover .shortcut-icon { background-color: #a374db; }
 .theme-blue .home-shortcut:hover .shortcut-icon { background-color: #4285f4; }
 .theme-red .home-shortcut:hover .shortcut-icon { background-color: #ea4335; }
+
+/* Search icon styling */
+.search-box .search-icon {
+  position: absolute;
+  left: 12px;
+  width: 20px;
+  height: 20px;
+  color: var(--text-color, #fff);
+  opacity: 0.7;
+}

@@ -1,20 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' gkp: gkps:; img-src 'self' data: gkp: gkps: https:; style-src 'self' 'unsafe-inline' gkp: gkps:; font-src 'self' gkp: gkps: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval';">
+<head>  <meta charset="UTF-8">  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' node: gkp: gkps: https://*.google.com; img-src 'self' data: gkp: gkps: https: http:; style-src 'self' 'unsafe-inline' gkp: gkps:; font-src 'self' gkp: gkps: data:; script-src 'self' node: 'unsafe-inline' 'unsafe-eval' gkp: gkps:;">
   <title>Gekko Browser - Home</title>
   <link rel="stylesheet" href="gkp://shared.gekko/theme-vars.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
-  <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
-  <link rel="stylesheet" href="gkp://shared.gekko/category-styles.css" />
-  <link rel="stylesheet" href="gkp://shared.gekko/home-shortcuts.css" />
-  <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
-  <script src="gkp://shared.gekko/theme-utils.js"></script>
-  <script src="gkp://shared.gekko/webview-navigation-helper.js"></script>
+  <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" /><link rel="stylesheet" href="gkp://shared.gekko/category-styles.css" />  <link rel="stylesheet" href="gkp://shared.gekko/home-shortcuts.css" />  <script src="home.js"></script>
 </head>
 <body>
+
   <div class="internal-page">
     <div class="internal-page-header">
       <h1 class="internal-page-title">Welcome to Gekko Browser</h1>
@@ -22,8 +15,9 @@
     </div>
     <div class="internal-page-content">
       <div class="search-container">
-        <div class="search-box">
-          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <div class="search-box">          <svg class="search-icon" viewBox="0 0 24 24" width="24" height="24">
+            <path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
           <input type="text" class="search-input" id="search-input" placeholder="Search the web..." autofocus>
           <select class="search-engine-select" id="search-engine-select">
             <option value="https://www.google.com/search?q=">Google</option>
@@ -38,44 +32,32 @@
       <h2 class="shortcut-category">Popular Sites</h2>
       <div class="home-grid" id="popular-sites">
         <div class="home-shortcut" data-url="https://github.com">
-          <div class="shortcut-icon">
-            <i class="fa-brands fa-github"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">GitHub</div>
         </div>
         
         <div class="home-shortcut" data-url="https://google.com">
-          <div class="shortcut-icon">
-            <i class="fa-brands fa-google"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">Google</div>
         </div>
         
         <div class="home-shortcut" data-url="https://youtube.com">
-          <div class="shortcut-icon">
-            <i class="fa-brands fa-youtube"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">YouTube</div>
         </div>
         
         <div class="home-shortcut" data-url="https://twitter.com">
-          <div class="shortcut-icon">
-            <i class="fa-brands fa-twitter"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">Twitter</div>
         </div>
         
         <div class="home-shortcut" data-url="https://reddit.com">
-          <div class="shortcut-icon">
-            <i class="fa-brands fa-reddit"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">Reddit</div>
         </div>
         
         <div class="home-shortcut" data-url="https://linkedin.com">
-          <div class="shortcut-icon">
-            <i class="fa-brands fa-linkedin"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">LinkedIn</div>
         </div>
       </div>
@@ -84,37 +66,27 @@
       <h2 class="shortcut-category">Gekko Browser</h2>
       <div class="home-grid" id="gekko-sites">
         <div class="home-shortcut" data-url="gkp://about.gekko/">
-          <div class="shortcut-icon">
-            <i class="fa-solid fa-info-circle"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">About Gekko</div>
         </div>
         
         <div class="home-shortcut" data-url="gkps://secure.gekko/">
-          <div class="shortcut-icon">
-            <i class="fa-solid fa-shield"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">Secure Demo</div>
         </div>
         
         <div class="home-shortcut" data-url="gkp://settings.gekko/">
-          <div class="shortcut-icon">
-            <i class="fa-solid fa-gear"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">Settings</div>
         </div>
         
         <div class="home-shortcut" data-url="gkp://history.gekko/">
-          <div class="shortcut-icon">
-            <i class="fa-solid fa-clock-rotate-left"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">History</div>
         </div>
         
         <div class="home-shortcut" data-url="gkp://protocols.gekko/">
-          <div class="shortcut-icon">
-            <i class="fa-solid fa-book"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">Protocols</div>
         </div>
       </div>
@@ -123,36 +95,25 @@
       <h2 class="shortcut-category">Tools & Utilities</h2>
       <div class="home-grid" id="tools-sites">
         <div class="home-shortcut" data-url="https://translate.google.com">
-          <div class="shortcut-icon">
-            <i class="fa-solid fa-language"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">Translate</div>
         </div>
         
         <div class="home-shortcut" data-url="https://drive.google.com">
-          <div class="shortcut-icon">
-            <i class="fa-brands fa-google-drive"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">Google Drive</div>
         </div>
         
         <div class="home-shortcut" data-url="https://maps.google.com">
-          <div class="shortcut-icon">
-            <i class="fa-solid fa-map"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">Maps</div>
         </div>
         
         <div class="home-shortcut" data-url="https://calendar.google.com">
-          <div class="shortcut-icon">
-            <i class="fa-solid fa-calendar"></i>
-          </div>
+          <div class="shortcut-icon"></div>
           <div class="shortcut-title">Calendar</div>
         </div>
       </div>
-    </div>
   </div>
-  
-  <script src="home.js"></script>
 </body>
 </html>
