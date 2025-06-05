@@ -39,106 +39,14 @@ function createThemeMarker(themeId) {
   }
 }
 
-// Helper to safely load settings
-function loadSettingsSafely() {
+// Get settings from main process
+function getSettings() {
   try {
     const settings = window.api.getSettings();
-    
-    // Check for settings errors
-    if (settings._error) {
-      const error = settings._error;
-      console.error('Settings error:', error);
-      
-      // Multi-layered theme recovery approach
-      // 1. Try localStorage
-      let savedTheme = null;
-      try {
-        savedTheme = localStorage.getItem('gekko-theme');
-        if (savedTheme) {
-          console.log('Using theme from localStorage:', savedTheme);
-        }
-      } catch (localStorageError) {
-        console.warn('Could not access localStorage:', localStorageError);
-      }
-      
-      // 2. Try sessionStorage if localStorage failed
-      if (!savedTheme) {
-        try {
-          savedTheme = sessionStorage.getItem('gekko-theme');
-          if (savedTheme) {
-            console.log('Using theme from sessionStorage:', savedTheme);
-          }
-        } catch (sessionStorageError) {
-          console.warn('Could not access sessionStorage:', sessionStorageError);
-        }
-      }
-      
-      // 3. Try DOM-based storage
-      if (!savedTheme) {
-        try {
-          const marker = document.getElementById('gekko-theme-marker');
-          if (marker && marker.getAttribute('content')) {
-            savedTheme = marker.getAttribute('content');
-            console.log('Using theme from DOM marker:', savedTheme);
-          }
-        } catch (domError) {
-          console.warn('Could not access DOM storage:', domError);
-        }
-      }
-      
-      // 4. Default to 'dark' if all else fails
-      if (!savedTheme) {
-        savedTheme = 'dark';
-        console.log('Using default theme as fallback');
-      }
-      
-      // Persist the theme back to settings storage when possible
-      try {
-        window.api.setSetting('theme', savedTheme);
-      } catch (e) {
-        console.warn('Could not persist theme to settings:', e);
-      }
-      
-      // Show error notification
-      statusText.textContent = 'Settings Error: ' + getSettingsErrorMessage(error);
-      statusText.style.color = 'var(--error)';
-      
-      // Return settings without error field but with recovered theme
-      const { _error, ...cleanSettings } = settings;
-      return { ...cleanSettings, theme: savedTheme };
-    }
-    
-    // If we have a theme in settings but not localStorage, sync it
-    const localTheme = localStorage.getItem('gekko-theme');
-    if (settings.theme && !localTheme) {
-      console.log('Syncing settings theme to localStorage:', settings.theme);
-      try {
-        localStorage.setItem('gekko-theme', settings.theme);
-      } catch (e) {
-        console.warn('Could not save theme to localStorage:', e);
-      }
-    }
-    // If we have a theme in localStorage that differs from settings, sync it
-    else if (localTheme && localTheme !== settings.theme) {
-      console.log('Syncing localStorage theme to settings:', localTheme);
-      try {
-        window.api.setSetting('theme', localTheme);
-        return { ...settings, theme: localTheme };
-      } catch (e) {
-        console.warn('Could not sync theme to settings:', e);
-      }
-    }
-    
-    return settings;
+    return settings && !settings._error ? settings : { theme: 'dark' };
   } catch (error) {
-    console.error('Error loading settings:', error);
-    // Try to get theme from localStorage as ultimate fallback
-    try {
-      const savedTheme = localStorage.getItem('gekko-theme');
-      return { theme: savedTheme || 'dark' };
-    } catch (e) {
-      return { theme: 'dark' };
-    }
+    console.error('Error getting settings:', error);
+    return { theme: 'dark' };
   }
 }
 
@@ -242,20 +150,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const { _error, ...cleanSettings } = settings;
         return cleanSettings;
       }
-      
-      // If we have a theme in settings but not localStorage, sync it
+        // Always use settings.json theme as source of truth
       const localTheme = localStorage.getItem('gekko-theme');
-      if (settings.theme && !localTheme) {
+      if (settings.theme) {
         console.log('Syncing settings theme to localStorage:', settings.theme);
         try {
+          // Update localStorage to match settings.json
           localStorage.setItem('gekko-theme', settings.theme);
         } catch (e) {
           console.warn('Could not save theme to localStorage:', e);
         }
       }
-      // If we have a theme in localStorage that differs from settings, sync it
-      else if (localTheme && localTheme !== settings.theme) {
-        console.log('Syncing localStorage theme to settings:', localTheme);
+      // If we have no theme in settings but one in localStorage, use localStorage as fallback
+      else if (localTheme) {
+        console.log('No theme in settings, using localStorage theme as fallback:', localTheme);
         try {
           window.api.setSetting('theme', localTheme);
           return { ...settings, theme: localTheme };
@@ -1096,8 +1004,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function clearAddressBar() {
     addressBar.value = '';
     addressBar.focus();
-  }
-  // Apply theme to a specific webview
+  }  // Apply theme to a specific webview
   function applyThemeToWebview(webview, themeId) {
     if (!webview || !webview.isConnected) {
       console.error('Cannot apply theme to invalid webview');
@@ -1111,19 +1018,39 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
       }
       
-      // Generate CSS variables for the theme
+      // Generate CSS variables string
       const cssVars = Object.entries(theme.colors)
         .map(([key, value]) => `--${key}: ${value};`)
-        .join(' ');
+        .join('\n');
       
-      // Apply theme to webview using the safeDOM API
-      webview.executeJavaScript(`
+      // Apply theme to webview
+      return webview.executeJavaScript(`
         (function() {
           try {
-            if (window.safeDOM) {
-              // Use safe DOM API
-              window.safeDOM.setThemeAttribute('${themeId}');
-              window.safeDOM.addStyleSheet(':root { ${cssVars} }');
+            // Apply to root element
+            const root = document.documentElement;
+            const style = document.createElement('style');
+            style.textContent = ':root { ${cssVars} }';
+            document.head.appendChild(style);
+            
+            // Set theme attributes
+            root.setAttribute('data-theme', '${themeId}');
+            document.body.setAttribute('data-theme', '${themeId}');
+            
+            // Update theme marker
+            let marker = document.getElementById('gekko-theme-marker');
+            if (!marker) {
+              marker = document.createElement('meta');
+              marker.id = 'gekko-theme-marker';
+              marker.setAttribute('name', 'theme');
+              document.head.appendChild(marker);
+            }
+            marker.setAttribute('content', '${themeId}');
+            
+            // Update any icons with the accent color
+            const accentColor = '${theme.colors.accent}';
+            document.querySelectorAll('.shortcut-icon i, .card-icon i, .setting-icon i')
+              .forEach(icon => icon.style.color = accentColor);
             } else {
               // Fallback for older pages
               document.documentElement.setAttribute('data-theme', '${themeId}');
@@ -1297,9 +1224,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
   }
-
   // Apply theme to entire browser UI
-  function applyTheme(themeId) {
+  async function applyTheme(themeId) {
     console.group('Apply Theme');
     console.log('Theme application requested:', themeId);
     
@@ -1316,138 +1242,44 @@ document.addEventListener('DOMContentLoaded', () => {
         console.groupEnd();
         return;
       }
-      console.log('Theme object retrieved:', { name: theme.name, colors: Object.keys(theme.colors) });      // Save theme with multiple redundant mechanisms
-      const saveTheme = () => {
-        console.group('Save Theme State');
-          // Create a reliable DOM-based storage as a fallback
-        try {
-          // Store theme in a custom data attribute
-          document.documentElement.dataset.savedTheme = themeId;
-          
-          // Use the central theme marker function for consistency
-          createThemeMarker(themeId);
-          
-          // Legacy marker for backward compatibility
-          let legacyMarker = document.getElementById('main-theme-storage');
-          if (!legacyMarker) {
-            legacyMarker = document.createElement('meta');
-            legacyMarker.id = 'main-theme-storage';
-            document.head.appendChild(legacyMarker);
-          }
-          legacyMarker.setAttribute('content', themeId);
-          legacyMarker.setAttribute('name', 'theme');
-          console.log('Theme saved to DOM');
-        } catch (domError) {
-          console.warn('DOM storage error:', domError);
-        }
-        
-        // Always prioritize saving to the main process via API
-        let apiSuccess = false;
-        try {
-          window.api.setSetting('theme', themeId);
-          console.log('Theme saved to permanent storage via API');
-          apiSuccess = true;
-        } catch (apiError) {
-          console.warn('API storage error:', apiError);
-          // Retry API save after a delay
-          setTimeout(() => {
-            try {
-              window.api.setSetting('theme', themeId);
-              console.log('Delayed API save successful');
-            } catch (retryError) {
-              console.error('Delayed API save failed:', retryError);
-            }
-          }, 500);
-        }
-        
-        // Try browser storage as additional backup
-        let browserStorageSuccess = false;
-        try {
-          localStorage.setItem('gekko-theme', themeId);
-          console.log('Theme saved to localStorage');
-          browserStorageSuccess = true;
-        } catch (localError) {
-          console.warn('localStorage error:', localError);
-          try {
-            sessionStorage.setItem('gekko-theme', themeId);
-            console.log('Theme saved to sessionStorage');
-            browserStorageSuccess = true;
-          } catch (sessionError) {
-            console.warn('sessionStorage error:', sessionError);
-          }
-        }
-        
-        console.log('Theme persistence status - API: ' + (apiSuccess ? 'Success' : 'Failed') + 
-                  ', Browser Storage: ' + (browserStorageSuccess ? 'Success' : 'Failed'));
-        console.groupEnd();
-      };
-      saveTheme();
-
-      // Apply CSS variables to root
-      console.log('Applying CSS variables');
+      console.log('Theme object retrieved:', { name: theme.name, colors: Object.keys(theme.colors) });
+      
+      // Apply CSS variables to main browser UI
+      console.log('Applying theme to browser UI');
       const root = document.documentElement;
       Object.entries(theme.colors).forEach(([key, value]) => {
         root.style.setProperty(`--${key}`, value);
       });
+      root.setAttribute('data-theme', themeId);
+      document.body.setAttribute('data-theme', themeId);
 
-      // Set theme attribute
-      console.log('Setting theme attribute on document');
-      document.documentElement.setAttribute('data-theme', themeId);
-
-      // Apply to all webviews with retry mechanism
+      // Apply to all webviews
       console.log('Applying theme to webviews');
+      const promises = Array.from(document.querySelectorAll('webview'))
+        .map(webview => applyThemeToWebview(webview, themeId));
+      await Promise.all(promises);
+
+      // Save theme with the theme storage manager
+      themeStorage.saveTheme(themeId).then(success => {
+        if (!success) {
+          console.warn('Theme storage save failed');
+        }
+      });
+
+      // Apply to all webviews
       console.group('Webview Updates');
       tabs.forEach((tab, index) => {
         if (tab && tab.webview) {
           console.log(`Processing webview for tab ${index + 1}/${tabs.length}`);
-          const applyThemeToWebviewWithRetry = (retries = 3) => {
-            console.group(`Webview apply attempt (${4 - retries}/3)`);
-            if (retries <= 0) {
-              console.warn('No more retries left for this webview');
-              console.groupEnd();
-              return;
-            }
-            
-            if (!tab.webview.isConnected) {
-              console.log('Webview not connected, retrying in 100ms');
-              setTimeout(() => applyThemeToWebviewWithRetry(retries - 1), 100);
-              console.groupEnd();
-              return;
-            }
-
-            try {
-              const url = tab.webview.getURL();
-              console.log('Webview URL:', url);
-              if (url && (url.startsWith('gkp://') || url.startsWith('gkps://'))) {
-                console.log('Applying theme to internal page');
-                const success = applyThemeToWebview(tab.webview, themeId);
-                if (!success) {
-                  console.log('Theme application failed, retrying in 100ms');
-                  setTimeout(() => applyThemeToWebviewWithRetry(retries - 1), 100);
-                } else {
-                  console.log('Theme applied successfully');
-                }
-              } else {
-                console.log('Skipping external page');
-              }
-            } catch (error) {
-              console.error('Error applying theme to webview:', error);
-              setTimeout(() => applyThemeToWebviewWithRetry(retries - 1), 100);
-            }
-            console.groupEnd();
-          };
-          applyThemeToWebviewWithRetry();
+          applyThemeToWebview(tab.webview, theme);
         }
       });
       console.groupEnd();
 
-      console.log('Theme application complete');
       console.groupEnd();
-      return true;
     } catch (error) {
       console.error('Error applying theme:', error);
       console.groupEnd();
-      return false;
     }
   }
 

@@ -7,104 +7,114 @@
 const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
-const indexedDB = require('electron').indexedDB;
 
-// Add error type definitions
+// Error types for settings operations
 const ERROR_TYPES = {
-  CANNOT_CREATE_DIR: 'cannot_create_dir',
-  CANNOT_CREATE_FILE: 'cannot_create_file',
-  CANNOT_WRITE: 'cannot_write',
-  CANNOT_READ: 'cannot_read',
-  INVALID_JSON: 'invalid_json'
+  cannot_create_dir: 'cannot_create_dir',
+  cannot_create_file: 'cannot_create_file',
+  cannot_write: 'cannot_write',
+  cannot_read: 'cannot_read',
+  invalid_json: 'invalid_json',
+  invalid_value: 'invalid_value'
 };
 
 // Default settings
 const defaultSettings = {
-  theme: 'dark',
-  homePage: 'gkp://home.gekko/',
+  theme: 'dark',  // Default theme
+  homePage: 'gkp://home',
   searchEngine: 'https://www.google.com/search?q=',
   enableDevTools: false
 };
 
-// Get the user data directory for the app
-const getUserDataPath = () => {
-  const userDataPath = app.getPath('userData');
-  return userDataPath;
-};
-
 // Get the path to the settings file
 const getSettingsFilePath = () => {
-  const userDataPath = getUserDataPath();
-  return path.join(userDataPath, 'settings.json');
+  const filePath = path.join(app.getPath('userData'), 'settings.json');
+  console.log('Settings file path:', filePath);
+  return filePath;
 };
 
-// Try to create settings directory
+// Ensure settings directory exists
 const ensureSettingsDirectory = () => {
-  const dirPath = getUserDataPath();
   try {
-    if (!fs.existsSync(dirPath)) {
-      fs.mkdirSync(dirPath, { recursive: true });
+    const settingsPath = path.dirname(getSettingsFilePath());
+    console.log('Checking settings directory:', settingsPath);
+    if (!fs.existsSync(settingsPath)) {
+      console.log('Creating settings directory');
+      fs.mkdirSync(settingsPath, { recursive: true });
     }
     return true;
   } catch (error) {
     console.error('Error creating settings directory:', error);
     return {
       success: false,
-      error: ERROR_TYPES.CANNOT_CREATE_DIR,
+      error: ERROR_TYPES.cannot_create_dir,
       details: error.message
     };
   }
 };
 
-// Create settings file if it doesn't exist
+// Ensure settings file exists with default values
 const ensureSettingsFile = () => {
   const settingsFilePath = getSettingsFilePath();
+  console.log('Ensuring settings file exists:', settingsFilePath);
   
-  if (!fs.existsSync(settingsFilePath)) {
-    // First ensure directory exists
-    const dirResult = ensureSettingsDirectory();
-    if (dirResult !== true) {
-      return dirResult;
-    }
-    
-    try {
-      fs.writeFileSync(settingsFilePath, JSON.stringify(defaultSettings, null, 2));
-      return true;
-    } catch (error) {
-      console.error('Error creating settings file:', error);
-      return {
-        success: false,
-        error: ERROR_TYPES.CANNOT_CREATE_FILE,
-        details: error.message
-      };
-    }
+  // First ensure directory exists
+  const dirResult = ensureSettingsDirectory();
+  if (dirResult !== true) {
+    console.error('Failed to ensure settings directory');
+    return dirResult;
   }
-  return true;
+  
+  try {
+    if (!fs.existsSync(settingsFilePath)) {
+      console.log('Creating settings file with defaults:', defaultSettings);
+      fs.writeFileSync(settingsFilePath, JSON.stringify(defaultSettings, null, 2));
+    } else {
+      console.log('Settings file already exists');
+    }
+    return true;
+  } catch (error) {
+    console.error('Error creating settings file:', error);
+    return {
+      success: false,
+      error: ERROR_TYPES.cannot_create_file,
+      details: error.message
+    };
+  }
 };
 
 // Load settings from file
 const loadSettings = () => {
-  const createResult = ensureSettingsFile();
-  if (createResult !== true) {
-    return {
-      ...defaultSettings,
-      _error: createResult
-    };
-  }
-  
-  const settingsFilePath = getSettingsFilePath();
-  
   try {
-    const settingsData = fs.readFileSync(settingsFilePath, 'utf8');
+    const settingsFilePath = getSettingsFilePath();
+    console.log('Loading settings from:', settingsFilePath);
+    
+    if (!fs.existsSync(settingsFilePath)) {
+      console.log('Settings file does not exist, creating with defaults');
+      const result = ensureSettingsFile();
+      if (result !== true) {
+        console.error('Failed to create settings file');
+        return { ...defaultSettings, _error: result };
+      }
+    }
+    
+    const data = fs.readFileSync(settingsFilePath, 'utf8');
+    console.log('Raw settings loaded:', data);
+    
     try {
-      const loadedSettings = JSON.parse(settingsData);
+      let settings = JSON.parse(data);
+      console.log('Parsed settings:', settings);
+      
       // Ensure all default settings exist
-      return { ...defaultSettings, ...loadedSettings };
+      settings = { ...defaultSettings, ...settings };
+      console.log('Settings with defaults:', settings);
+      
+      return settings;
     } catch (parseError) {
       console.error('Error parsing settings data:', parseError);
       const error = {
         success: false,
-        error: ERROR_TYPES.INVALID_JSON,
+        error: ERROR_TYPES.invalid_json,
         details: parseError.message
       };
       return { ...defaultSettings, _error: error };
@@ -113,7 +123,7 @@ const loadSettings = () => {
     console.error('Error loading settings:', error);
     const readError = {
       success: false,
-      error: ERROR_TYPES.CANNOT_READ,
+      error: ERROR_TYPES.cannot_read,
       details: error.message
     };
     return { ...defaultSettings, _error: readError };
@@ -122,16 +132,49 @@ const loadSettings = () => {
 
 // Save settings to file
 const saveSettings = (settings) => {
+  console.group('Save Settings');
   const settingsFilePath = getSettingsFilePath();
+  console.log('Saving settings to:', settingsFilePath);
+  console.log('Settings to save:', settings);
+  
+  // Ensure settings directory exists
+  const dirResult = ensureSettingsDirectory();
+  if (dirResult !== true) {
+    console.error('Failed to ensure settings directory');
+    console.groupEnd();
+    return dirResult;
+  }
   
   try {
-    fs.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2));
+    // Ensure we have the default settings as a base and validate theme
+    const finalSettings = { ...defaultSettings, ...settings };
+    console.log('Final settings with defaults:', finalSettings);
+    
+    if (finalSettings.theme && typeof finalSettings.theme === 'string') {
+      // Force theme to be one of the allowed values
+      const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red'];
+      if (!allowedThemes.includes(finalSettings.theme)) {
+        console.log('Invalid theme, defaulting to dark:', finalSettings.theme);
+        finalSettings.theme = 'dark';
+      }
+    } else {
+      console.log('No theme or invalid type, defaulting to dark');
+      finalSettings.theme = 'dark';
+    }
+    
+    // Write the file
+    const jsonString = JSON.stringify(finalSettings, null, 2);
+    console.log('Writing settings to file:', jsonString);
+    fs.writeFileSync(settingsFilePath, jsonString);
+    console.log('Settings saved successfully');
+    console.groupEnd();
     return true;
   } catch (error) {
     console.error('Error saving settings:', error);
+    console.groupEnd();
     return {
       success: false,
-      error: ERROR_TYPES.CANNOT_WRITE,
+      error: ERROR_TYPES.cannot_write,
       details: error.message
     };
   }
@@ -139,63 +182,60 @@ const saveSettings = (settings) => {
 
 // Update a specific setting
 const setSetting = (key, value) => {
+  console.group('Set Setting');
+  console.log(`Setting ${key} to:`, value);
+  
   const settings = loadSettings();
   
   // Check for errors from loadSettings
   if (settings._error) {
+    console.error('Error loading settings:', settings._error);
+    console.groupEnd();
     return settings._error;
   }
   
+  // Special handling for theme setting
+  if (key === 'theme') {
+    if (!value || typeof value !== 'string') {
+      console.error('Invalid theme value:', value);
+      console.groupEnd();
+      return {
+        success: false,
+        error: ERROR_TYPES.invalid_value,
+        details: 'Theme must be a non-empty string'
+      };
+    }
+  }
+  
+  // Update the setting
   settings[key] = value;
-  return saveSettings(settings);
+  console.log('Updated settings:', settings);
+  
+  // Save to file
+  const result = saveSettings(settings);
+  console.log('Save result:', result);
+  console.groupEnd();
+  return result;
 };
 
-// Get all settings
+// Get all settings with theme validation
 const getSettings = () => {
-  return loadSettings();
-};
-
-// Add IndexedDB-based storage for theme persistence
-const dbName = 'GekkoSettingsDB';
-const storeName = 'settings';
-
-const openDatabase = () => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(dbName, 1);
-
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains(storeName)) {
-        db.createObjectStore(storeName, { keyPath: 'key' });
-      }
-    };
-
-    request.onsuccess = (event) => {
-      resolve(event.target.result);
-    };
-
-    request.onerror = (event) => {
-      reject(event.target.error);
-    };
-  });
-};
-
-const saveSettingToDB = async (key, value) => {
-  const db = await openDatabase();
-  const transaction = db.transaction(storeName, 'readwrite');
-  const store = transaction.objectStore(storeName);
-  store.put({ key, value });
-};
-
-const getSettingFromDB = async (key) => {
-  const db = await openDatabase();
-  const transaction = db.transaction(storeName, 'readonly');
-  const store = transaction.objectStore(storeName);
-  return new Promise((resolve, reject) => {
-    const request = store.get(key);
-    request.onsuccess = () => resolve(request.result?.value || null);
-    request.onerror = () => reject(request.error);
-  });
+  console.group('Get Settings');
+  const settings = loadSettings();
+  
+  // Ensure theme is valid
+  if (settings && settings.theme) {
+    const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red'];
+    if (!allowedThemes.includes(settings.theme)) {
+      console.log('Invalid theme found, resetting to dark:', settings.theme);
+      settings.theme = 'dark';
+      setSetting('theme', 'dark');
+    }
+  }
+  
+  console.log('Returning settings:', settings);
+  console.groupEnd();
+  return settings;
 };
 
 module.exports = {
@@ -203,7 +243,5 @@ module.exports = {
   defaultSettings,
   setSetting,
   getSettings,
-  ensureSettingsFile,
-  saveSettingToDB,
-  getSettingFromDB
+  ensureSettingsFile
 };

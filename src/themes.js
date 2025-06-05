@@ -266,13 +266,6 @@ function applyTheme(themeId) {
   // Update the data-theme attribute for potential CSS selectors
   document.body.setAttribute('data-theme', themeId);
   
-  // Save theme to localStorage for persistence
-  try {
-    localStorage.setItem('gekko-theme', themeId);
-  } catch (error) {
-    console.error('Failed to save theme to localStorage:', error);
-  }
-  
   // Apply to all webviews in the page
   try {
     const webviews = document.querySelectorAll('webview');

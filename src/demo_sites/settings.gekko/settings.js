@@ -1,364 +1,177 @@
-// Initialize theme handling if available
-if (typeof initThemeHandling === 'function') {
-  initThemeHandling();
-}
-
-// Get settings from the API
-let settings = { theme: 'dark', homePage: '', searchEngine: 'https://www.google.com/search?q=', enableDevTools: false };
-
-try {
-  if (window.api && typeof window.api.getSettings === 'function') {
-    settings = window.api.getSettings();
-  } else if (window.parent && window.parent.api && typeof window.parent.api.getSettings === 'function') {
-    settings = window.parent.api.getSettings();
-  }
-} catch (error) {
-  console.error('Error getting settings:', error);
-}
-
-// Helper function to get theme colors
-function getThemePreviewColor(themeId) {
-  const colors = {
-    'dark': '#202124',
-    'light': '#f8f9fa',
-    'purple': '#20123a',
-    'blue': '#0d2149',
-    'red': '#3c1014',
-    'green': '#0d3114',
-    'monokai': '#272822',
-    'nord': '#2e3440'
-  };
-  return colors[themeId] || colors.dark;
-}
-
-// Helper function to get theme icon
-function getThemeIcon(themeId) {
-  const icons = {
-    'dark': 'fa-moon',
-    'light': 'fa-sun',
-    'purple': 'fa-palette',
-    'blue': 'fa-water',
-    'red': 'fa-fire',
-    'green': 'fa-leaf',
-    'monokai': 'fa-code',
-    'nord': 'fa-snowflake'
-  };
-  return icons[themeId] || 'fa-circle';
-}
-
-// Handle theme change
-function handleThemeChange(themeId) {
-  console.group('Theme Change');
-  console.log('Theme change requested:', themeId);
+// Initialize theme handling
+document.addEventListener('DOMContentLoaded', () => {
+  console.group('Settings Page Initialization');
   
-  if (!themeId) {
-    console.error('No theme ID provided');
-    console.groupEnd();
-    return;
-  }
+  // Get current settings
+  let settings = { theme: 'dark', homePage: '', searchEngine: 'https://www.google.com/search?q=', enableDevTools: false };
 
-  // Set theme attribute on current document
-  document.documentElement.setAttribute('data-theme', themeId);
-  console.log('Theme attribute set on document');
-
-  // Update the DOM-based theme storage
-  const themeMarker = document.getElementById('gekko-theme-marker');
-  if (themeMarker) {
-    themeMarker.setAttribute('content', themeId);
-    console.log('Theme marker updated in DOM');
-  }
-
-  const saveTheme = async () => {
-    console.group('Save Theme');
-    try {
-      // Create multiple redundant theme persistence mechanisms
-      
-      // 1. Direct API access - most reliable method
-      let apiSaveSuccess = false;
-      if (window.api && typeof window.api.setSetting === 'function') {
-        try {
-          window.api.setSetting('theme', themeId);
-          console.log('Theme saved via direct API');
-          apiSaveSuccess = true;
-          
-          if (typeof window.api.applyTheme === 'function') {
-            const result = window.api.applyTheme(themeId);
-            console.log('Theme applied via API:', result);
-          }
-        } catch (apiError) {
-          console.warn('Direct API save failed:', apiError);
-        }
-      } 
-      // Try parent window API access if direct API is not available
-      else if (window.parent && window.parent.api) {
-        try {
-          if (typeof window.parent.api.setSetting === 'function') {
-            await window.parent.api.setSetting('theme', themeId);
-            console.log('Theme saved via parent setSetting');
-            apiSaveSuccess = true;
-          }
-          
-          if (typeof window.parent.api.applyTheme === 'function') {
-            const result = window.parent.api.applyTheme(themeId);
-            console.log('Theme applied via parent API:', result);
-          }
-          
-          // Also send a message for other components
-          console.log('Sending postMessage for theme change');
-          window.parent.postMessage({ type: 'themeChange', theme: themeId }, '*');
-        } catch (parentError) {
-          console.warn('Parent API save failed:', parentError);
-        }
-      }
-      
-      // 2. DOM-based persistence - always works in the current page
-      try {
-        // Also store in data attribute on HTML element
-        document.documentElement.dataset.savedTheme = themeId;
-      } catch (domError) {
-        console.warn('DOM storage error:', domError);
-      }
-      
-      // 3. Browser storage - try but don't depend on it
-      try {
-        localStorage.setItem('gekko-theme', themeId);
-        console.log('Theme saved to localStorage');
-      } catch (storageError) {
-        console.warn('Error saving theme to localStorage:', storageError);
-        try {
-          sessionStorage.setItem('gekko-theme', themeId);
-          console.log('Theme saved to sessionStorage instead');
-        } catch (sessionError) {
-          console.warn('Error saving theme to sessionStorage:', sessionError);
-          console.log('Attempting fallback to DOM storage');
-          try {
-            document.documentElement.dataset.savedTheme = themeId;
-            console.log('Theme saved to DOM storage');
-          } catch (domError) {
-            console.error('Error saving theme to DOM storage:', domError);
-          }
-        }
-      }
-      // Mark success if any method worked, especially the API method
-      // Even if all storage methods fail, the theme has been applied to the document
-      console.groupEnd();
-      return true;
-    } catch (error) {
-      console.error('Error saving theme:', error);
-      console.groupEnd();
-      return false;
-    }
-  };
-
-  // Try to save theme with retries
-  const saveWithRetry = async (retries = 3) => {
-    console.group(`Save attempt (${4 - retries}/3)`);
-    try {
-      const success = await saveTheme();
-      if (!success && retries > 0) {
-        console.log(`Save failed, retrying in 500ms... (${retries} attempts left)`);
-        setTimeout(() => saveWithRetry(retries - 1), 500);
-      } else if (success) {
-        console.log('Save successful');
-      } else {
-        console.error('Save failed, no more retries');
-      }
-    } catch (error) {
-      console.error('Error in saveWithRetry:', error);
-      if (retries > 0) {
-        console.log(`Error occurred, retrying in 500ms... (${retries} attempts left)`);
-        setTimeout(() => saveWithRetry(retries - 1), 500);
-      }
-    }
-    console.groupEnd();
-  };
-
-  saveWithRetry();
-  console.groupEnd();
-}
-
-// Function to fetch favicon dynamically from homepage metadata
-async function getFavicon(url) {
   try {
-    const response = await fetch(url);
-    const html = await response.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-
-    // Look for favicon link tags
-    const faviconLink = doc.querySelector('link[rel="icon"], link[rel="shortcut icon"]');
-    if (faviconLink && faviconLink.href) {
-      return faviconLink.href;
-    } else {
-      console.warn('No favicon found in metadata, falling back to default:', url);
-      return 'default-favicon.ico'; // Fallback to default favicon
+    if (window.api && typeof window.api.getSettings === 'function') {
+      settings = window.api.getSettings();
+      console.log('Settings loaded from window.api:', settings);
+    } else if (window.parent && window.parent.api && typeof window.parent.api.getSettings === 'function') {
+      settings = window.parent.api.getSettings();
+      console.log('Settings loaded from window.parent.api:', settings);
     }
   } catch (error) {
-    console.error('Error fetching favicon:', error);
-    return 'default-favicon.ico'; // Fallback to default favicon
+    console.error('Error getting settings:', error);
   }
-}
 
-// Example usage: Replace FontAwesome icons with favicons
-async function updateFavicons() {
-  const links = document.querySelectorAll('.website-link');
-  for (const link of links) {
-    const url = link.getAttribute('href');
-    const faviconUrl = await getFavicon(url);
-    const faviconImg = document.createElement('img');
-    faviconImg.src = faviconUrl;
-    faviconImg.alt = 'Favicon';
-    faviconImg.className = 'favicon';
-    link.prepend(faviconImg);
-  }
-}
+  // Create theme buttons container
+  const themeButtonsContainer = document.createElement('div');
+  themeButtonsContainer.className = 'theme-buttons';
+  themeButtonsContainer.style.cssText = 'display: flex; gap: 10px; flex-wrap: wrap;';
 
-// Call updateFavicons when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  // Replace theme grid with a dropdown menu
-  const themeDropdown = document.createElement('select');
-  themeDropdown.id = 'theme-dropdown';
-
-  // Populate dropdown with themes
-  let themes = [
-    { id: "dark", name: "Dark Theme" },
-    { id: "light", name: "Light Theme" },
-    { id: "purple", name: "Purple Theme" },
-    { id: "blue", name: "Blue Theme" },
-    { id: "red", name: "Red Theme" },
-    { id: "green", name: "Green Theme" },
-    { id: "monokai", name: "Monokai Theme" },
-    { id: "nord", name: "Nord Theme" }
+  // Default themes with colors
+  const themes = [
+    { id: "dark", name: "Dark Theme", color: '#202124' },
+    { id: "light", name: "Light Theme", color: '#f8f9fa' },
+    { id: "purple", name: "Purple Theme", color: '#20123a' },
+    { id: "blue", name: "Blue Theme", color: '#0d2149' },
+    { id: "red", name: "Red Theme", color: '#3c1014' }
   ];
 
-  try {
-    if (window.api && typeof window.api.getThemes === 'function') {
-      const apiThemes = window.api.getThemes();
-      if (Array.isArray(apiThemes) && apiThemes.length > 0) {
-        themes = apiThemes;
-      }
-    } else if (window.parent && window.parent.api && typeof window.parent.api.getThemes === 'function') {
-      const apiThemes = window.parent.api.getThemes();
-      if (Array.isArray(apiThemes) && apiThemes.length > 0) {
-        themes = apiThemes;
-      }
-    }
-  } catch (error) {
-    console.error('Error getting themes:', error);
-  }
+  // Current theme for highlighting
+  const currentTheme = settings.theme || 'dark';
+  console.log('Current theme:', currentTheme);
 
-  // Add options to dropdown
+  // Create a button for each theme
   themes.forEach(theme => {
-    const option = document.createElement('option');
-    option.value = theme.id;
-    option.textContent = theme.name;
-    themeDropdown.appendChild(option);
+    const button = document.createElement('button');
+    button.className = 'theme-button';
+    button.setAttribute('data-theme', theme.id);
+    button.style.cssText = `
+      padding: 10px 20px;
+      margin: 5px;
+      border: 2px solid ${theme.id === currentTheme ? '#8ab4f8' : 'transparent'};
+      border-radius: 8px;
+      background: ${theme.color};
+      color: ${theme.id === 'light' ? '#202124' : '#ffffff'};
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-width: 150px;
+    `;
+    button.innerHTML = `
+      <div style="margin-bottom: 5px;">${theme.name}</div>
+      <div class="debug-info" style="font-size: 0.8em; opacity: 0.8;">ID: ${theme.id}</div>
+    `;
+
+    // Handle theme change
+    button.addEventListener('click', () => {
+      console.log('Changing theme to:', theme.id);
+
+      // Update button borders
+      document.querySelectorAll('.theme-button').forEach(btn => {
+        btn.style.border = '2px solid transparent';
+      });
+      button.style.border = '2px solid #8ab4f8';      // Save theme setting and apply it
+      try {
+        console.group('Theme Change');
+        console.log('Setting and applying theme:', theme.id);
+        
+        // First try window.api (direct access)
+        if (window.api?.setSetting && window.api?.applyTheme) {
+          console.log('Using direct API');
+          window.api.setSetting('theme', theme.id);
+          window.api.applyTheme(theme.id);
+        }
+        // Then try parent window API
+        else if (window.parent?.api?.setSetting && window.parent?.api?.applyTheme) {
+          console.log('Using parent window API');
+          window.parent.api.setSetting('theme', theme.id);
+          window.parent.api.applyTheme(theme.id);
+        }
+        // If no API available, send via postMessage
+        else {
+          console.log('Using postMessage fallback');
+          window.parent.postMessage({ 
+            type: 'themeChange', 
+            theme: theme.id 
+          }, '*');
+        }
+        
+        // Update local UI regardless of API method
+        document.documentElement.setAttribute('data-theme', theme.id);
+        console.log('Theme attribute updated');
+        
+        // Try to refresh the settings display if possible
+        try {
+          const api = window.api || window.parent?.api;
+          if (api?.getSettings) {
+            const settings = api.getSettings();
+            document.getElementById('settings-file-content').textContent = 
+              JSON.stringify(settings, null, 2);
+            document.getElementById('current-theme-debug').textContent = theme.id;
+          }
+        } catch (displayError) {
+          console.warn('Could not update settings display:', displayError);
+        }
+        
+        console.log('Theme change complete');
+        console.groupEnd();
+      } catch (error) {
+        console.error('Error during theme change:', error);
+      }
+    });
+
+    themeButtonsContainer.appendChild(button);
   });
 
-  // Append dropdown to settings page
+  // Add debug information displays
+  const debugInfo = document.createElement('div');
+  debugInfo.style.cssText = 'margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 4px; font-family: monospace;';
+  debugInfo.innerHTML = `
+    <div style="font-weight: bold; margin-bottom: 5px;">Theme Debug Information:</div>
+    <div>Current Theme: <span id="current-theme-debug">${currentTheme}</span></div>
+    <div>Theme Utils Loaded: <span id="theme-utils-debug">${typeof window.applyThemeStyles === 'function' ? 'Yes' : 'No'}</span></div>
+    <div>API Available: <span id="api-debug">${typeof window.api !== 'undefined' ? 'Yes' : 'No'}</span></div>
+    <div>Parent API: <span id="parent-api-debug">${typeof window.parent?.api !== 'undefined' ? 'Yes' : 'No'}</span></div>
+  `;
+
+  // Add settings.json debug section
+  const settingsDebug = document.createElement('div');
+  settingsDebug.style.cssText = 'margin-top: 20px; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 4px;';
+  settingsDebug.innerHTML = `
+    <div style="font-weight: bold; margin-bottom: 10px;">Settings File Content:</div>
+    <pre id="settings-file-content" style="background: rgba(0,0,0,0.05); padding: 10px; border-radius: 4px; overflow-x: auto; font-family: monospace; font-size: 12px;">${JSON.stringify(settings, null, 2)}</pre>
+    <button id="refresh-settings" style="margin-top: 10px; padding: 5px 10px; border-radius: 4px; background: var(--accent-color); color: white; border: none; cursor: pointer;">Refresh Settings</button>
+  `;
+
+  const debugDisplay = document.createElement('pre');
+  debugDisplay.id = 'theme-debug-display';
+  debugDisplay.style.cssText = 'margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.05); border-radius: 4px; font-family: monospace; font-size: 12px; white-space: pre-wrap;';
+  debugDisplay.textContent = 'Theme change debug info will appear here';
+
+  // Add to page
   const themeContainer = document.getElementById('theme-container');
   if (themeContainer) {
-    themeContainer.innerHTML = ''; // Clear existing content
-    themeContainer.appendChild(themeDropdown);
+    themeContainer.innerHTML = '';
+    themeContainer.appendChild(themeButtonsContainer);
+    themeContainer.appendChild(debugInfo);
+    themeContainer.appendChild(settingsDebug);
+    themeContainer.appendChild(debugDisplay);
   }
 
-  // Set current theme as selected
-  const currentTheme = settings.theme || 'dark';
-  themeDropdown.value = currentTheme;
-
-  // Add change handler for dropdown
-  themeDropdown.addEventListener('change', () => {
-    const selectedTheme = themeDropdown.value;
-    handleThemeChange(selectedTheme);
-  });
-
-  // Set current values
-  document.getElementById('home-page-input').value = settings.homePage || '';
-  document.getElementById('search-engine-select').value = settings.searchEngine || 'https://www.google.com/search?q=';
-  document.getElementById('dev-tools-checkbox').checked = settings.enableDevTools || false;
-  
-  // Home page change handler
-  document.getElementById('home-page-input').addEventListener('blur', () => {
-    const homePageInput = document.getElementById('home-page-input');
+  // Add refresh button handler
+  document.getElementById('refresh-settings')?.addEventListener('click', () => {
     try {
-      if (window.api && typeof window.api.setSetting === 'function') {
-        window.api.setSetting('homePage', homePageInput.value);
-      } else if (window.parent && window.parent.api && typeof window.parent.api.setSetting === 'function') {
-        window.parent.api.setSetting('homePage', homePageInput.value);
+      const refreshedSettings = window.api?.getSettings() || window.parent?.api?.getSettings();
+      if (refreshedSettings) {
+        document.getElementById('settings-file-content').textContent = JSON.stringify(refreshedSettings, null, 2);
       }
     } catch (error) {
-      console.error('Error saving home page setting:', error);
-    }
-  });
-  
-  // Search engine change handler
-  document.getElementById('search-engine-select').addEventListener('change', () => {
-    const searchEngineSelect = document.getElementById('search-engine-select');
-    try {
-      if (window.api && typeof window.api.setSetting === 'function') {
-        window.api.setSetting('searchEngine', searchEngineSelect.value);
-      } else if (window.parent && window.parent.api && typeof window.parent.api.setSetting === 'function') {
-        window.parent.api.setSetting('searchEngine', searchEngineSelect.value);
-      }
-    } catch (error) {
-      console.error('Error saving search engine setting:', error);
-    }
-  });
-  
-  // Developer tools change handler
-  document.getElementById('dev-tools-checkbox').addEventListener('change', () => {
-    const devToolsCheckbox = document.getElementById('dev-tools-checkbox');
-    try {
-      if (window.api && typeof window.api.setSetting === 'function') {
-        window.api.setSetting('enableDevTools', devToolsCheckbox.checked);
-      } else if (window.parent && window.parent.api && typeof window.parent.api.setSetting === 'function') {
-        window.parent.api.setSetting('enableDevTools', devToolsCheckbox.checked);
-      }
-    } catch (error) {
-      console.error('Error saving developer tools setting:', error);
-    }
-  });
-  
-  // View protocols documentation
-  document.getElementById('view-protocols-btn').addEventListener('click', () => {
-    try {
-      if (window.browserAction && typeof window.browserAction.navigate === 'function') {
-        window.browserAction.navigate('gkp://protocols.gekko/');
-      } else {
-        window.parent.postMessage({ type: 'navigate', url: 'gkp://protocols.gekko/' }, '*');
-      }
-    } catch (error) {
-      console.error('Error navigating to protocols page:', error);
-    }
-  });
-  
-  // Clear history
-  document.getElementById('clear-history-btn').addEventListener('click', () => {
-    try {
-      if (window.api && typeof window.api.clearHistory === 'function') {
-        window.api.clearHistory();
-      } else if (window.parent && window.parent.api && typeof window.parent.api.clearHistory === 'function') {
-        window.parent.api.clearHistory();
-      }
-      alert('Browsing history cleared!');
-    } catch (error) {
-      console.error('Error clearing history:', error);
-      alert('Error clearing browsing history. Please try again.');
-    }
-  });
-  
-  // About button
-  document.getElementById('about-btn').addEventListener('click', () => {
-    try {
-      if (window.browserAction && typeof window.browserAction.navigate === 'function') {
-        window.browserAction.navigate('gkp://about.gekko/');
-      } else {
-        window.parent.postMessage({ type: 'navigate', url: 'gkp://about.gekko/' }, '*');
-      }
-    } catch (error) {
-      console.error('Error navigating to about page:', error);
+      console.error('Error refreshing settings:', error);
     }
   });
 
-  updateFavicons();
+  // Initialize theme if possible
+  console.log('Attempting to initialize theme handling...');
+  if (typeof window.initThemeHandling === 'function') {
+    console.log('Found initThemeHandling, calling...');
+    window.initThemeHandling();
+  } else {
+    console.error('initThemeHandling not found on window object');
+  }
+
+  console.groupEnd();
 });

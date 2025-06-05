@@ -1,5 +1,4 @@
 const { contextBridge, ipcRenderer } = require("electron");
-const simpleIcons = require('simple-icons');
 
 // Log that the preload script is running
 console.log("Webview preload script executing");
@@ -36,96 +35,24 @@ function createSafeDOM() {
   // Create an in-memory fallback for storage when web storage APIs are unavailable
   const memoryStorage = new Map();
   
+  // Import theme storage manager
+  const themeStorage = require('./theme-storage');
+
   // Create a safe storage wrapper
   const safeStorage = {
     getItem: (key) => {
-      // For theme specifically, check all storage methods in order of reliability
+      // For theme specifically, use theme storage manager
       if (key === 'gekko-theme') {
-        // Try DOM marker first (fastest and most reliable in webview context)
-        try {
-          const marker = document.getElementById('gekko-theme-marker');
-          if (marker && marker.getAttribute('content')) {
-            const theme = marker.getAttribute('content');
-            console.log('Theme found in DOM marker:', theme);
-            return theme;
-          }
-        } catch (domError) {
-          console.debug('DOM marker check failed:', domError);
-        }
-        
-        // Try IPC next
-        try {
-          const settings = ipcRenderer.sendSync('get-settings');
-          if (settings && settings.theme) {
-            console.log('Theme found via IPC:', settings.theme);
-            return settings.theme;
-          }
-        } catch (ipcError) {
-          console.debug('IPC theme check failed:', ipcError);
-        }
-
-        // Try localStorage as a fallback
-        try {
-          const theme = localStorage.getItem(key);
-          if (theme) {
-            console.log('Theme found in localStorage:', theme);
-            return theme;
-          }
-        } catch (storageError) {
-          console.debug('localStorage check failed:', storageError);
-        }
+        return themeStorage.getCurrentTheme();
       }
       
       // Return default theme if all methods fail
       return 'dark';
     },
-    setItem: (key, value) => {
-      let success = false;
-      
+    setItem: async (key, value) => {
       if (key === 'gekko-theme') {
-        // Update DOM marker (primary storage)
-        try {
-          const marker = document.getElementById('gekko-theme-marker') || 
-                        document.createElement('meta');
-          marker.id = 'gekko-theme-marker';
-          marker.setAttribute('name', 'theme');
-          marker.setAttribute('content', value);
-          if (!marker.parentNode) {
-            document.head.appendChild(marker);
-          }
-          success = true;
-        } catch (domError) {
-          console.warn('Error setting theme DOM marker:', domError);
-        }
-        
-        // Send to main process via IPC (secondary storage)
-        try {
-          ipcRenderer.send('set-setting', 'theme', value);
-          success = true;
-        } catch (ipcError) {
-          console.warn('Error saving theme via IPC:', ipcError);
-        }
-        
-        // Use localStorage as final fallback
-        try {
-          localStorage.setItem(key, value);
-          success = true;
-        } catch (storageError) {
-          console.warn('Error saving theme to localStorage:', storageError);
-        }
-
-        // Dispatch event for any theme listeners
-        try {
-          const event = new CustomEvent('gekko-theme-changed', { 
-            detail: { theme: value } 
-          });
-          document.dispatchEvent(event);
-        } catch (eventError) {
-          console.warn('Error dispatching theme change event:', eventError);
-        }
+        return await themeStorage.saveTheme(value);
       }
-      
-      return success;
     }
   };
 
@@ -488,7 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 100);
 });
 
-// Expose protected methods to webviews
+// API exposed to webviews
 contextBridge.exposeInMainWorld("api", {
   // Settings
   getSettings: () => {
@@ -496,8 +423,7 @@ contextBridge.exposeInMainWorld("api", {
     try {
       const settings = ipcRenderer.sendSync("get-settings");
       if (!settings || settings._error) {
-        const storedTheme = safeDOM.getStorage.getItem('gekko-theme');
-        return storedTheme ? { theme: storedTheme } : { theme: 'dark' };
+        return { theme: 'dark' };
       }
       return settings;
     } catch (error) {
@@ -506,13 +432,28 @@ contextBridge.exposeInMainWorld("api", {
     }
   },
 
-  setSetting: (key, value) => {
+  setSetting: async (key, value) => {
     console.log("setSetting called from webview", key, value);
     try {
+      // For theme changes, ensure settings.json is updated first
       if (key === "theme") {
-        safeDOM.setThemeAttribute(value);
+        // Send setting update to main process
+        ipcRenderer.send("set-setting", key, value);
+        
+        // Wait a moment for the setting to be saved
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Get the current settings to verify the change
+        const settings = ipcRenderer.sendSync("get-settings");
+        if (settings.theme === value) {
+          // Only update DOM after verifying settings.json was updated
+          document.documentElement.setAttribute('data-theme', value);
+        } else {
+          console.error("Theme not saved correctly to settings.json");
+        }
+      } else {
+        ipcRenderer.send("set-setting", key, value);
       }
-      ipcRenderer.send("set-setting", key, value);
     } catch (error) {
       console.error("Error setting setting:", error);
     }
@@ -521,45 +462,21 @@ contextBridge.exposeInMainWorld("api", {
   // Theme management
   applyTheme: (theme) => {
     try {
-      if (!theme || !theme.colors) {
-        console.warn('Invalid theme object provided');
-        return false;
-      }
-
-      console.group('Theme Change');
-      console.log('Theme change requested:', theme.id);
+      // First save the theme setting
+      ipcRenderer.send('set-setting', 'theme', theme);
       
-      // Apply CSS variables first
-      const css = themeToCSS(theme);
-      if (css) {
-        const success = safeDOM.addStyleSheet(`:root[data-theme="${theme.id}"] {\n${css}\n}`);
-        console.log('Theme CSS variables applied:', success);
-      }
-
-      // Set theme attribute and store the theme
-      safeDOM.setThemeAttribute(theme.id);
-      console.log('Theme attribute set on document');
-
-      // Extra validation and recovery
-      setTimeout(() => {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        if (currentTheme !== theme.id) {
-          console.warn('Theme mismatch detected, attempting recovery');
-          document.documentElement.setAttribute('data-theme', theme.id);
-        }
-      }, 100);
-
-      console.groupEnd();
+      // Apply theme to current document
+      document.documentElement.setAttribute('data-theme', theme);
+      document.body.setAttribute('data-theme', theme);
+      
+      // Notify the main window to update all other webviews
+      window.parent.postMessage({ type: 'themeChange', theme: theme }, '*');
+      
       return true;
     } catch (error) {
       console.error('Error applying theme:', error);
-      console.groupEnd();
       return false;
     }
-  },
-
-  getThemeVariables: () => {
-    return safeDOM.getCSSVariables();
   }
 });
 

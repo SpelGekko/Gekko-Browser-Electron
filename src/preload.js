@@ -5,7 +5,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 const path = require('path');
 
 // Get the webview preload script path
-const webviewPreloadPath = path.join(__dirname, 'webview-preload.js');
+const webviewPreloadPath = path.join(__dirname, 'webview-preload-new.js');
 const themesPath = path.join(__dirname, 'themes.js');
 
 // Cache themes to avoid repeated disk reads

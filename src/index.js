@@ -19,21 +19,49 @@ ipcMain.on('set-setting', (event, key, value) => {
   // Handle settings with special cases for important ones like theme
   if (key === 'theme') {
     // For theme, apply an extra layer of validation and reliability
+    console.group('Theme Setting Save');
+    console.log('Saving theme:', value);
+    
     if (!value || typeof value !== 'string') {
       console.error('Invalid theme value:', value);
+      console.groupEnd();
       return;
     }
     
     // Try to save with multiple attempts for theme setting
-    const result = settingsStorage.setSetting(key, value);
-    if (result !== true) {
-      console.error('Error saving theme setting:', result);
-      // Retry after a short delay
-      setTimeout(() => {
-        const retryResult = settingsStorage.setSetting(key, value);
-        console.log('Theme save retry result:', retryResult === true ? 'Success' : 'Failed');
-      }, 500);
-    }
+    let result = settingsStorage.setSetting(key, value);
+    console.log('Initial save result:', result);
+      if (result !== true) {
+      console.warn('First save attempt failed, retrying...');
+      
+      // Ensure we have valid settings before retrying
+      const currentSettings = settingsStorage.getSettings();
+      if (currentSettings._error) {
+        console.error('Could not read current settings:', currentSettings._error);
+        return;
+      }
+      
+      // Retry with a clean write
+      try {
+        const settingsPath = settingsStorage.getSettingsFilePath();
+        const updatedSettings = { ...currentSettings, [key]: value };
+        require('fs').writeFileSync(settingsPath, JSON.stringify(updatedSettings, null, 2));
+        console.log('Clean settings write successful');
+        
+        // Verify the write
+        const verifySettings = settingsStorage.getSettings();
+        if (verifySettings[key] !== value) {
+          throw new Error('Settings verification failed');
+        }
+      } catch (error) {
+        console.error('Direct file write failed:', error);
+      }
+  }
+  
+  // Update in-memory settings immediately regardless of save result
+  settings.theme = value;
+  console.log('In-memory settings updated');
+  console.groupEnd();
   } else {
     // For other settings, standard behavior
     settingsStorage.setSetting(key, value);
@@ -53,39 +81,82 @@ ipcMain.on('get-themes', (event) => {
   event.returnValue = ['dark', 'light', 'blue', 'purple', 'red'];
 });
 
-// Handle theme changes with priority and reliability
-ipcMain.on('apply-theme', (event, themeId) => {
-  console.log('Main process: Theme change requested to', themeId);
+// Handle theme changes
+ipcMain.on('apply-theme', async (event, themeId) => {
+  console.group('Theme Change Request');
+  console.log('Theme change requested:', themeId);
   
   // Validate theme
   if (!themeId || typeof themeId !== 'string') {
-    console.error('Invalid theme ID:', themeId);
-    themeId = 'dark'; // fallback to default
+    console.error('Invalid theme ID, using default');
+    themeId = 'dark';
   }
-  
-  // Save theme setting with high priority
-  const saveResult = settingsStorage.setSetting('theme', themeId);
-  if (saveResult !== true) {
-    console.error('Error saving theme setting:', saveResult);
-    
-    // Retry saving theme after a short delay
-    setTimeout(() => {
-      const retryResult = settingsStorage.setSetting('theme', themeId);
-      console.log('Theme save retry result:', retryResult === true ? 'Success' : 'Failed');
-    }, 500);
+    const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red'];
+  if (!allowedThemes.includes(themeId)) {
+    console.error('Theme not in allowed list, using default');
+    themeId = 'dark';
+    return;
   }
-  
-  // Update in-memory settings
-  settings.theme = themeId;
-  
-  // Broadcast theme change to all windows
-  BrowserWindow.getAllWindows().forEach(window => {
-    try {
-      window.webContents.send('theme-changed', themeId);
-    } catch (error) {
-      console.error('Error broadcasting theme change:', error);
+
+  try {
+    // Save theme setting with retries
+    let saveSuccess = false;
+    const tryThemeSave = () => {
+      return new Promise((resolve) => {
+        const saveResult = settingsStorage.setSetting('theme', themeId);
+        if (saveResult === true) {
+          // Verify the save
+          const verifySettings = settingsStorage.getSettings();
+          if (verifySettings.theme === themeId) {
+            resolve(true);
+          } else {
+            console.error('Theme verification failed. Expected:', themeId, 'Got:', verifySettings.theme);
+            resolve(false);
+          }
+        } else {
+          console.error('Save attempt failed:', saveResult);
+          resolve(false);
+        }
+      });
+    };
+
+    // Try up to 3 times
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      console.log(`Theme save attempt ${attempt}/3`);
+      saveSuccess = await tryThemeSave();
+      
+      if (saveSuccess) {
+        console.log('Theme saved and verified successfully');
+        break;
+      }
+      
+      if (attempt < 3) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     }
-  });
+    
+    if (!saveSuccess) {
+      throw new Error('All theme save attempts failed');
+    }
+    
+    // Update in-memory settings only after successful save
+    settings.theme = themeId;
+      // Broadcast theme change to all windows only after successful save
+    const { BrowserWindow } = require('electron');
+    BrowserWindow.getAllWindows().forEach(window => {
+      try {
+        window.webContents.send('theme-changed', themeId);
+      } catch (error) {
+        console.error('Error broadcasting to window:', error);
+      }
+    });
+    
+    console.log('Theme change broadcast complete');
+  } catch (error) {
+    console.error('Theme change error:', error);
+  }
+  
+  console.groupEnd();
 });
 
 ipcMain.on('get-history', (event) => {
