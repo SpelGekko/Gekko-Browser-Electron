@@ -4,127 +4,150 @@
  * Shared theme management code for all internal webpages
  */
 
-// Apply theme to the page
+// Apply theme to the page with transition handling
 function applyTheme(themeId) {
+  console.group('Apply Theme');
   console.log('Applying theme:', themeId);
   
-  // Get theme colors
-  const theme = window.api?.getThemes?.()?.[themeId] || {
-    colors: {
-      background: themeId === 'light' ? '#ffffff' : '#202124',
-      accent: themeId === 'light' ? '#1a73e8' : '#8ab4f8',
-      text: themeId === 'light' ? '#202124' : '#e8eaed',
-      textSecondary: themeId === 'light' ? '#5f6368' : '#9aa0a6',
-      border: themeId === 'light' ? '#dadce0' : '#3c4043'
+  try {
+    // Get theme colors with fallback
+    const fallbackThemes = {
+      light: {
+        background: '#ffffff',
+        accent: '#1a73e8',
+        text: '#202124',
+        textSecondary: '#5f6368',
+        border: '#dadce0'
+      },
+      dark: {
+        background: '#202124',
+        accent: '#8ab4f8',
+        text: '#e8eaed',
+        textSecondary: '#9aa0a6',
+        border: '#3c4043'
+      },
+      purple: {
+        background: '#20123a',
+        accent: '#b388ff',
+        text: '#e8eaed',
+        textSecondary: '#9aa0a6',
+        border: '#3c2564'
+      },
+      blue: {
+        background: '#0d2149',
+        accent: '#64b5f6',
+        text: '#e8eaed',
+        textSecondary: '#9aa0a6',
+        border: '#1a3d80'
+      },
+      red: {
+        background: '#3c1014',
+        accent: '#ff8a80',
+        text: '#e8eaed',
+        textSecondary: '#9aa0a6',
+        border: '#661e24'
+      }
+    };
+
+    // Get theme colors from API or use fallback
+    const themeColors = window.api?.getThemes?.()?.[themeId]?.colors || fallbackThemes[themeId] || fallbackThemes.dark;
+
+    // Clear any existing theme styles
+    document.querySelectorAll('style[data-gekko-theme]').forEach(s => s.remove());
+
+    // Add new theme styles with transitions
+    const style = document.createElement('style');
+    style.setAttribute('data-gekko-theme', themeId);
+    style.textContent = `
+      * {
+        transition: background-color 0.3s ease,
+                    color 0.3s ease,
+                    border-color 0.3s ease,
+                    box-shadow 0.3s ease;
+      }
+      :root {
+        --background: ${themeColors.background};
+        --card-background: ${themeColors.card || themeColors.background};
+        --text-color: ${themeColors.text};
+        --accent-color: ${themeColors.accent};
+        --text-secondary: ${themeColors.textSecondary};
+        --border-color: ${themeColors.border};
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Set theme attributes
+    document.documentElement.setAttribute('data-theme', themeId);
+    document.body.setAttribute('data-theme', themeId);
+
+    // Update theme marker
+    let marker = document.getElementById('gekko-theme-marker');
+    if (!marker) {
+      marker = document.createElement('meta');
+      marker.id = 'gekko-theme-marker';
+      marker.setAttribute('name', 'theme');
+      document.head.appendChild(marker);
     }
-  };
+    marker.setAttribute('content', themeId);
 
-  // Apply colors to root element
-  const root = document.documentElement;
-  Object.entries(theme.colors).forEach(([key, value]) => {
-    root.style.setProperty(`--${key}`, value);
-  });
-  
-  // Set theme attributes
-  root.setAttribute('data-theme', themeId);
-  document.body.setAttribute('data-theme', themeId);
+    // Apply accent color to icons
+    const iconColorMap = {
+      dark: '#8ab4f8',
+      light: '#1a73e8',
+      purple: '#b388ff',
+      blue: '#64b5f6',
+      red: '#ff8a80'
+    };
+    const accentColor = iconColorMap[themeId] || themeColors.accent || iconColorMap.dark;
+    document.querySelectorAll('.shortcut-icon i, .card-icon i, .setting-icon i').forEach(icon => {
+      icon.style.color = accentColor;
+    });
 
-  // Apply accent color to icons
-  const accentColor = theme.colors.accent;
-  document.querySelectorAll('.shortcut-icon i, .card-icon i, .setting-icon i').forEach(icon => {
-    icon.style.color = accentColor;
-  });
-
-  // Update theme marker
-  let marker = document.getElementById('gekko-theme-marker');
-  if (!marker) {
-    marker = document.createElement('meta');
-    marker.id = 'gekko-theme-marker';
-    marker.setAttribute('name', 'theme');
-    document.head.appendChild(marker);
+    console.log('Theme applied successfully');
+    console.groupEnd();
+    return true;
+  } catch (error) {
+    console.error('Error applying theme:', error);
+    console.groupEnd();
+    return false;
   }
-  marker.setAttribute('content', themeId);
-}
-
-// Apply specific theme styles
-function applyThemeStyles(theme) {
-  console.log('Applying theme styles for:', theme);
-  
-  // Theme colors
-  const themeColors = {
-    dark: {
-      background: '#202124',
-      card: '#303134',
-      text: '#e8eaed',
-      accent: '#8ab4f8'
-    },
-    light: {
-      background: '#f8f9fa',
-      card: '#ffffff',
-      text: '#202124',
-      accent: '#1a73e8'
-    },
-    purple: {
-      background: '#20123a',
-      card: '#301b54',
-      text: '#e8eaed',
-      accent: '#b388ff'
-    },
-    blue: {
-      background: '#0d2149',
-      card: '#143166',
-      text: '#e8eaed',
-      accent: '#64b5f6'
-    },
-    red: {
-      background: '#3c1014',
-      card: '#541b1f',
-      text: '#e8eaed',
-      accent: '#ff8a80'
-    }
-  };
-
-  const colors = themeColors[theme] || themeColors.dark;
-  
-  // Apply colors to root element
-  document.documentElement.style.setProperty('--background', colors.background);
-  document.documentElement.style.setProperty('--card-background', colors.card);
-  document.documentElement.style.setProperty('--text-color', colors.text);
-  document.documentElement.style.setProperty('--accent-color', colors.accent);
-  
-  // Apply accent color to icons
-  document.querySelectorAll('.shortcut-icon i, .card-icon i, .setting-icon i').forEach(icon => {
-    icon.style.color = colors.accent;
-  });
 }
 
 // Initialize theme handling
 function initThemeHandling() {
-  // Add transition styles for smooth theme changes
-  const style = document.createElement('style');
-  style.textContent = `
-    * {
-      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-    }
-    .shortcut-icon i, .card-icon i {
-      transition: color 0.3s ease;
-    }
-  `;
-  document.head.appendChild(style);
+  console.group('Initialize Theme Handling');
 
-  // Apply the current theme
-  const settings = window.api?.getSettings?.() || window.parent?.api?.getSettings?.() || { theme: 'dark' };
-  applyTheme(settings.theme);
-  
-  // Listen for theme changes from the parent window
-  window.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'themeChange') {
-      applyTheme(event.data.theme);
-    }
-  });
+  try {
+    // Get the current theme with fallback
+    const settings = window.api?.getSettings?.() || 
+                    window.parent?.api?.getSettings?.() || 
+                    { theme: 'dark' };
+
+    // Apply the current theme
+    applyTheme(settings.theme);
+    
+    // Listen for theme changes from the parent window
+    window.addEventListener('message', (event) => {
+      if (event.data?.type === 'themeChange' && event.data?.theme) {
+        applyTheme(event.data.theme);
+      }
+    });
+
+    // Set up storage event listener for cross-window sync
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'gekko-theme' && event.newValue) {
+        applyTheme(event.newValue);
+      }
+    });
+
+    console.log('Theme handling initialized');
+    console.groupEnd();
+  } catch (error) {
+    console.error('Error initializing theme handling:', error);
+    console.groupEnd();
+  }
 }
 
 // Export functions
 window.applyTheme = applyTheme;
-window.applyThemeStyles = applyThemeStyles;
 window.initThemeHandling = initThemeHandling;

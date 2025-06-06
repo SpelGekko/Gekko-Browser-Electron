@@ -54,40 +54,79 @@ document.addEventListener('DOMContentLoaded', () => {
     button.innerHTML = `
       <div style="margin-bottom: 5px;">${theme.name}</div>
       <div class="debug-info" style="font-size: 0.8em; opacity: 0.8;">ID: ${theme.id}</div>
-    `;
-
-    // Handle theme change
+    `;    // Handle theme change
     button.addEventListener('click', () => {
+      // Enhanced debouncing with stronger checks
+      if (button.dataset.changing) {
+        console.log('Button click debounced');
+        return;
+      }
+      
+      // Set debounce flag and clear after delay
+      button.dataset.changing = 'true';
+      setTimeout(() => delete button.dataset.changing, 500);
+
+      // Skip theme change if already applied
+      if (window.lastAppliedTheme === theme.id) {
+        console.log('Theme already applied:', theme.id, 'skipping change');
+        return;
+      }
+
       console.log('Changing theme to:', theme.id);
 
       // Update button borders
       document.querySelectorAll('.theme-button').forEach(btn => {
         btn.style.border = '2px solid transparent';
       });
-      button.style.border = '2px solid #8ab4f8';      // Save theme setting and apply it
+      button.style.border = '2px solid #8ab4f8';      
+      
+      // Save theme setting and apply it
       try {
         console.group('Theme Change');
         console.log('Setting and applying theme:', theme.id);
         
-        // First try window.api (direct access)
-        if (window.api?.setSetting && window.api?.applyTheme) {
-          console.log('Using direct API');
-          window.api.setSetting('theme', theme.id);
-          window.api.applyTheme(theme.id);
-        }
-        // Then try parent window API
-        else if (window.parent?.api?.setSetting && window.parent?.api?.applyTheme) {
-          console.log('Using parent window API');
-          window.parent.api.setSetting('theme', theme.id);
-          window.parent.api.applyTheme(theme.id);
-        }
-        // If no API available, send via postMessage
-        else {
-          console.log('Using postMessage fallback');
-          window.parent.postMessage({ 
-            type: 'themeChange', 
-            theme: theme.id 
-          }, '*');
+        // Use a window global to track the last theme change time
+        const now = Date.now();
+        if (!window.lastThemeChangeTime || (now - window.lastThemeChangeTime > 500)) {
+          window.lastThemeChangeTime = now;
+          
+          // First try window.api (direct access)
+          if (window.api?.setSetting && window.api?.applyTheme) {
+            console.log('Using direct API');
+            
+            // Store current theme to avoid unnecessary saves
+            if (window.lastAppliedTheme === theme.id) {
+              console.log('Theme already applied, skipping save');
+            } else {
+              window.api.setSetting('theme', theme.id);
+              window.lastAppliedTheme = theme.id;
+            }
+            
+            window.api.applyTheme(theme.id);
+          }
+          // Then try parent window API
+          else if (window.parent?.api?.setSetting && window.parent?.api?.applyTheme) {
+            console.log('Using parent window API');
+            
+            if (window.lastAppliedTheme === theme.id) {
+              console.log('Theme already applied, skipping save');
+            } else {
+              window.parent.api.setSetting('theme', theme.id);
+              window.lastAppliedTheme = theme.id;
+            }
+            
+            window.parent.api.applyTheme(theme.id);
+          }
+          // If no API available, send via postMessage
+          else {
+            console.log('Using postMessage fallback');
+            window.parent.postMessage({ 
+              type: 'themeChange', 
+              theme: theme.id 
+            }, '*');
+          }
+        } else {
+          console.log('Theme change debounced, too soon since last change');
         }
         
         // Update local UI regardless of API method

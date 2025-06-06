@@ -10,44 +10,49 @@ const { app } = require('electron');
 
 // Error types for settings operations
 const ERROR_TYPES = {
-  cannot_create_dir: 'cannot_create_dir',
-  cannot_create_file: 'cannot_create_file',
-  cannot_write: 'cannot_write',
-  cannot_read: 'cannot_read',
-  invalid_json: 'invalid_json',
-  invalid_value: 'invalid_value'
+  cannot_read: 'CANNOT_READ',
+  cannot_write: 'CANNOT_WRITE',
+  invalid_json: 'INVALID_JSON',
+  invalid_value: 'INVALID_VALUE'
 };
 
 // Default settings
 const defaultSettings = {
-  theme: 'dark',  // Default theme
-  homePage: 'gkp://home',
+  theme: 'dark',
+  homePage: '',
   searchEngine: 'https://www.google.com/search?q=',
   enableDevTools: false
 };
 
+// Cache for settings
+let cachedSettings = null;
+let lastSaveTime = 0;
+const SAVE_DEBOUNCE_TIME = 100; // ms
+
 // Get the path to the settings file
 const getSettingsFilePath = () => {
-  const filePath = path.join(app.getPath('userData'), 'settings.json');
-  console.log('Settings file path:', filePath);
-  return filePath;
+  const { app } = require('electron').remote || require('electron');
+  const path = require('path');
+  return path.join(app.getPath('userData'), 'settings.json');
 };
 
 // Ensure settings directory exists
 const ensureSettingsDirectory = () => {
   try {
-    const settingsPath = path.dirname(getSettingsFilePath());
-    console.log('Checking settings directory:', settingsPath);
-    if (!fs.existsSync(settingsPath)) {
-      console.log('Creating settings directory');
-      fs.mkdirSync(settingsPath, { recursive: true });
+    const fs = require('fs');
+    const path = require('path');
+    const settingsPath = getSettingsFilePath();
+    const settingsDir = path.dirname(settingsPath);
+
+    if (!fs.existsSync(settingsDir)) {
+      fs.mkdirSync(settingsDir, { recursive: true });
     }
     return true;
   } catch (error) {
     console.error('Error creating settings directory:', error);
     return {
       success: false,
-      error: ERROR_TYPES.cannot_create_dir,
+      error: ERROR_TYPES.cannot_write,
       details: error.message
     };
   }
@@ -55,29 +60,21 @@ const ensureSettingsDirectory = () => {
 
 // Ensure settings file exists with default values
 const ensureSettingsFile = () => {
-  const settingsFilePath = getSettingsFilePath();
-  console.log('Ensuring settings file exists:', settingsFilePath);
-  
-  // First ensure directory exists
-  const dirResult = ensureSettingsDirectory();
-  if (dirResult !== true) {
-    console.error('Failed to ensure settings directory');
-    return dirResult;
-  }
-  
   try {
-    if (!fs.existsSync(settingsFilePath)) {
-      console.log('Creating settings file with defaults:', defaultSettings);
-      fs.writeFileSync(settingsFilePath, JSON.stringify(defaultSettings, null, 2));
-    } else {
-      console.log('Settings file already exists');
+    const fs = require('fs');
+    const settingsPath = getSettingsFilePath();
+    
+    if (!fs.existsSync(settingsPath)) {
+      fs.writeFileSync(settingsPath, JSON.stringify(defaultSettings, null, 2));
+      cachedSettings = { ...defaultSettings };
+      return true;
     }
     return true;
   } catch (error) {
     console.error('Error creating settings file:', error);
     return {
       success: false,
-      error: ERROR_TYPES.cannot_create_file,
+      error: ERROR_TYPES.cannot_write,
       details: error.message
     };
   }
@@ -85,31 +82,26 @@ const ensureSettingsFile = () => {
 
 // Load settings from file
 const loadSettings = () => {
+  // Return cached settings if they exist and it's not a theme request
+  if (cachedSettings) {
+    return cachedSettings;
+  }
+
   try {
-    const settingsFilePath = getSettingsFilePath();
-    console.log('Loading settings from:', settingsFilePath);
+    const fs = require('fs');
+    ensureSettingsFile();
     
-    if (!fs.existsSync(settingsFilePath)) {
-      console.log('Settings file does not exist, creating with defaults');
-      const result = ensureSettingsFile();
-      if (result !== true) {
-        console.error('Failed to create settings file');
-        return { ...defaultSettings, _error: result };
-      }
-    }
-    
-    const data = fs.readFileSync(settingsFilePath, 'utf8');
-    console.log('Raw settings loaded:', data);
+    const data = fs.readFileSync(getSettingsFilePath(), 'utf8');
     
     try {
-      let settings = JSON.parse(data);
-      console.log('Parsed settings:', settings);
+      const settings = JSON.parse(data);
+      // Ensure we have all default settings
+      const finalSettings = { ...defaultSettings, ...settings };
       
-      // Ensure all default settings exist
-      settings = { ...defaultSettings, ...settings };
-      console.log('Settings with defaults:', settings);
+      // Cache the settings
+      cachedSettings = finalSettings;
       
-      return settings;
+      return finalSettings;
     } catch (parseError) {
       console.error('Error parsing settings data:', parseError);
       const error = {
@@ -130,48 +122,62 @@ const loadSettings = () => {
   }
 };
 
-// Save settings to file
+// Save settings to file with debouncing
 const saveSettings = (settings) => {
-  console.group('Save Settings');
-  const settingsFilePath = getSettingsFilePath();
-  console.log('Saving settings to:', settingsFilePath);
-  console.log('Settings to save:', settings);
-  
   // Ensure settings directory exists
   const dirResult = ensureSettingsDirectory();
   if (dirResult !== true) {
-    console.error('Failed to ensure settings directory');
-    console.groupEnd();
     return dirResult;
   }
   
   try {
-    // Ensure we have the default settings as a base and validate theme
+    // Merge with defaults and validate theme
     const finalSettings = { ...defaultSettings, ...settings };
-    console.log('Final settings with defaults:', finalSettings);
     
-    if (finalSettings.theme && typeof finalSettings.theme === 'string') {
-      // Force theme to be one of the allowed values
+    if (finalSettings.theme) {
       const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red'];
       if (!allowedThemes.includes(finalSettings.theme)) {
-        console.log('Invalid theme, defaulting to dark:', finalSettings.theme);
         finalSettings.theme = 'dark';
       }
-    } else {
-      console.log('No theme or invalid type, defaulting to dark');
-      finalSettings.theme = 'dark';
+    }
+
+    // Hash the settings to check for changes
+    const settingsHash = JSON.stringify(finalSettings);
+    
+    // Store last settings hash in module scope
+    if (!module.exports._lastSettingsHash) {
+      module.exports._lastSettingsHash = '';
     }
     
+    // Check if the settings actually changed by comparing hashes
+    if (module.exports._lastSettingsHash === settingsHash) {
+      console.log('Settings unchanged (hash match), skipping save');
+      return true; // No need to save if nothing changed
+    }
+    
+    // Update the hash
+    module.exports._lastSettingsHash = settingsHash;
+
+    // Check if we need to debounce the save
+    const now = Date.now();
+    if (now - lastSaveTime < SAVE_DEBOUNCE_TIME) {
+      console.log(`Settings save debounced (${now - lastSaveTime}ms < ${SAVE_DEBOUNCE_TIME}ms)`);
+      return true; // Skip this save, recent save already occurred
+    }
+
     // Write the file
+    const fs = require('fs');
     const jsonString = JSON.stringify(finalSettings, null, 2);
-    console.log('Writing settings to file:', jsonString);
-    fs.writeFileSync(settingsFilePath, jsonString);
+    fs.writeFileSync(getSettingsFilePath(), jsonString);
+
+    // Update cache and save time
+    cachedSettings = finalSettings;
+    lastSaveTime = now;
+    
     console.log('Settings saved successfully');
-    console.groupEnd();
     return true;
   } catch (error) {
     console.error('Error saving settings:', error);
-    console.groupEnd();
     return {
       success: false,
       error: ERROR_TYPES.cannot_write,
@@ -180,10 +186,35 @@ const saveSettings = (settings) => {
   }
 };
 
-// Update a specific setting
+// Update a specific setting with validation
 const setSetting = (key, value) => {
   console.group('Set Setting');
   console.log(`Setting ${key} to:`, value);
+  
+  // Track last setting change times by key
+  if (!module.exports._lastChangeTime) {
+    module.exports._lastChangeTime = {};
+  }
+  
+  // Debounce time by setting type
+  const DEBOUNCE_TIMES = {
+    theme: 500, // Longer debounce for theme changes
+    default: 100
+  };
+  
+  // Check for debouncing
+  const now = Date.now();
+  const debounceTime = DEBOUNCE_TIMES[key] || DEBOUNCE_TIMES.default;
+  const lastChange = module.exports._lastChangeTime[key] || 0;
+  
+  if (now - lastChange < debounceTime) {
+    console.log(`${key} change debounced (${now - lastChange}ms < ${debounceTime}ms)`);
+    console.groupEnd();
+    return true;
+  }
+  
+  // Update last change time
+  module.exports._lastChangeTime[key] = now;
   
   const settings = loadSettings();
   
@@ -205,36 +236,44 @@ const setSetting = (key, value) => {
         details: 'Theme must be a non-empty string'
       };
     }
+    
+    const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red'];
+    if (!allowedThemes.includes(value)) {
+      console.warn(`Theme ${value} not allowed, defaulting to 'dark'`);
+      value = 'dark';
+    }
+  }
+  
+  // Skip save if value hasn't changed
+  if (settings[key] === value) {
+    console.log(`${key} unchanged, skipping save`);
+    console.groupEnd();
+    return true;
   }
   
   // Update the setting
   settings[key] = value;
-  console.log('Updated settings:', settings);
   
-  // Save to file
+  // Save to file and update cache
   const result = saveSettings(settings);
   console.log('Save result:', result);
   console.groupEnd();
   return result;
 };
 
-// Get all settings with theme validation
+// Get settings with theme validation
 const getSettings = () => {
-  console.group('Get Settings');
   const settings = loadSettings();
   
   // Ensure theme is valid
   if (settings && settings.theme) {
     const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red'];
     if (!allowedThemes.includes(settings.theme)) {
-      console.log('Invalid theme found, resetting to dark:', settings.theme);
       settings.theme = 'dark';
       setSetting('theme', 'dark');
     }
   }
   
-  console.log('Returning settings:', settings);
-  console.groupEnd();
   return settings;
 };
 
@@ -243,5 +282,6 @@ module.exports = {
   defaultSettings,
   setSetting,
   getSettings,
+  loadSettings,
   ensureSettingsFile
 };

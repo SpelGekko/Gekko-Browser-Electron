@@ -11,6 +11,7 @@ class ThemeStorageManager extends EventEmitter {
     super();
     this.initialized = false;
     this.currentTheme = 'dark';
+    this.saveTimeout = null;
     this.init();
   }
 
@@ -27,8 +28,11 @@ class ThemeStorageManager extends EventEmitter {
     // Set up storage event listeners
     window.addEventListener('storage', (e) => {
       if (e.key === 'gekko-theme') {
-        this.currentTheme = e.newValue || 'dark';
-        this.emit('theme-changed', this.currentTheme);
+        const newTheme = e.newValue || 'dark';
+        // Only update if theme actually changed
+        if (newTheme !== this.currentTheme) {
+          this.handleThemeChange(newTheme);
+        }
       }
     });
 
@@ -36,85 +40,92 @@ class ThemeStorageManager extends EventEmitter {
     try {
       this.broadcastChannel = new BroadcastChannel('gekko-theme');
       this.broadcastChannel.onmessage = (event) => {
-        if (event.data && event.data.theme) {
-          this.currentTheme = event.data.theme;
-          this.emit('theme-changed', this.currentTheme);
+        if (event.data?.theme && event.data.theme !== this.currentTheme) {
+          this.handleThemeChange(event.data.theme);
         }
       };
     } catch (e) {
       console.warn('BroadcastChannel not supported:', e);
     }
   }
-
   /**
-   * Load theme from all available storage mechanisms
+   * Handle theme change with debouncing
    */
-  loadTheme() {
-    // Try IPC renderer first (most reliable)
-    try {
-      const settings = ipcRenderer.sendSync('get-settings');
-      if (settings && settings.theme) {
-        return settings.theme;
-      }
-    } catch (e) {
-      console.warn('Failed to load theme from IPC:', e);
+  handleThemeChange(newTheme) {
+    // Skip if theme hasn't changed
+    if (this.currentTheme === newTheme) {
+      console.log('Theme already set to', newTheme, ', skipping change');
+      return;
+    }
+    
+    // Update current theme immediately for UI
+    this.currentTheme = newTheme;
+    
+    // Clear any pending save
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
     }
 
-    // Try DOM storage next
+    // Debounce the save operation with a longer timeout
+    this.saveTimeout = setTimeout(() => {
+      this.saveTheme(newTheme);
+    }, 300); // Increased timeout for better debouncing
+
+    // Emit change event immediately for UI updates
+    this.emit('theme-changed', newTheme);
+  }
+
+  /**
+   * Load theme from all available storage mechanisms in priority order
+   */
+  loadTheme() {
+    let theme;
+    
+    // 1. Try IPC renderer first (settings.json - source of truth)
+    try {
+      const settings = ipcRenderer.sendSync('get-settings');
+      if (settings?.theme) {
+        theme = settings.theme;
+        // Sync other storage mechanisms quietly
+        this.syncThemeToStorage(theme);
+        return theme;
+      }
+    } catch (e) {
+      console.warn('Failed to load theme from settings:', e);
+    }
+
+    // 2. Try localStorage
+    try {
+      theme = localStorage.getItem('gekko-theme');
+      if (theme) return theme;
+    } catch (e) {
+      console.warn('Failed to load theme from localStorage:', e);
+    }
+
+    // 3. Try DOM storage
     try {
       const marker = document.getElementById('gekko-theme-marker');
-      if (marker && marker.getAttribute('content')) {
+      if (marker?.getAttribute('content')) {
         return marker.getAttribute('content');
       }
     } catch (e) {
       console.warn('Failed to load theme from DOM:', e);
     }
 
-    // Try localStorage
-    try {
-      const theme = localStorage.getItem('gekko-theme');
-      if (theme) {
-        return theme;
-      }
-    } catch (e) {
-      console.warn('Failed to load theme from localStorage:', e);
-    }
-
-    // Try sessionStorage
-    try {
-      const theme = sessionStorage.getItem('gekko-theme');
-      if (theme) {
-        return theme;
-      }
-    } catch (e) {
-      console.warn('Failed to load theme from sessionStorage:', e);
-    }
-
-    // Default to dark theme
     return 'dark';
   }
-
   /**
-   * Save theme to all available storage mechanisms
+   * Sync theme to all storage mechanisms except settings.json
    */
-  async saveTheme(themeId) {
-    if (!themeId || typeof themeId !== 'string') {
-      console.error('Invalid theme ID:', themeId);
-      return false;
-    }
-
-    this.currentTheme = themeId;
-    let success = false;
-
-    // Save to IPC renderer (primary storage)
+  syncThemeToStorage(themeId) {
+    // Sync to localStorage
     try {
-      ipcRenderer.send('set-setting', 'theme', themeId);
-      success = true;
+      localStorage.setItem('gekko-theme', themeId);
     } catch (e) {
-      console.warn('Failed to save theme via IPC:', e);
+      console.warn('Failed to sync theme to localStorage:', e);
     }
 
-    // Save to DOM storage
+    // Sync to DOM
     try {
       let marker = document.getElementById('gekko-theme-marker');
       if (!marker) {
@@ -124,32 +135,69 @@ class ThemeStorageManager extends EventEmitter {
         document.head.appendChild(marker);
       }
       marker.setAttribute('content', themeId);
-      success = true;
-    } catch (e) {
-      console.warn('Failed to save theme to DOM:', e);
-    }
-
-    // Save to localStorage (with retries)
-    let retries = 3;
-    while (retries > 0) {
+      
+      // Apply CSS variables directly to the document
       try {
-        localStorage.setItem('gekko-theme', themeId);
-        success = true;
-        break;
-      } catch (e) {
-        console.warn(`Failed to save theme to localStorage (${retries} retries left):`, e);
-        await new Promise(resolve => setTimeout(resolve, 100));
-        retries--;
+        const themes = require('./themes');
+        const theme = themes[themeId];
+        if (theme && theme.colors) {
+          const root = document.documentElement;
+          Object.entries(theme.colors).forEach(([key, value]) => {
+            root.style.setProperty(`--${key}`, value);
+          });
+          root.setAttribute('data-theme', themeId);
+          document.body.setAttribute('data-theme', themeId);
+        }
+      } catch (cssError) {
+        console.warn('Failed to apply CSS variables:', cssError);
       }
+    } catch (e) {
+      console.warn('Failed to sync theme to DOM:', e);
+    }
+  }
+  /**
+   * Save theme to settings.json and sync to other storage
+   */
+  async saveTheme(themeId) {
+    if (!themeId || typeof themeId !== 'string') {
+      console.error('Invalid theme ID:', themeId);
+      return false;
     }
 
-    // Save to sessionStorage as backup
-    try {
-      sessionStorage.setItem('gekko-theme', themeId);
-      success = true;
-    } catch (e) {
-      console.warn('Failed to save theme to sessionStorage:', e);
+    // Skip if theme hasn't changed
+    if (this.currentTheme === themeId) {
+      console.log('Theme already set to', themeId, ', skipping save');
+      return true;
     }
+
+    this.currentTheme = themeId;
+
+    // Check if theme is already set in settings.json
+    try {
+      const settings = ipcRenderer.sendSync('get-settings');
+      if (settings?.theme === themeId) {
+        console.log('Theme already saved in settings.json, skipping IPC call');
+        // Still sync to other storage mechanisms
+        this.syncThemeToStorage(themeId);
+        return true;
+      }
+    } catch (e) {
+      console.warn('Failed to check current settings:', e);
+    }
+
+    // Save to settings.json using IPC
+    try {
+      const result = ipcRenderer.sendSync('set-setting', 'theme', themeId);
+      if (result !== true) {
+        throw new Error('Failed to save theme to settings');
+      }
+    } catch (e) {
+      console.error('Failed to save theme to settings:', e);
+      return false;
+    }
+
+    // Sync to other storage mechanisms
+    this.syncThemeToStorage(themeId);
 
     // Broadcast to other windows
     try {
@@ -160,8 +208,7 @@ class ThemeStorageManager extends EventEmitter {
       console.warn('Failed to broadcast theme change:', e);
     }
 
-    this.emit('theme-changed', themeId);
-    return success;
+    return true;
   }
 
   /**

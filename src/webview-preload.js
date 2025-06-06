@@ -73,6 +73,23 @@ function createSafeDOM() {
       try {
         // Set the theme attribute on the document
         document.documentElement.setAttribute('data-theme', theme);
+        document.body.setAttribute('data-theme', theme);
+        
+        // Apply theme CSS variables if available
+        try {
+          // Request theme colors from main process
+          const themes = ipcRenderer.sendSync('get-themes');
+          if (themes && themes[theme] && themes[theme].colors) {
+            const themeColors = themes[theme].colors;
+            // Apply CSS variables directly
+            Object.entries(themeColors).forEach(([key, value]) => {
+              document.documentElement.style.setProperty(`--${key}`, value);
+            });
+            console.log('Applied theme CSS variables directly');
+          }
+        } catch (cssError) {
+          console.warn('Error applying theme CSS variables:', cssError);
+        }
         
         // Update DOM marker first (most reliable)
         try {
@@ -98,9 +115,17 @@ function createSafeDOM() {
         // Update URL hash for persistence
         updateThemeHash(theme);
 
-        // Send to main process via IPC
+        // Send to main process via IPC only if theme has changed
         try {
-          ipcRenderer.send('set-setting', 'theme', theme);
+          // Get current settings to compare
+          const currentSettings = ipcRenderer.sendSync('get-settings');
+          // Only send IPC if theme has actually changed
+          if (!currentSettings || currentSettings.theme !== theme) {
+            console.log('Theme changed, sending IPC update');
+            ipcRenderer.send('set-setting', 'theme', theme);
+          } else {
+            console.log('Theme unchanged, skipping IPC update');
+          }
         } catch (ipcError) {
           console.warn('Error saving theme via IPC:', ipcError);
         }
@@ -435,28 +460,40 @@ contextBridge.exposeInMainWorld("api", {
   setSetting: async (key, value) => {
     console.log("setSetting called from webview", key, value);
     try {
-      // For theme changes, ensure settings.json is updated first
       if (key === "theme") {
-        // Send setting update to main process
-        ipcRenderer.send("set-setting", key, value);
-        
-        // Wait a moment for the setting to be saved
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Get the current settings to verify the change
-        const settings = ipcRenderer.sendSync("get-settings");
-        if (settings.theme === value) {
-          // Only update DOM after verifying settings.json was updated
-          document.documentElement.setAttribute('data-theme', value);
-        } else {
-          console.error("Theme not saved correctly to settings.json");
+        // Check if theme has changed to avoid redundant saves
+        const currentSettings = ipcRenderer.sendSync("get-settings");
+        if (currentSettings.theme === value) {
+          console.log("Theme already set to", value, "- skipping save");
+          return true;
         }
+        
+        // Send setting update to main process
+        ipcRenderer.sendSync("set-setting", key, value);
+        
+        // Apply theme immediately
+        document.documentElement.setAttribute('data-theme', value);
+        document.body.setAttribute('data-theme', value);
+        
+        // Notify parent window
+        window.parent.postMessage({ type: 'themeChange', theme: value }, '*');
       } else {
         ipcRenderer.send("set-setting", key, value);
       }
+      return true;
     } catch (error) {
       console.error("Error setting setting:", error);
+      return false;
     }
+  },
+
+  // Handle theme changes from main process
+  onThemeChanged: (callback) => {
+    ipcRenderer.on('theme-changed', (event, theme) => {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.body.setAttribute('data-theme', theme);
+      if (callback) callback(theme);
+    });
   },
 
   // Theme management
