@@ -1522,225 +1522,85 @@ window.api.on('navigate', (event, url) => {
         console.log('Navigating webview to:', url);
         webview.loadURL(url);
       }
-    }
-  } catch (error) {
-    console.error('Navigation error:', error);
-  }
-});
-
-// Handle navigation requests from webviews
-window.api.on('do-navigate', (url) => {
-  console.log('Processing navigation request:', url);
-  
-  // Get the active tab's webview
-  const activeTab = document.querySelector('.browser-tab.active');
-  if (!activeTab) {
-    console.error('No active tab found');
-    return;
-  }
-
-  const webview = document.querySelector(`webview[data-tab-id="${activeTab.dataset.tabId}"]`);
-  if (!webview) {
-    console.error('No webview found for active tab');
-    return;
-  }
-
-  // Handle different URL types
-  try {
-    if (url.startsWith('gkp://') || url.startsWith('gkps://')) {
-      console.log('Loading internal URL:', url);
-      webview.loadURL(url);
-    } else if (url.startsWith('http://') || url.startsWith('https://')) {
-      console.log('Loading external URL:', url);
-      webview.loadURL(url);
     } else {
-      // Assume it's a search if it's not a URL
-      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(url)}`;
-      console.log('Loading search URL:', searchUrl);
-      webview.loadURL(searchUrl);
+      // If no active tab, create a new one
+      console.log('No active tab found, creating new tab');
+      createTab(url);
     }
   } catch (error) {
     console.error('Navigation error:', error);
   }
 });
 
-// Handle navigation messages from webviews
-function handleNavigationRequest(url) {
-  console.log('Navigation request received for URL:', url);
-  
-  // Get the current active tab and its webview
-  const activeTab = document.querySelector('.browser-tab.active');
-  if (!activeTab) {
-    console.log('No active tab found, creating new tab');
-    createTab(url);
-    return;
-  }
-
-  const webview = document.querySelector(`webview[data-tab-id="${activeTab.dataset.tabId}"]`);
-  if (!webview) {
-    console.error('No webview found for active tab');
-    return;
-  }
-
+// Handle navigation from main process
+window.api.onNavigate((url) => {
+  console.log('Navigation from main process:', url);
   try {
-    console.log('Loading URL in webview:', url);
-    webview.loadURL(url).catch(err => {
-      console.error('Error loading URL:', err);
-    });
-  } catch (error) {
-    console.error('Error during navigation:', error);
-  }
-}
-
-// Apply theme to current window and sync storage
-function applyTheme(newTheme) {
-  console.group('Apply Theme');
-  console.log('Applying theme:', newTheme);
-  
-  // Skip if theme hasn't changed or is invalid
-  if (!newTheme || typeof newTheme !== 'string') {
-    console.warn('Invalid theme provided:', newTheme);
-    console.groupEnd();
-    return;
-  }
-  
-  // Track last theme application time for debouncing
-  const now = Date.now();
-  const lastApplyTime = window._lastThemeApplyTime || 0;
-  const THEME_APPLY_DEBOUNCE = 300; // ms
-  
-  if (now - lastApplyTime < THEME_APPLY_DEBOUNCE) {
-    console.log(`Theme change debounced (${now - lastApplyTime}ms < ${THEME_APPLY_DEBOUNCE}ms)`);
-    console.groupEnd();
-    return;
-  }
-  
-  window._lastThemeApplyTime = now;
-  
-  // Skip if theme hasn't changed
-  const currentTheme = document.documentElement.getAttribute('data-theme');
-  if (currentTheme === newTheme) {
-    console.log('Theme already applied, skipping');
-    console.groupEnd();
-    return;
-  }
-  
-  try {
-    // Get theme object
-    const theme = getThemeObject(newTheme);
-    if (!theme) {
-      console.error('Could not get theme object for:', newTheme);
-      console.groupEnd();
-      return;
+    // Process the URL first to ensure it's valid
+    url = processUrl(url);
+    console.log('Processed URL:', url);
+    
+    // Find the active tab - different elements might have the active class
+    let activeTab = document.querySelector('.tab.active');
+    if (!activeTab) {
+      activeTab = document.querySelector('[data-tab-id].active');
     }
     
-    console.log('Applying theme colors directly to UI');
-    
-    // Apply CSS variables directly to the root element
-    const root = document.documentElement;
-    Object.entries(theme.colors).forEach(([key, value]) => {
-      root.style.setProperty(`--${key}`, value);
-    });
-    
-    // Apply to document attributes
-    root.setAttribute('data-theme', newTheme);
-    document.body.setAttribute('data-theme', newTheme);
-
-    // Sync to localStorage only if different
-    try {
-      const storedTheme = localStorage.getItem('gekko-theme');
-      if (storedTheme !== newTheme) {
-        localStorage.setItem('gekko-theme', newTheme);
+    if (activeTab) {
+      const tabId = activeTab.getAttribute('data-tab-id');
+      console.log('Active tab ID:', tabId);
+      
+      // Try multiple selector patterns to find the webview
+      let webview = document.querySelector(`#webview-${tabId}`);
+      if (!webview) {
+        webview = document.querySelector(`webview[data-tab-id="${tabId}"]`);
       }
-    } catch (storageError) {
-      console.warn('Could not sync theme to localStorage:', storageError);
-    }
-
-    // Apply to all webviews with debouncing
-    const webviews = document.querySelectorAll('webview');
-    if (webviews.length > 0) {
-      console.log(`Applying theme to ${webviews.length} webviews`);
-      webviews.forEach(webview => {
-        if (webview.send) {
-          try {
-            // Use data attribute to track last theme sent to each webview
-            const lastWebviewTheme = webview.getAttribute('data-last-theme');
-            if (lastWebviewTheme !== newTheme) {
-              webview.send('theme-changed', newTheme);
-              webview.setAttribute('data-last-theme', newTheme);
-            } else {
-              console.log('Skipping webview theme update, already set');
-            }
-          } catch (e) {
-            console.warn('Error sending theme to webview:', e);
+      
+      if (webview) {
+        console.log('Navigating webview to:', url);
+        try {
+          // First try direct loadURL
+          if (webview.loadURL) {
+            webview.loadURL(url);
+          } else {
+            // Fallback to setAttribute
+            webview.setAttribute('src', url);
           }
+          console.log('Navigation command sent');
+        } catch (navError) {
+          console.error('Direct navigation failed:', navError);
+          safeLoadURL(webview, url);
         }
-      });
+      } else {
+        console.error('No webview found for active tab');
+        console.log('All tabs:', document.querySelectorAll('[data-tab-id]'));
+        console.log('All webviews:', document.querySelectorAll('webview'));
+        
+        // Try to find any webview as fallback
+        const anyWebview = document.querySelector('webview');
+        if (anyWebview) {
+          console.log('Using fallback webview');
+          safeLoadURL(anyWebview, url);
+        } else {
+          // Last resort: create new tab
+          createTab(url);
+        }
+      }
+    } else {
+      // If no active tab, create a new one
+      console.log('No active tab found, creating new tab');
+      createTab(url);
     }
-
-    console.log('Theme applied successfully');
   } catch (error) {
-    console.error('Error applying theme:', error);
-  }
-  
-  console.groupEnd();
-}
-
-// Listen for theme changes
-let themeChangeTimeout = null;
-window.api.onThemeChanged((newTheme) => {
-  console.log('Theme change received from main process:', newTheme);
-  
-  // Debounce theme changes
-  if (themeChangeTimeout) {
-    clearTimeout(themeChangeTimeout);
-  }
-  
-  themeChangeTimeout = setTimeout(() => {
-    applyTheme(newTheme);
-    themeChangeTimeout = null;
-  }, 50);
-});
-
-// Listen for settings updates
-let settingsUpdateTimeout = null;
-window.api.onSettingsUpdated((settings) => {
-  console.log('Settings update received:', settings);
-  cachedSettings = settings;
-  
-  // Only apply theme changes with debouncing
-  if (settings.theme) {
-    if (settingsUpdateTimeout) {
-      clearTimeout(settingsUpdateTimeout);
+    console.error('Navigation error:', error);
+    // Last resort: Try to create a new tab with the URL
+    try {
+      createTab(url);
+    } catch (finalError) {
+      console.error('Failed to create tab:', finalError);
     }
-    
-    settingsUpdateTimeout = setTimeout(() => {
-      applyTheme(settings.theme);
-      settingsUpdateTimeout = null;
-    }, 50);
   }
 });
-
-// Update document based on active tab
-function updateDocumentState(tab) {
-  // Get fresh settings to ensure we have latest
-  settings = window.api.getSettings();
   
-  // Update any other dependent UI elements here
-}
-
-// Helper to safely load settings
-function loadSettingsSafely() {
-  try {
-    // Use cached settings if available
-    if (!cachedSettings) {
-      cachedSettings = window.api.getSettings();
-    }
-    return cachedSettings;
-  } catch (error) {
-    console.error('Error loading settings:', error);
-    return { theme: 'dark' };
-  }
-}
 // Close DOMContentLoaded event listener
 });

@@ -18,8 +18,28 @@ contextBridge.exposeInMainWorld('simpleIcons', {
 // Navigation API
 const navigationAPI = {
   navigate: (url) => {
+    console.group('Navigation API');
     console.log('Navigation requested via API to:', url);
-    ipcRenderer.send('navigate', url);
+    
+    // Validate URL
+    if (!url) {
+      console.error('No URL provided for navigation');
+      console.groupEnd();
+      return false;
+    }
+    
+    try {
+      // Send navigation request through IPC
+      console.log('Sending navigation IPC message');
+      ipcRenderer.send('navigate', url);
+      console.log('IPC message sent successfully');
+      console.groupEnd();
+      return true;
+    } catch (error) {
+      console.error('Error sending navigation IPC:', error);
+      console.groupEnd();
+      return false;
+    }
   },
   handleNavigation: (url) => {
     console.log('Navigation handled via API:', url);

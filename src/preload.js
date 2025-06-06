@@ -147,9 +147,9 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on(channel, (event, ...args) => callback(...args));
     }
   },
-  
-  onNavigate: (callback) => {
+    onNavigate: (callback) => {
     ipcRenderer.on('navigate-from-main', (event, url) => {
+      console.log('Preload: Received navigate-from-main for URL:', url);
       callback(url);
     });
   },

@@ -48,22 +48,51 @@ document.addEventListener('DOMContentLoaded', () => {
     'https://maps.google.com': 'googlemaps',
     'https://calendar.google.com': 'googlecalendar'
   };
-
   // Setup click handlers for shortcuts
   document.querySelectorAll('.home-shortcut').forEach(shortcut => {
     shortcut.addEventListener('click', (e) => {
       e.preventDefault();
       const url = shortcut.dataset.url;
       if (url) {
+        console.group('Home Page Navigation');
         console.log('Shortcut clicked, navigating to:', url);
-        // Use navigationAPI if available, otherwise fall back to window.parent
-        if (window.navigationAPI) {
-          window.navigationAPI.navigate(url);
-        } else if (window.parent && window.parent !== window) {
-          window.parent.postMessage({ type: 'navigate', url: url }, '*');
-        } else {
-          window.location.href = url;
+        
+        // Use multiple methods for navigation to ensure it works
+        // Method 1: navigationAPI (preferred)
+        let navigationSucceeded = false;
+        if (window.navigationAPI && typeof window.navigationAPI.navigate === 'function') {
+          try {
+            console.log('Using navigationAPI.navigate');
+            navigationSucceeded = window.navigationAPI.navigate(url);
+            console.log('navigationAPI result:', navigationSucceeded);
+          } catch (error) {
+            console.error('navigationAPI failed:', error);
+          }
         }
+        
+        // Method 2: postMessage
+        if (!navigationSucceeded && window.parent && window.parent !== window) {
+          try {
+            console.log('Using postMessage fallback');
+            window.parent.postMessage({ type: 'navigate', url: url }, '*');
+            // We can't determine success here easily
+            navigationSucceeded = true;
+          } catch (error) {
+            console.error('postMessage navigation failed:', error);
+          }
+        }
+        
+        // Method 3: Direct navigation (last resort)
+        if (!navigationSucceeded) {
+          console.log('Using direct navigation as last resort');
+          try {
+            window.location.href = url;
+          } catch (error) {
+            console.error('Direct navigation failed:', error);
+          }
+        }
+        
+        console.groupEnd();
       }
     });
   });

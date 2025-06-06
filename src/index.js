@@ -242,11 +242,41 @@ ipcMain.on('clear-history', () => {
 
 // Navigation handler
 ipcMain.on('navigate', (event, url) => {
-  console.log('Main process: Navigation request received for:', url);
-  // Send it back to all renderer processes
-  BrowserWindow.getAllWindows().forEach(window => {
-    window.webContents.send('navigate-from-main', url);
-  });
+  console.group('Main Process Navigation');
+  console.log('Navigation request received for:', url);
+  
+  // Validate URL
+  if (!url) {
+    console.error('No URL provided');
+    console.groupEnd();
+    return;
+  }
+  
+  console.log('Sending navigation event to renderer processes');
+  
+  // Find the focused window first
+  const focusedWindow = BrowserWindow.getFocusedWindow();
+  if (focusedWindow) {
+    console.log('Sending to focused window');
+    try {
+      focusedWindow.webContents.send('navigate-from-main', url);
+    } catch (error) {
+      console.error('Error sending to focused window:', error);
+    }
+  } else {
+    // If no focused window, send to all
+    console.log('No focused window, sending to all windows');
+    BrowserWindow.getAllWindows().forEach(window => {
+      try {
+        window.webContents.send('navigate-from-main', url);
+      } catch (error) {
+        console.error('Error sending to window:', error);
+      }
+    });
+  }
+  
+  console.log('Navigation event sent');
+  console.groupEnd();
 });
 
 const createWindow = () => {
