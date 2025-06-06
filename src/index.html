@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
+<head>  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' gkp: gkps:; 
-        script-src 'self' 'unsafe-inline' 'unsafe-eval'; 
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' gkp: gkps:; 
+        script-src 'self' 'unsafe-inline'; 
         style-src 'self' 'unsafe-inline' gkp: gkps: https://fonts.googleapis.com; 
         font-src 'self' gkp: gkps: https://fonts.gstatic.com data: blob: file: resource:; 
         connect-src 'self' gkp: gkps:; 
@@ -12,9 +11,9 @@
   <!-- Theme storage marker -->
   <meta id="gekko-theme-marker" name="theme" content="">
   <title>Gekko Browser</title>
-  
-  <!-- Primary stylesheets -->
+    <!-- Primary stylesheets -->
   <link rel="stylesheet" href="index.css" />
+  <link rel="stylesheet" href="demo_sites/shared/incognito-styles.css" />
   <link rel="stylesheet" 
         href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css" 
         onerror="handleFontLoadError()" 
@@ -95,9 +94,11 @@
         <div class="address-bar-container">
           <div class="address-protocol" id="address-protocol">
             <i class="fa-solid fa-globe"></i>
-          </div>
-          <input type="text" class="address-bar" id="address-bar" placeholder="Search or enter URL" />
+          </div>          <input type="text" class="address-bar" id="address-bar" placeholder="Search or enter URL" />
           <div class="address-bar-actions">
+            <div class="address-bar-action" id="bookmark-page-button">
+              <i class="fa-regular fa-star"></i>
+            </div>
             <div class="address-bar-action" id="clear-button">
               <i class="fa-solid fa-xmark"></i>
             </div>
@@ -111,11 +112,19 @@
           <div class="browser-action" id="history-button">
             <i class="fa-solid fa-clock-rotate-left"></i>
           </div>
+          <div class="browser-action" id="incognito-button">
+            <i class="fa-solid fa-user-secret"></i>
+          </div>
           <div class="browser-action" id="settings-button">
             <i class="fa-solid fa-gear"></i>
           </div>
         </div>
       </div>
+    </div>
+    
+    <!-- Bookmarks Bar -->
+    <div class="bookmarks-bar" id="bookmarks-bar">
+      <!-- Bookmarks will be inserted here dynamically -->
     </div>
     
     <!-- Main Content -->

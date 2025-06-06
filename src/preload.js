@@ -129,6 +129,31 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.send('clear-history');
   },
   
+  toggleIncognitoMode: () => {
+    return ipcRenderer.sendSync('toggle-incognito-mode');
+  },
+  
+  getIncognitoMode: () => {
+    return ipcRenderer.sendSync('get-incognito-mode');
+  },
+  
+  // Bookmarks
+  getBookmarks: () => {
+    return ipcRenderer.sendSync('get-bookmarks');
+  },
+  
+  addBookmark: (url, title, favicon) => {
+    ipcRenderer.send('add-bookmark', url, title, favicon);
+  },
+  
+  removeBookmark: (url) => {
+    ipcRenderer.send('remove-bookmark', url);
+  },
+  
+  isBookmarked: (url) => {
+    return ipcRenderer.sendSync('is-bookmarked', url);
+  },
+  
   // Window controls
   minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),

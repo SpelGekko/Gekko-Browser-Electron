@@ -2,18 +2,25 @@
 
 /* Base Styles */
 :root {
-  --primary-color: var(--accent, #8ab4f8);
-  --secondary-color: var(--secondary, #303134);
-  --background-color: var(--primary, #202124);
-  --card-background: var(--secondary, #303134);
-  --text-color: var(--textPrimary, #e8eaed);
-  --text-secondary: var(--textSecondary, #9aa0a6);
-  --border-color: var(--divider, #3c4043);
-  --shadow-color: var(--shadow, rgba(0, 0, 0, 0.3));
-  --accent-color: var(--accent, #8ab4f8);
-  --success-color: var(--success, #81c995);
-  --error-color: var(--error, #f28b82);
-  --warning-color: var(--warning, #fdd663);
+  /* Theme variables will be set by theme-utils.js */
+  --background: var(--primary);
+  --card-background: var(--secondary);
+  --text-color: var(--textPrimary);
+  --accent-color: var(--accent);
+  --text-secondary: var(--textSecondary);
+  --border-color: var(--divider);
+  --shadow-color: var(--shadow);
+  --button-color: var(--button);
+  --button-hover: var(--buttonHover);
+  --button-text: var(--buttonText);
+  --success-color: var(--success);
+  --error-color: var(--error);
+  --warning-color: var(--warning);
+
+  /* For compatibility with older components */
+  --primary-color: var(--accent-color);
+  --secondary-color: var(--card-background);
+  --background-color: var(--background);
 }
 
 body {

@@ -50,6 +50,78 @@ function getSettings() {
   }
 }
 
+// Initialize global variables
+let currentTabId = null;
+let tabs = [];
+// Initialize cached settings variable
+let cachedSettings = null;
+// Bookmarks and incognito variables
+let bookmarks = [];
+let isIncognito = false;
+
+// Helper function to get a theme object by its ID
+function getThemeObject(themeId) {
+  // Try to get theme from the API
+  try {
+    const allThemes = window.api.getThemes();
+    if (allThemes && allThemes[themeId]) {
+      return allThemes[themeId];
+    }
+  } catch (error) {
+    console.error('Error getting theme from API:', error);
+  }
+  
+  // Fallback to default themes
+  const fallbackThemes = {
+    dark: {
+      name: 'Dark Theme',
+      colors: {
+        primary: '#202124',
+        secondary: '#303134',
+        accent: '#8ab4f8',
+        textPrimary: '#e8eaed',
+        textSecondary: '#9aa0a6'
+      }
+    },
+    light: {
+      name: 'Light Theme',
+      colors: {
+        primary: '#ffffff',
+        secondary: '#f1f3f4',
+        accent: '#1a73e8',
+        textPrimary: '#202124',
+        textSecondary: '#5f6368'
+      }
+    },
+    red: {
+      name: 'Red Theme',
+      colors: {
+        primary: '#7C0A02',
+        secondary: '#B22222',
+        accent: '#FF3131',
+        textPrimary: '#ffffff',
+        textSecondary: '#e0e0e0'
+      }
+    }
+  };
+  
+  return fallbackThemes[themeId] || fallbackThemes.dark;
+}
+
+// Helper to safely load settings
+function loadSettingsSafely() {
+  try {
+    // Use cached settings if available
+    if (!cachedSettings) {
+      cachedSettings = window.api.getSettings();
+    }
+    return cachedSettings;
+  } catch (error) {
+    console.error('Error loading settings:', error);
+    return { theme: 'dark' };
+  }
+}
+
 // Apply theme to current window and sync storage
 function applyTheme(newTheme) {
   console.group('Apply Theme');
@@ -64,11 +136,10 @@ function applyTheme(newTheme) {
   
   // Track last theme application time for debouncing
   const now = Date.now();
-  const lastApplyTime = window._lastThemeApplyTime || 0;
   const THEME_APPLY_DEBOUNCE = 300; // ms
   
-  if (now - lastApplyTime < THEME_APPLY_DEBOUNCE) {
-    console.log(`Theme change debounced (${now - lastApplyTime}ms < ${THEME_APPLY_DEBOUNCE}ms)`);
+  if (now - (window._lastThemeApplyTime || 0) < THEME_APPLY_DEBOUNCE) {
+    console.log(`Theme change debounced (${now - (window._lastThemeApplyTime || 0)}ms < ${THEME_APPLY_DEBOUNCE}ms)`);
     console.groupEnd();
     return;
   }
@@ -85,8 +156,8 @@ function applyTheme(newTheme) {
   
   try {
     // Get theme object
-    const theme = getThemeObject(newTheme);
-    if (!theme) {
+    const themeObj = window.api.getThemes()[newTheme];
+    if (!themeObj) {
       console.error('Could not get theme object for:', newTheme);
       console.groupEnd();
       return;
@@ -96,7 +167,7 @@ function applyTheme(newTheme) {
     
     // Apply CSS variables directly to the root element
     const root = document.documentElement;
-    Object.entries(theme.colors).forEach(([key, value]) => {
+    Object.entries(themeObj.colors).forEach(([key, value]) => {
       root.style.setProperty(`--${key}`, value);
     });
     
@@ -104,37 +175,84 @@ function applyTheme(newTheme) {
     root.setAttribute('data-theme', newTheme);
     document.body.setAttribute('data-theme', newTheme);
 
-    // Sync to localStorage only if different
+    // Sync to localStorage and permanent storage
     try {
       const storedTheme = localStorage.getItem('gekko-theme');
       if (storedTheme !== newTheme) {
         localStorage.setItem('gekko-theme', newTheme);
+        window.api.setSetting('theme', newTheme);
       }
     } catch (storageError) {
-      console.warn('Could not sync theme to localStorage:', storageError);
+      console.warn('Could not sync theme to storage:', storageError);
     }
 
-    // Apply to all webviews with debouncing
+    // Apply to all webviews with robust error handling
     const webviews = document.querySelectorAll('webview');
     if (webviews.length > 0) {
       console.log(`Applying theme to ${webviews.length} webviews`);
       webviews.forEach(webview => {
-        if (webview.send) {
-          try {
-            // Use data attribute to track last theme sent to each webview
-            const lastWebviewTheme = webview.getAttribute('data-last-theme');
-            if (lastWebviewTheme !== newTheme) {
-              webview.send('theme-changed', newTheme);
-              webview.setAttribute('data-last-theme', newTheme);
-            } else {
-              console.log('Skipping webview theme update, already set');
-            }
-          } catch (e) {
-            console.warn('Error sending theme to webview:', e);
-          }
+        if (webview && webview.isConnected) {
+          // Apply to ALL webviews, not just internal pages
+          const cssVariables = Object.entries(themeObj.colors)
+            .map(([key, value]) => `--${key}: ${value};`)
+            .join('\n');
+
+          const themeScript = `
+            (function() {
+              // Remove any existing theme style element
+              const existingStyle = document.getElementById('gekko-theme-style');
+              if (existingStyle) existingStyle.remove();
+
+              // Create new style element for theme
+              const style = document.createElement('style');
+              style.id = 'gekko-theme-style';
+              style.textContent = \`:root { ${cssVariables} }\`;
+              
+              // Create a container for our styles if not exists
+              let container = document.getElementById('gekko-theme-container');
+              if (!container) {
+                container = document.createElement('div');
+                container.id = 'gekko-theme-container';
+                container.style.position = 'fixed';
+                container.style.top = '-9999px';
+                container.style.left = '-9999px';
+                document.documentElement.appendChild(container);
+              }
+              
+              // Add the style element
+              container.appendChild(style);
+              
+              // Set theme attributes
+              document.documentElement.setAttribute('data-theme', '${newTheme}');
+              document.body.setAttribute('data-theme', '${newTheme}');
+            })();
+          `;
+
+          // Execute the theme injection script
+          webview.executeJavaScript(themeScript).catch(error => {
+            console.warn('Failed to inject theme via executeJavaScript:', error);
+            // Fallback: try inserting CSS directly
+            webview.insertCSS(`:root { ${cssVariables} }`).catch(console.warn);
+          });
+
+          // Mark theme as applied
+          webview.setAttribute('data-last-theme', newTheme);
         }
       });
     }
+
+    // Set up verification
+    const verifyTheme = () => {
+      const appliedTheme = document.documentElement.getAttribute('data-theme');
+      const cssVars = getComputedStyle(document.documentElement);
+      const themeColor = cssVars.getPropertyValue('--primary').trim();
+      
+      if (appliedTheme !== newTheme || !themeColor) {
+        console.warn('Theme verification failed, reapplying...');
+        setTimeout(() => applyTheme(newTheme), 100);
+      }
+    };
+    setTimeout(verifyTheme, 500);
 
     console.log('Theme applied successfully');
   } catch (error) {
@@ -144,66 +262,201 @@ function applyTheme(newTheme) {
   console.groupEnd();
 }
 
-// Listen for theme changes
-document.addEventListener('DOMContentLoaded', () => {
-  // Initialize variables
-  let currentTabId = null;
-  let tabs = [];
-  let history = [];
-  let cachedSettings = null;
+// Listen for theme changes from internal pages to apply to webviews
+function applyThemeToWebview(webview, newTheme) {
+  if (!webview || !webview.isConnected) return;
 
-  // Helper to safely load settings
-  function loadSettingsSafely() {
-    try {
-      // Use cached settings if available
-      if (!cachedSettings) {
-        cachedSettings = window.api.getSettings();
-      }
-      return cachedSettings;
-    } catch (error) {
-      console.error('Error loading settings:', error);
-      return { theme: 'dark' };
+  console.group('Apply Theme to Webview');
+  console.log('Applying theme:', newTheme);
+
+  try {
+    const lastWebviewTheme = webview.getAttribute('data-last-theme');
+    if (lastWebviewTheme === newTheme) {
+      console.log('Theme already applied to webview, skipping');
+      console.groupEnd();
+      return;
     }
+
+    // Combine all theme application methods for maximum compatibility
+    const themeScript = `
+      try {
+        const applyThemeToPage = (theme) => {
+          // 1. Try using API methods
+          if (window.api?.applyTheme) {
+            window.api.applyTheme(theme);
+          }
+          // 2. Try theme utils
+          if (window.applyTheme) {
+            window.applyTheme(theme);
+          }
+          // 3. Manual DOM update
+          document.documentElement.setAttribute('data-theme', theme);
+          document.body.setAttribute('data-theme', theme);
+          
+          // 4. Update storage
+          try {
+            localStorage.setItem('gekko-theme', theme);
+          } catch(e) {
+            console.warn('Could not save theme to storage:', e);
+          }
+          
+          // 5. Broadcast change
+          try {
+            window.postMessage({ type: 'themeChange', theme: theme }, '*');
+          } catch(e) {
+            console.warn('Could not broadcast theme change:', e);
+          }
+          
+          // 6. Verify application
+          const verifyTheme = () => {
+            const appliedTheme = document.documentElement.getAttribute('data-theme');
+            if (appliedTheme !== theme) {
+              console.warn('Theme verification failed, reapplying...');
+              setTimeout(() => applyThemeToPage(theme), 100);
+            }
+          };
+          setTimeout(verifyTheme, 100);
+        };
+
+        applyThemeToPage('${newTheme}');
+      } catch (e) {
+        console.error('Error in theme application:', e);
+      }
+    `;
+
+    // Execute theme application script
+    webview.executeJavaScript(themeScript).catch(error => {
+      console.warn('executeJavaScript failed, trying alternate methods:', error);
+      
+      // Try IPC as fallback
+      if (webview.send) {
+        webview.send('theme-changed', newTheme);
+      }
+      
+      // Direct attribute setting as last resort
+      webview.executeJavaScript(`
+        document.documentElement.setAttribute('data-theme', '${newTheme}');
+        document.body.setAttribute('data-theme', '${newTheme}');
+      `).catch(console.warn);
+    });
+
+    // Mark theme as applied
+    webview.setAttribute('data-last-theme', newTheme);
+    console.log('Theme applied successfully');
+    
+    // Set up verification
+    setTimeout(() => {
+      webview.executeJavaScript(`
+        document.documentElement.getAttribute('data-theme');
+      `).then(appliedTheme => {
+        if (appliedTheme !== newTheme) {
+          console.warn('Theme verification failed, reapplying...');
+          applyThemeToWebview(webview, newTheme);
+        }
+      }).catch(console.warn);
+    }, 500);
+
+  } catch (error) {
+    console.error('Error applying theme to webview:', error);
   }
-  // Listen for settings updates
-  window.api.onSettingsUpdated((settings) => {
-    console.group('Settings Update');
-    console.log('Settings update received:', settings);
-    
-    // Skip update if settings haven't changed
-    if (cachedSettings && JSON.stringify(cachedSettings) === JSON.stringify(settings)) {
-      console.log('Settings unchanged, skipping update');
-      console.groupEnd();
-      return;
-    }
-    
-    // Debounce settings updates
-    const now = Date.now();
-    if (window._lastSettingsUpdateTime && (now - window._lastSettingsUpdateTime < 300)) {
-      console.log('Settings update debounced, too frequent');
-      console.groupEnd();
-      return;
-    }
-    
-    // Update cached settings and time
-    window._lastSettingsUpdateTime = now;
-    cachedSettings = settings;
-    
-    // Apply theme if changed
-    if (settings.theme) {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      if (currentTheme !== settings.theme) {
-        console.log('Theme changed from settings update, applying:', settings.theme);
-        applyTheme(settings.theme);
-      } else {
-        console.log('Theme unchanged, skipping application');
+  
+  console.groupEnd();
+}
+
+// Toggle bookmark for the current page
+function toggleBookmark() {
+  if (!currentTabId) {
+    console.error('No active tab to bookmark');
+    return;
+  }
+
+  const activeWebview = document.querySelector(`#webview-${currentTabId}`);
+  if (!activeWebview) {
+    console.error('No active webview found');
+    return;
+  }
+  
+  // Get the current tab object
+  const currentTab = tabs.find(tab => tab.id === currentTabId);
+  if (!currentTab) {
+    console.error('Current tab not found in tabs array');
+    return;
+  }
+  
+  // First try to get URL from the tab object as a fallback
+  let url = currentTab.url;
+  
+  // Then try to get it from the webview if possible
+  try {
+    if (activeWebview.getURL && typeof activeWebview.getURL === 'function') {
+      const webviewUrl = activeWebview.getURL();
+      if (webviewUrl) {
+        url = webviewUrl; // Use the webview URL if available
       }
     }
+  } catch (error) {
+    console.log('Using fallback URL from tab object due to error:', error);
+  }
+  
+  if (!url) {
+    // Last resort: try getting it from the src attribute
+    url = activeWebview.getAttribute('src');
+  }
+  
+  if (!url) {
+    console.error('No URL to bookmark');
+    return;
+  }
+  
+  try {
+    const isBookmarked = window.api.isBookmarked(url);
+    console.log(`URL ${url} is ${isBookmarked ? 'already bookmarked' : 'not bookmarked'}`);
     
-    console.groupEnd();
-  });
+    if (isBookmarked) {
+      // Remove bookmark
+      window.api.removeBookmark(url);
+      console.log('Bookmark removed');
+    } else {
+      // Add bookmark
+      const title = getTabTitle(currentTabId) || 'Untitled';
+      let favicon = null;
+      const tab = tabs.find(tab => tab.id === currentTabId);
+      if (tab && tab.favicon) {
+        favicon = tab.favicon;
+      }
+      console.log(`Adding bookmark: ${url}, ${title}`);
+      window.api.addBookmark(url, title, favicon);
+    }
+    
+    // Update UI
+    updateBookmarkButton(url);
+    
+    // Reload bookmarks
+    loadBookmarks();
+    renderBookmarksBar();
+    
+    // Update bookmarks page if it's open
+    const bookmarksWebview = Array.from(document.querySelectorAll('webview')).find(webview => 
+      webview.getURL && webview.getURL().endsWith('bookmarks.gekko/bookmarks.html')
+    );
+    
+    if (bookmarksWebview) {
+      bookmarksWebview.reload();
+    }
+  } catch (error) {
+    console.error('Error toggling bookmark:', error);
+  }
+}
 
-  // DOM Elements
+document.addEventListener('DOMContentLoaded', () => {
+  // Reset global variables to initial state
+  currentTabId = null;
+  tabs = [];
+  cachedSettings = null;
+  bookmarks = [];
+  isIncognito = false;
+  
+  // DOM Elements (declared once)
   const tabBar = document.getElementById('tab-bar');
   const newTabButton = document.getElementById('new-tab-button');
   const browserContent = document.getElementById('browser-content');
@@ -216,6 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearButton = document.getElementById('clear-button');
   const bookmarksButton = document.getElementById('bookmarks-button');
   const historyButton = document.getElementById('history-button');
+  const incognitoButton = document.getElementById('incognito-button');
   const settingsButton = document.getElementById('settings-button');
   const minimizeButton = document.getElementById('minimize-button');
   const maximizeButton = document.getElementById('maximize-button');
@@ -223,70 +477,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusText = document.getElementById('status-text');
   const statusSecurity = document.getElementById('status-security');
   const securityText = document.getElementById('security-text');
+  const bookmarksBar = document.getElementById('bookmarks-bar');
 
   // Verify all required elements are present
   if (!verifyRequiredElements()) {
     console.error('Some required UI elements are missing');
+    // Consider gracefully degrading or showing an error to the user
     return;
   }
-
-  // Get user-friendly error message for settings errors
-  function getSettingsErrorMessage(error) {
-    const messages = {
-      cannot_create_dir: 'Could not create settings directory',
-      cannot_create_file: 'Could not create settings file',
-      cannot_write: 'Could not save settings',
-      cannot_read: 'Could not read settings',
-      invalid_json: 'Settings file is corrupted'
-    };
-    
-    return messages[error.error] || 'Unknown settings error';
+  
+  // Initialize bookmarks
+  loadBookmarks();
+  renderBookmarksBar();
+  
+  // Initialize incognito mode
+  isIncognito = window.api.getIncognitoMode();
+  if (isIncognito) {
+    incognitoButton.classList.add('incognito-active');
   }
 
-  // Helper to create/update DOM-based theme marker
-  function createThemeMarker(themeId) {
-    try {
-      // Save in a meta tag for immediate DOM storage
-      let themeMarker = document.getElementById('gekko-theme-marker');
-      if (!themeMarker) {
-        themeMarker = document.createElement('meta');
-        themeMarker.id = 'gekko-theme-marker';
-        document.head.appendChild(themeMarker);
-      }
-      themeMarker.setAttribute('content', themeId);
-      themeMarker.setAttribute('name', 'theme');
-      console.log('Theme saved to DOM element');
-      
-      // Also store in data attribute on HTML element
-      document.documentElement.dataset.savedTheme = themeId;
-      return true;
-    } catch (domError) {
-      console.warn('DOM storage error:', domError);
-      return false;
-    }
-  }
-
-  // Helper to safely load settings
-  function loadSettingsSafely() {
-    try {
-      // Use cached settings if available
-      if (!cachedSettings) {
-        cachedSettings = window.api.getSettings();
-      }
-      return cachedSettings;
-    } catch (error) {
-      console.error('Error loading settings:', error);
-      return { theme: 'dark' };
-    }
-  }
   // Try to get theme from localStorage first, fallback to settings
   let settings = loadSettingsSafely();
   let theme = localStorage.getItem('gekko-theme') || settings.theme || 'dark';
 
   // Apply theme with full CSS variables
   console.log('Initial theme application:', theme);
-  // Get the theme object
-  const themeObj = window.api.getThemes()[theme] || getFallbackThemes()[theme] || getFallbackThemes().dark;
+  // Get the theme object (assuming getThemeObject and getFallbackThemes are available via window.api or globally)
+  const themeObj = window.api.getThemes()[theme] || (typeof getFallbackThemes === 'function' ? getFallbackThemes()[theme] : {}) || (typeof getFallbackThemes === 'function' ? getFallbackThemes().dark : {});
   if (themeObj && themeObj.colors) {
     // Apply CSS variables directly to the root element
     const root = document.documentElement;
@@ -302,13 +519,22 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Set up event listeners
   setupEventListeners();
-    // Create initial tab with home page
+  
+  // Create initial tab with home page
   createTab(settings?.homePage || 'gkp://home.gekko/');
-
+  
+  // Load bookmarks bar
+  function loadBookmarksBar() {
+    // Load bookmarks from storage
+    loadBookmarks();
+    // Render the bookmarks bar
+    renderBookmarksBar();
+  }
+  
   // Make handleNavigation function available to window object for internal pages
   window.handleNavigation = handleNavigation;
 
-  // Verify all required DOM elements are present
+  // Verify all required DOM elements are present (defined here, not duplicated)
   function verifyRequiredElements() {
     const requiredElements = [
       { el: tabBar, name: 'tab-bar' },
@@ -323,13 +549,15 @@ document.addEventListener('DOMContentLoaded', () => {
       { el: clearButton, name: 'clear-button' },
       { el: bookmarksButton, name: 'bookmarks-button' },
       { el: historyButton, name: 'history-button' },
+      { el: incognitoButton, name: 'incognito-button' },
       { el: settingsButton, name: 'settings-button' },
       { el: minimizeButton, name: 'minimize-button' },
       { el: maximizeButton, name: 'maximize-button' },
       { el: closeButton, name: 'close-button' },
       { el: statusText, name: 'status-text' },
       { el: statusSecurity, name: 'status-security' },
-      { el: securityText, name: 'security-text' }
+      { el: securityText, name: 'security-text' },
+      { el: bookmarksBar, name: 'bookmarks-bar' }
     ];
 
     let allPresent = true;
@@ -343,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return allPresent;
   }
 
-  // Set up event listeners
+  // Set up event listeners (defined here, not duplicated)
   function setupEventListeners() {
     if (!minimizeButton || !maximizeButton || !closeButton) {
       console.error('Window control buttons not found');
@@ -367,11 +595,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // Address bar handling
     addressBar.addEventListener('keydown', handleAddressBarKeyDown);
     clearButton.addEventListener('click', clearAddressBar);
+      // Bookmark page button in address bar
+    const bookmarkPageButton = document.getElementById('bookmark-page-button');
+    if (bookmarkPageButton) {
+      console.log('Setting up bookmark page button');
+      bookmarkPageButton.addEventListener('click', function() {
+        console.log('Bookmark button clicked');
+        toggleBookmark();
+      });
+    } else {
+      console.error('Bookmark page button not found in DOM');
+    }
     
     // Browser actions
     bookmarksButton.addEventListener('click', () => showBookmarks());
     historyButton.addEventListener('click', () => showHistory());
-    settingsButton.addEventListener('click', () => showSettings());    // Listen for messages from internal pages
+    incognitoButton.addEventListener('click', toggleIncognitoMode);
+    settingsButton.addEventListener('click', () => showSettings());
+    
+    // Listen for messages from internal pages
     window.addEventListener('message', (event) => {
       console.log('Message received:', event.data);
       
@@ -406,7 +648,8 @@ document.addEventListener('DOMContentLoaded', () => {
               console.warn('WebView is not ready for navigation');
             }
           }
-        }      } else if (event.data && event.data.type === 'themeChange') {
+        }
+      } else if (event.data && event.data.type === 'themeChange') {
         const newTheme = event.data.theme;
         console.log('Theme change requested:', newTheme);
         
@@ -417,7 +660,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Apply theme to main UI
         applyTheme(newTheme);
         
-      // Apply theme to all webviews
+        // Apply theme to all webviews
         tabs.forEach(tab => {
           if (tab && tab.webview && tab.webview.isConnected) {
             // Only apply theme to internal pages
@@ -446,6 +689,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     
+    // Skip history recording if in incognito mode
+    if (isIncognito) {
+      return;
+    }
+    
     const historyEntry = {
       url,
       title: title || url,
@@ -453,7 +701,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     window.api.addToHistory(historyEntry);
-  }  // Create a new tab
+  }
+
+  // Create a new tab
   function createTab(url) {
     const settings = window.api.getSettings();
     const tabId = generateTabId();
@@ -487,11 +737,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const webview = document.createElement('webview');
     webview.setAttribute('id', `webview-${tabId}`);
     webview.setAttribute('class', 'webview hidden');
-    webview.setAttribute('data-tab-id', tabId);    webview.setAttribute('nodeintegration', 'false');
+    webview.setAttribute('data-tab-id', tabId);
+    webview.setAttribute('nodeintegration', 'false');
     webview.setAttribute('contextIsolation', 'true');
     webview.setAttribute('webpreferences', 'contextIsolation=true, sandbox=true, javascript=true, webviewTag=false, nodeIntegration=false');
     webview.setAttribute('preload', window.api.getPaths().webviewPreload);
-    webview.setAttribute('httpreferrer', 'strict-origin-when-cross-origin');    webview.setAttribute('allowpopups', 'false');
+    webview.setAttribute('httpreferrer', 'strict-origin-when-cross-origin');
+    webview.setAttribute('allowpopups', 'false');
     webview.setAttribute('enableremotemodule', 'false');
     
     // Set content security policy for internal pages
@@ -556,8 +808,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setActiveTab(tabId);
 
     return tabId;
-  }    // Set up webview events
-  function setupWebviewEvents(webview, tabId) {    // DOM ready
+  }
+
+  // Set up webview events
+  function setupWebviewEvents(webview, tabId) {
+    // DOM ready
     webview.addEventListener('dom-ready', () => {
       console.log(`WebView DOM ready for tab ${tabId}`);
       
@@ -572,12 +827,45 @@ document.addEventListener('DOMContentLoaded', () => {
           // Initialize navigation
           updateNavigationButtons(tabId);
           
-          // Get URL and check if it's an internal page
-          const url = webview.getURL();
-          if (url && (url.startsWith('gkp://') || url.startsWith('gkps://'))) {
-            // Apply theme to internal page
-            const currentTheme = localStorage.getItem('gekko-theme') || 'dark';
-            await applyThemeToWebview(webview, currentTheme);
+          // Always apply current theme to any page that loads
+          const currentTheme = localStorage.getItem('gekko-theme') || 
+                             document.documentElement.getAttribute('data-theme') || 
+                             'dark';
+          
+          // Get theme colors
+          const themeObj = window.api.getThemes()[currentTheme];
+          if (themeObj && themeObj.colors) {
+            const cssVariables = Object.entries(themeObj.colors)
+              .map(([key, value]) => `--${key}: ${value};`)
+              .join('\n');
+
+            webview.executeJavaScript(`
+              (function() {
+                const existingStyle = document.getElementById('gekko-theme-style');
+                if (existingStyle) existingStyle.remove();
+
+                const style = document.createElement('style');
+                style.id = 'gekko-theme-style';
+                style.textContent = \`:root { ${cssVariables} }\`;
+                
+                let container = document.getElementById('gekko-theme-container');
+                if (!container) {
+                  container = document.createElement('div');
+                  container.id = 'gekko-theme-container';
+                  container.style.position = 'fixed';
+                  container.style.top = '-9999px';
+                  container.style.left = '-9999px';
+                  document.documentElement.appendChild(container);
+                }
+                
+                container.appendChild(style);
+                document.documentElement.setAttribute('data-theme', '${currentTheme}');
+                document.body.setAttribute('data-theme', '${currentTheme}');
+              })();
+            `).catch(error => {
+              console.warn('Failed to inject theme via executeJavaScript:', error);
+              webview.insertCSS(`:root { ${cssVariables} }`).catch(console.warn);
+            });
           }
         } catch (error) {
           console.error('Error in webview initialization:', error);
@@ -606,23 +894,25 @@ document.addEventListener('DOMContentLoaded', () => {
       refreshButton.setAttribute('data-action', 'stop');
       statusText.textContent = 'Loading...';
     });
-      // Did stop loading
+    
+    // Did stop loading
     webview.addEventListener('did-stop-loading', () => {
       updateTabStatus(tabId, 'complete');
       refreshButton.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i>';
       refreshButton.setAttribute('data-action', 'refresh');
-      statusText.textContent = 'Ready';
       
-      // Apply theme if it's an internal page (GKP protocol)
+      const isIncognito = window.api.getIncognitoMode();
+      statusText.textContent = isIncognito ? 'Ready (Incognito)' : 'Ready';
+      
+      // Reapply theme if needed for internal pages
       try {
-        const currentUrl = webview.getURL();
-        if (currentUrl && (currentUrl.startsWith('gkp://') || currentUrl.startsWith('gkps://'))) {
-          console.log('Internal page loaded, applying theme');
-          const currentTheme = localStorage.getItem('gekko-theme') || 'dark';
+        const url = webview.getURL();
+        if (!url || url === 'about:blank' || url.startsWith('gkp://') || url.startsWith('gkps://')) {
+          const currentTheme = localStorage.getItem('gekko-theme') || document.documentElement.getAttribute('data-theme') || 'dark';
           applyThemeToWebview(webview, currentTheme);
         }
       } catch (error) {
-        console.error('Error applying theme after page load:', error);
+        console.error('Error reapplying theme after load:', error);
       }
     });
     
@@ -709,8 +999,19 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Get the current URL from the webview
       const currentUrl = activeWebview.getAttribute('src');
-        // Update address bar
+      
+      // Update address bar
       updateAddressBar(currentUrl, tabId);
+      
+      // Update bookmark button
+      try {
+        const actualUrl = activeWebview.getURL ? activeWebview.getURL() : currentUrl;
+        if (actualUrl) {
+          updateBookmarkButton(actualUrl);
+        }
+      } catch (error) {
+        console.error('Error updating bookmark button in setActiveTab:', error);
+      }
       
       // Only update navigation buttons if webview is ready
       if (activeWebview.isConnected && typeof activeWebview.canGoBack === 'function') {
@@ -827,13 +1128,11 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       if (!url) {
         addressProtocol.innerHTML = '<i class="fa-solid fa-globe"></i>';
-        statusSecurity.innerHTML = '<div class="security-icon"><i class="fa-solid fa-globe"></i></div><span id="security-text">New Tab</span>';
+        statusSecurity.innerHTML = '<div class="security-icon"><i class="fa-solid fa-globe"></i></div><span id="security-text">New Tab</span>'; // Fixed: Unterminated string literal
         return;
       }
-
       // Clear previous classes
       addressProtocol.className = 'address-protocol';
-      
       // Determine protocol
       if (url.startsWith('https://')) {
         addressProtocol.innerHTML = '<i class="fa-solid fa-lock"></i>';
@@ -867,14 +1166,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update navigation buttons state (back/forward)
   function updateNavigationButtons(tabId) {
     const webview = document.querySelector(`#webview-${tabId}`);
-    
     if (!webview) {
       console.error('No webview found for tab:', tabId);
       backButton.classList.add('disabled');
       forwardButton.classList.add('disabled');
       return;
     }
-    
     try {
       // Check if DOM is ready and methods are available
       if (!webview.isConnected || typeof webview.canGoBack !== 'function') {
@@ -883,14 +1180,12 @@ document.addEventListener('DOMContentLoaded', () => {
         forwardButton.classList.add('disabled');
         return;
       }
-      
       // Back button
       if (webview.canGoBack()) {
         backButton.classList.remove('disabled');
       } else {
         backButton.classList.add('disabled');
       }
-      
       // Forward button
       if (webview.canGoForward()) {
         forwardButton.classList.remove('disabled');
@@ -903,23 +1198,21 @@ document.addEventListener('DOMContentLoaded', () => {
       backButton.classList.add('disabled');
       forwardButton.classList.add('disabled');
     }
-  }  // Navigate to a URL in the current tab
+  }
+
+  // Navigate to a URL in the current tab
   function navigateTo(url, tabId) {
     // If no tabId is provided, use the current tab
     const targetTabId = tabId || currentTabId;
-    
     // Process URL
     url = processUrl(url);
     console.log('Navigating to processed URL:', url);
-    
     // Get the webview
     const webview = document.querySelector(`#webview-${targetTabId}`);
-    
     if (webview) {
       // Update UI first to show immediate feedback
       updateAddressBar(url, targetTabId);
       updateTabStatus(targetTabId, 'loading');
-      
       // Use safe loading method
       if (!safeLoadURL(webview, url)) {
         statusText.textContent = 'Navigation failed';
@@ -932,56 +1225,46 @@ document.addEventListener('DOMContentLoaded', () => {
   // Process URL (add protocol if missing, handle search, etc.)
   function processUrl(url) {
     url = url.trim();
-    
     // Handle special URLs
     if (url.startsWith('about:') || url.startsWith('chrome:')) {
       return url;
     }
-    
     // Check if it's a valid URL
-    if (url.startsWith('http://') || url.startsWith('https://') || 
-        url.startsWith('gkp://') || url.startsWith('gkps://') || 
-        url.startsWith('file://')) {
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('gkp://') || url.startsWith('gkps://') || url.startsWith('file://')) {
       return url;
     }
-    
     // Check if it's an IP address
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/;
     if (ipRegex.test(url)) {
       return 'http://' + url;
     }
-    
     // Check if it looks like a domain (contains a dot and no spaces)
     if (url.includes('.') && !url.includes(' ') && !/\s/.test(url)) {
       return 'https://' + url;
     }
-    
     // Get search engine from settings
     const settings = window.api.getSettings();
     const searchEngine = settings.searchEngine || 'https://www.google.com/search?q=';
-    
     // Treat as a search query
     return searchEngine + encodeURIComponent(url);
-  }  // Process URL and navigate
+  }
+
+  // Process URL and navigate
   function handleNavigation(url) {
     console.log('handleNavigation called with:', url);
-    
     // Get the current tab's webview
     const tab = tabs.find(tab => tab.id === currentTabId);
     if (!tab || !tab.webview) {
       console.error('No active tab found');
       return;
     }
-    
     try {
       // Process the URL (make sure it's properly formatted)
       const processedUrl = processUrl(url);
       console.log('Processed URL:', processedUrl);
-      
       // Update UI first to show immediate feedback
       updateAddressBar(processedUrl, currentTabId);
       updateTabStatus(currentTabId, 'loading');
-      
       // Use safe loading method
       if (!safeLoadURL(tab.webview, processedUrl)) {
         statusText.textContent = 'Navigation failed';
@@ -990,19 +1273,18 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Navigation error:', error);
       statusText.textContent = 'Navigation failed';
     }
-  }  // Update webview methods to use consistent loadURL and error handling
+  }
+
+  // Update webview methods to use consistent loadURL and error handling
   function safeLoadURL(webview, url) {
     console.log(`Attempting to load URL: ${url}`);
-    
     if (!webview) {
       console.error('No webview provided');
       return false;
     }
-
     try {
       // Ensure the URL is processed
       url = processUrl(url);
-      
       // Try direct navigation first if the webview is connected and loadURL is available
       if (webview.isConnected && typeof webview.loadURL === 'function') {
         // Use loadURL if the webview is ready
@@ -1031,7 +1313,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
       } catch (finalError) {
         console.error(`Complete failure loading URL: ${finalError.message}`);
-        
         // Extreme fallback: try to reload the webview with the new URL
         try {
           setTimeout(() => {
@@ -1112,495 +1393,181 @@ document.addEventListener('DOMContentLoaded', () => {
   function clearAddressBar() {
     addressBar.value = '';
     addressBar.focus();
-  }  // Apply theme to a specific webview
-  function applyThemeToWebview(webview, themeId) {
-    if (!webview || !webview.isConnected) {
-      console.error('Cannot apply theme to invalid webview');
-      return false;
+  }
+
+  // Toggle incognito mode
+  function toggleIncognitoMode() {
+    isIncognito = window.api.toggleIncognitoMode();
+    if (isIncognito) {
+      incognitoButton.classList.add('incognito-active');
+      statusText.textContent = 'Incognito Mode: ON';
+      setTimeout(() => {
+        if (isIncognito) {
+          statusText.textContent = 'Ready (Incognito)';
+        }
+      }, 2000);
+    } else {
+      incognitoButton.classList.remove('incognito-active');
+      statusText.textContent = 'Incognito Mode: OFF';
+      setTimeout(() => {
+        if (!isIncognito) {
+          statusText.textContent = 'Ready';
+        }
+      }, 2000);
     }
-    
+  }
+
+  // Load bookmarks from storage
+  function loadBookmarks() {
     try {
-      const theme = getThemeObject(themeId);
-      if (!theme) {
-        console.error('Invalid theme:', themeId);
-        return false;
+      bookmarks = window.api.getBookmarks();
+      return bookmarks;
+    } catch (error) {
+      console.error('Error loading bookmarks:', error);
+      return [];
+    }
+  }
+
+  // Render bookmarks in the bookmarks bar
+  function renderBookmarksBar() {
+    const bookmarksBar = document.getElementById('bookmarks-bar');
+    if (!bookmarksBar) return;
+    
+    // Clear current bookmarks
+    bookmarksBar.innerHTML = '';
+    
+    // Add bookmark button
+    const addBookmarkButton = document.createElement('div');
+    addBookmarkButton.className = 'add-bookmark-button';
+    addBookmarkButton.innerHTML = '<i class="fa-solid fa-plus"></i>';
+    addBookmarkButton.title = 'Add current page to bookmarks';
+    addBookmarkButton.addEventListener('click', () => {
+      const activeWebview = document.querySelector(`#webview-${currentTabId}`);
+      if (activeWebview) {
+        const url = activeWebview.getURL();
+        const title = getTabTitle(currentTabId);
+        let favicon = null;
+        const tab = tabs.find(tab => tab.id === currentTabId);
+        if (tab && tab.favicon) {
+          favicon = tab.favicon;
+        }
+        window.api.addBookmark(url, title, favicon);
+        loadBookmarks();
+        renderBookmarksBar();
+        updateBookmarkButton(url);
+      }
+    });
+    bookmarksBar.appendChild(addBookmarkButton);
+    
+    // Show top 5 bookmarks
+    const topBookmarks = bookmarks.slice(0, 5);
+    
+    topBookmarks.forEach(bookmark => {
+      const bookmarkItem = document.createElement('div');
+      bookmarkItem.className = 'bookmark-item';
+      bookmarkItem.title = bookmark.title;
+      bookmarkItem.setAttribute('data-url', bookmark.url);
+      
+      // Favicon or fallback icon
+      if (bookmark.favicon) {
+        bookmarkItem.innerHTML = `<img src="${bookmark.favicon}" alt="" onerror="this.onerror=null;this.src='';this.innerHTML='<i class=\\'fa-solid fa-globe\\'></i>';">
+                                <span>${bookmark.title}</span>`;
+      } else {
+        bookmarkItem.innerHTML = `<i class="fa-solid fa-globe"></i>
+                                <span>${bookmark.title}</span>`;
       }
       
-      // Generate CSS variables string
-      const cssVars = Object.entries(theme.colors)
-        .map(([key, value]) => `--${key}: ${value};`)
-        .join('\n');
-      
-      // Apply theme to webview
-      return webview.executeJavaScript(`
-        (function() {
-          try {
-            // Apply to root element
-            const root = document.documentElement;
-            const style = document.createElement('style');
-            style.textContent = ':root { ${cssVars} }';
-            document.head.appendChild(style);
-            
-            // Set theme attributes
-            root.setAttribute('data-theme', '${themeId}');
-            document.body.setAttribute('data-theme', '${themeId}');
-            
-            // Update theme marker
-            let marker = document.getElementById('gekko-theme-marker');
-            if (!marker) {
-              marker = document.createElement('meta');
-              marker.id = 'gekko-theme-marker';
-              marker.setAttribute('name', 'theme');
-              document.head.appendChild(marker);
-            }
-            marker.setAttribute('content', '${themeId}');
-            
-            // Update any icons with the accent color
-            const accentColor = '${theme.colors.accent}';
-            document.querySelectorAll('.shortcut-icon i, .card-icon i, .setting-icon i')
-              .forEach(icon => icon.style.color = accentColor);
-            } else {
-              // Fallback for older pages
-              document.documentElement.setAttribute('data-theme', '${themeId}');
-              const style = document.createElement('style');
-              style.textContent = ':root { ${cssVars} }';
-              document.head.appendChild(style);
-              
-              // Update theme marker
-              let themeMarker = document.getElementById('gkp-theme-applied');
-              if (!themeMarker) {
-                themeMarker = document.createElement('div');
-                themeMarker.id = 'gkp-theme-applied';
-                themeMarker.style.display = 'none';
-                document.body.appendChild(themeMarker);
-              }
-              themeMarker.setAttribute('data-theme', '${themeId}');
-            }
-
-            // Apply to any .shortcut-icon or .card-icon elements for consistent accent colors
-            const iconColorMap = {
-              'dark': '#8ab4f8',
-              'light': '#1a73e8',
-              'purple': '#b388ff',
-              'blue': '#64b5f6',
-              'red': '#ff8a80'
-            };
-              const accentColor = iconColorMap['${themeId}'] || theme.colors.accent || iconColorMap.dark;
-            document.querySelectorAll('.shortcut-icon i, .card-icon i, .setting-icon i').forEach(icon => {
-              icon.style.color = accentColor;
-            });
-            
-            console.log('Theme applied:', '${themeId}');
-            return true;
-          } catch (e) {
-            console.error('Error applying theme in webview:', e);
-            return false;
-          }
-        })();
-      `).catch(error => {
-        console.error('Failed to execute theme script in webview:', error);
-        return false;
+      // Add click event to navigate
+      bookmarkItem.addEventListener('click', () => {
+        navigateTo(bookmark.url);
       });
       
-      return true;
-    } catch (error) {
-      console.error('Error applying theme to webview:', error);
-      return false;
-    }
-  }    // Get a theme object by ID
-  function getThemeObject(themeId) {
-    try {
-      // Get themes from window.api
-      let themes = window.api.getThemes();
-        // Handle case where themes is undefined
-      if (!themes || typeof themes !== 'object') {
-        console.warn('Invalid themes object, using fallback themes');
-        themes = getFallbackThemes();
-      }
-
-      // If the requested theme exists and is valid, return it
-      if (themes[themeId] && themes[themeId].colors && typeof themes[themeId].colors === 'object') {
-        return themes[themeId];
-      }
-
-      // If dark theme is available and valid, use it as fallback
-      if (themes.dark && themes.dark.colors && typeof themes.dark.colors === 'object') {
-        console.warn(`Theme ${themeId} not found, falling back to dark theme`);
-        return themes.dark;
-      }
-
-      // Ultimate fallback - basic dark theme
-      console.warn('Using basic dark theme as fallback');
-      return {
-        name: 'Dark Theme',
-        colors: {
-          primary: '#202124',
-          secondary: '#303134',
-          accent: '#8ab4f8',
-          textPrimary: '#e8eaed',
-          textSecondary: '#9aa0a6',
-          divider: '#3c4043',
-          background: '#202124',
-          card: '#303134',
-          error: '#f28b82',
-          warning: '#fdd663',
-          success: '#81c995',
-          secure: '#81c995',
-          insecure: '#f28b82'
-        }
-      };
-    } catch (error) {
-      console.error('Error getting theme:', error);
-      // Return basic dark theme on error
-      return {
-        name: 'Dark Theme',
-        colors: {
-          primary: '#202124',
-          secondary: '#303134',
-          accent: '#8ab4f8',
-          textPrimary: '#e8eaed',
-          textSecondary: '#9aa0a6',
-          divider: '#3c4043',
-          background: '#202124',
-          card: '#303134',
-          error: '#f28b82',
-          warning: '#fdd663',
-          success: '#81c995',
-          secure: '#81c995',
-          insecure: '#f28b82'
-        }
-      };
-    }
+      bookmarksBar.appendChild(bookmarkItem);
+    });
   }
 
-  // Get fallback themes when API themes are not available
-  function getFallbackThemes() {
-    return {
-      dark: {
-        name: 'Dark Theme',
-        colors: {
-          primary: '#202124',
-          secondary: '#303134',
-          accent: '#8ab4f8',
-          textPrimary: '#e8eaed',
-          textSecondary: '#9aa0a6',
-          divider: '#3c4043',
-          background: '#202124',
-          card: '#303134',
-          error: '#f28b82',
-          warning: '#fdd663',
-          success: '#81c995',
-          secure: '#81c995',
-          insecure: '#f28b82'
-        }
-      },
-      light: {
-        name: 'Light Theme',
-        colors: {
-          primary: '#f8f9fa',
-          secondary: '#ffffff',
-          accent: '#1a73e8',
-          textPrimary: '#202124',
-          textSecondary: '#5f6368',
-          divider: '#dadce0',
-          background: '#f8f9fa',
-          card: '#ffffff',
-          error: '#ea4335',
-          warning: '#fbbc04',
-          success: '#34a853',
-          secure: '#34a853',
-          insecure: '#ea4335'
-        }
-      },
-      red: {
-        name: 'Red Theme',
-        colors: {
-          primary: '#3c1014',
-          secondary: '#541b1f',
-          accent: '#ff8a80',
-          textPrimary: '#e8eaed',
-          textSecondary: '#9aa0a6',
-          divider: '#661e24',
-          background: '#3c1014',
-          card: '#541b1f',
-          error: '#f28b82',
-          warning: '#fdd663',
-          success: '#81c995',
-          secure: '#81c995',
-          insecure: '#f28b82'
-        }
-      }
-    };
-  }
-  // Apply theme to entire browser UI
-  async function applyTheme(themeId) {
-    console.group('Apply Theme');
-    console.log('Theme application requested:', themeId);
+  // Update the bookmark button state based on whether the current URL is bookmarked
+  function updateBookmarkButton(url) {
+    const bookmarkButton = document.getElementById('bookmark-page-button');
+    if (!bookmarkButton) {
+      console.warn('Bookmark button not found in DOM');
+      return;
+    }
     
-    if (!themeId) {
-      console.error('No theme ID provided');
-      themeId = 'dark';
-      console.log('Falling back to dark theme');
+    // Skip protocol pages and empty URLs
+    if (!url || url.startsWith('gkp://') || url === 'about:blank') {
+      console.log('Skipping bookmark button update for special URL:', url);
+      bookmarkButton.innerHTML = '<i class="fa-regular fa-star"></i>';
+      bookmarkButton.classList.remove('bookmarked');
+      bookmarkButton.setAttribute('title', 'Cannot bookmark this page');
+      bookmarkButton.classList.add('disabled');
+      return;
+    } else {
+      // Make sure the button is enabled for normal URLs
+      bookmarkButton.classList.remove('disabled');
     }
-
-    // Skip if theme hasn't changed
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    if (currentTheme === themeId) {
-      console.log('Theme already applied, skipping');
+    
+    try {
+      console.log('Checking bookmark status for:', url);
+      const isBookmarked = window.api.isBookmarked(url);
+      
+      if (isBookmarked) {
+        console.log('URL is bookmarked, updating button state');
+        bookmarkButton.innerHTML = '<i class="fa-solid fa-star"></i>';
+        bookmarkButton.classList.add('bookmarked');
+        bookmarkButton.setAttribute('title', 'Remove from bookmarks');
+      } else {
+        console.log('URL is not bookmarked, updating button state');
+        bookmarkButton.innerHTML = '<i class="fa-regular fa-star"></i>';
+        bookmarkButton.classList.remove('bookmarked');
+        bookmarkButton.setAttribute('title', 'Add to bookmarks');
+      }
+    } catch (error) {
+      console.error('Error updating bookmark button:', error);
+      bookmarkButton.innerHTML = '<i class="fa-regular fa-star"></i>';
+      bookmarkButton.classList.remove('bookmarked');
+      bookmarkButton.setAttribute('title', 'Bookmark functionality unavailable');
+    }
+  }  // Listen for settings updates
+  const handleSettingsUpdate = (settings) => {
+    console.group('Settings Update');
+    console.log('Settings update received:', settings);
+    
+    // Skip update if settings haven't changed
+    if (cachedSettings && JSON.stringify(cachedSettings) === JSON.stringify(settings)) {
+      console.log('Settings unchanged, skipping update');
       console.groupEnd();
       return;
     }
-
-    try {
-      const theme = getThemeObject(themeId);
-      if (!theme) {
-        console.error('Could not get theme object for:', themeId);
-        console.groupEnd();
-        return;
-      }
-      console.log('Theme object retrieved:', { name: theme.name, colors: Object.keys(theme.colors) });
-
-      // Apply CSS variables to main browser UI gradually to prevent freezing
-      console.log('Applying theme to browser UI');
-      const root = document.documentElement;
-      const colorBatches = Object.entries(theme.colors);
-      const batchSize = 5;
-
-      for (let i = 0; i < colorBatches.length; i += batchSize) {
-        const batch = colorBatches.slice(i, i + batchSize);
-        await new Promise(resolve => {
-          requestAnimationFrame(() => {
-            batch.forEach(([key, value]) => {
-              root.style.setProperty(`--${key}`, value);
-            });
-            resolve();
-          });
-        });
-      }
-
-      // Set theme attributes
-      root.setAttribute('data-theme', themeId);
-      document.body.setAttribute('data-theme', themeId);
-
-      // Apply to all webviews gradually
-      console.log('Applying theme to webviews');
-      const activeWebviews = Array.from(document.querySelectorAll('webview'))
-        .filter(webview => webview.isConnected);
-
-      // Update webviews in batches to prevent overwhelming the browser
-      const webviewBatchSize = 2;
-      for (let i = 0; i < activeWebviews.length; i += webviewBatchSize) {
-        const batch = activeWebviews.slice(i, i + webviewBatchSize);
-        await Promise.all(batch.map(webview => {
-          return new Promise(async (resolve) => {
-            try {
-              await applyThemeToWebview(webview, themeId);
-            } catch (error) {
-              console.error('Error applying theme to webview:', error);
-            }
-            resolve();
-          });
-        }));
-
-        // Small delay between batches
-        if (i + webviewBatchSize < activeWebviews.length) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-      }
-
-      // Check if theme has changed in storage
-      const storedTheme = localStorage.getItem('gekko-theme');
-      if (storedTheme !== themeId) {
-        // Save theme with the theme storage manager
-        const success = await themeStorage.saveTheme(themeId);
-        if (!success) {
-          console.warn('Theme storage save failed');
-        }
-      } else {
-        console.log('Theme already saved in storage, skipping save');
-      }
-
-      console.log('Theme application complete');
+    
+    // Debounce settings updates
+    const now = Date.now();
+    if (window._lastSettingsUpdateTime && (now - window._lastSettingsUpdateTime < 300)) {
+      console.log('Settings update debounced, too frequent');
       console.groupEnd();
-    } catch (error) {
-      console.error('Error applying theme:', error);
-      console.groupEnd();
-    }
-  }
-
-  // Apply theme to individual webview with retries
-  async function applyThemeToWebview(webview, themeId) {
-    if (!webview || !webview.isConnected) {
-      console.warn('Cannot apply theme to invalid webview');
-      return false;
+      return;
     }
     
-    const theme = getThemeObject(themeId);
-    if (!theme) {
-      console.error('Invalid theme:', themeId);
-      return false;
-    }
-
-    // Generate CSS variables string - escape values to prevent injection
-    const cssVars = Object.entries(theme.colors)
-      .map(([key, value]) => `--${key}: ${value.replace(/["\\]/g, '\\$&')};`)
-      .join(' ');
-
-    // Try up to 3 times with delays
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const success = await webview.executeJavaScript(`
-          (function() {
-            try {
-              // Clear any existing theme styles
-              document.querySelectorAll('style[data-gekko-theme]').forEach(s => s.remove());
-
-              // Add new theme styles
-              const style = document.createElement('style');
-              style.setAttribute('data-gekko-theme', ${JSON.stringify(themeId)});
-              style.textContent = ':root { ${cssVars} }';
-              document.head.appendChild(style);
-
-              // Set theme attributes
-              document.documentElement.setAttribute('data-theme', ${JSON.stringify(themeId)});
-              document.body.setAttribute('data-theme', ${JSON.stringify(themeId)});
-
-              // Update theme marker
-              let marker = document.getElementById('gekko-theme-marker');
-              if (!marker) {
-                marker = document.createElement('meta');
-                marker.id = 'gekko-theme-marker';
-                marker.setAttribute('name', 'theme');
-                document.head.appendChild(marker);
-              }
-              marker.setAttribute('content', ${JSON.stringify(themeId)});
-
-              // Update icons with theme colors
-              const iconColorMap = ${JSON.stringify({
-                dark: '#8ab4f8',
-                light: '#1a73e8',
-                purple: '#b388ff',
-                blue: '#64b5f6',
-                red: '#ff8a80'
-              })};
-              const accentColor = iconColorMap[${JSON.stringify(themeId)}] || ${JSON.stringify(theme.colors.accent)} || iconColorMap.dark;
-              document.querySelectorAll('.shortcut-icon i, .card-icon i, .setting-icon i').forEach(icon => {
-                icon.style.color = accentColor;
-              });
-
-              return true;
-            } catch (e) {
-              console.error('Error applying theme in webview:', e);
-              return false;
-            }
-          })();
-        `);
-
-        if (success) {
-          return true;
-        }
-      } catch (error) {
-        console.warn('Theme application attempt ' + attempt + ' failed:', error);
-        if (attempt < 3) {
-          await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, attempt - 1)));
-        }
-      }
-    }
-
-    return false;
-  }
-
-  // Handle navigation from webviews
-window.api.on('navigate', (event, url) => {
-  console.log('Navigation request received:', url);
-  try {
-    // Get the active tab's webview
-    const activeTab = document.querySelector('.browser-tab.active');
-    if (activeTab) {
-      const webview = document.querySelector(`webview[data-tab-id="${activeTab.dataset.tabId}"]`);
-      if (webview) {
-        console.log('Navigating webview to:', url);
-        webview.loadURL(url);
-      }
-    } else {
-      // If no active tab, create a new one
-      console.log('No active tab found, creating new tab');
-      createTab(url);
-    }
-  } catch (error) {
-    console.error('Navigation error:', error);
-  }
-});
-
-// Handle navigation from main process
-window.api.onNavigate((url) => {
-  console.log('Navigation from main process:', url);
-  try {
-    // Process the URL first to ensure it's valid
-    url = processUrl(url);
-    console.log('Processed URL:', url);
+    // Update cached settings and time
+    window._lastSettingsUpdateTime = now;
+    cachedSettings = settings;
     
-    // Find the active tab - different elements might have the active class
-    let activeTab = document.querySelector('.tab.active');
-    if (!activeTab) {
-      activeTab = document.querySelector('[data-tab-id].active');
-    }
-    
-    if (activeTab) {
-      const tabId = activeTab.getAttribute('data-tab-id');
-      console.log('Active tab ID:', tabId);
-      
-      // Try multiple selector patterns to find the webview
-      let webview = document.querySelector(`#webview-${tabId}`);
-      if (!webview) {
-        webview = document.querySelector(`webview[data-tab-id="${tabId}"]`);
-      }
-      
-      if (webview) {
-        console.log('Navigating webview to:', url);
-        try {
-          // First try direct loadURL
-          if (webview.loadURL) {
-            webview.loadURL(url);
-          } else {
-            // Fallback to setAttribute
-            webview.setAttribute('src', url);
-          }
-          console.log('Navigation command sent');
-        } catch (navError) {
-          console.error('Direct navigation failed:', navError);
-          safeLoadURL(webview, url);
-        }
+    // Apply theme if changed
+    if (settings.theme) {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      if (currentTheme !== settings.theme) {
+        console.log('Theme changed from settings update, applying:', settings.theme);
+        applyTheme(settings.theme);
       } else {
-        console.error('No webview found for active tab');
-        console.log('All tabs:', document.querySelectorAll('[data-tab-id]'));
-        console.log('All webviews:', document.querySelectorAll('webview'));
-        
-        // Try to find any webview as fallback
-        const anyWebview = document.querySelector('webview');
-        if (anyWebview) {
-          console.log('Using fallback webview');
-          safeLoadURL(anyWebview, url);
-        } else {
-          // Last resort: create new tab
-          createTab(url);
-        }
+        console.log('Theme unchanged, skipping application');
       }
-    } else {
-      // If no active tab, create a new one
-      console.log('No active tab found, creating new tab');
-      createTab(url);
     }
-  } catch (error) {
-    console.error('Navigation error:', error);
-    // Last resort: Try to create a new tab with the URL
-    try {
-      createTab(url);
-    } catch (finalError) {
-      console.error('Failed to create tab:', finalError);
-    }
+    
+    console.groupEnd();
+  };
+
+  // Register the settings update handler
+  if (window.api && typeof window.api.onSettingsUpdated === 'function') {
+    window.api.onSettingsUpdated(handleSettingsUpdate);
   }
-});
-  
-// Close DOMContentLoaded event listener
 });

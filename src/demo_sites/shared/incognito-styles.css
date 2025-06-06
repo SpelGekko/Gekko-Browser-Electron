@@ -1,0 +1,14 @@
+/* Incognito mode styles */
+.address-bar-container.incognito-mode {
+  background-color: rgba(30, 30, 30, 0.8);
+  border: 1px solid #555;
+}
+
+.incognito-active {
+  color: #6200ea !important;
+  background-color: rgba(98, 0, 234, 0.1);
+}
+
+.incognito-active i {
+  color: #6200ea !important;
+}

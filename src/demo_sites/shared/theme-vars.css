@@ -1,18 +1,26 @@
 /* Theme Variables */
 :root {
-  /* These will be set by theme-utils.js */
-  --background: #202124;
-  --card-background: #303134;
-  --text-color: #e8eaed;
-  --accent-color: #8ab4f8;
-  --text-secondary: #9aa0a6;
-  --border-color: #3c4043;
-  --shadow-color: rgba(0, 0, 0, 0.3);
+  /* Theme variables that will be set by theme-utils.js */
+  --background: var(--primary, #202124);
+  --card-background: var(--secondary, #303134);
+  --text-color: var(--textPrimary, #e8eaed);
+  --accent-color: var(--accent, #8ab4f8);
+  --text-secondary: var(--textSecondary, #9aa0a6);
+  --border-color: var(--divider, #3c4043);
+  --shadow-color: var(--shadow, rgba(0, 0, 0, 0.3));
+  --button-color: var(--button, #303134);
+  --button-hover: var(--buttonHover, #3c4043);
+  --button-text: var(--buttonText, #e8eaed);
 
-  /* Map theme variables to existing names */
+  /* Legacy variable mapping */
   --primary-color: var(--accent-color);
   --secondary-color: var(--card-background);
   --background-color: var(--background);
+
+  /* Additional common variables */
+  --success-color: var(--success, #81c995);
+  --error-color: var(--error, #f28b82);
+  --warning-color: var(--warning, #fdd663);
 }
 
 /* Theme-specific styles */

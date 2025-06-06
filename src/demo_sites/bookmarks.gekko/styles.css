@@ -1,0 +1,144 @@
+/* Bookmarks page styles */
+
+.bookmarks-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.bookmarks-search {
+  position: relative;
+  flex: 1;
+  max-width: 500px;
+}
+
+.bookmarks-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--textSecondary);
+}
+
+.bookmarks-search-input {
+  width: 100%;
+  padding: 10px 10px 10px 35px;
+  border-radius: 20px;
+  border: 1px solid var(--divider);
+  background-color: var(--secondary);
+  color: var(--textPrimary);
+  font-size: 14px;
+}
+
+.bookmarks-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.bookmarks-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.bookmark-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--divider);
+  transition: background-color 0.2s;
+}
+
+.bookmark-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.bookmark-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 15px;
+  flex-shrink: 0;
+}
+
+.bookmark-icon img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.bookmark-icon i {
+  font-size: 16px;
+  color: var(--textSecondary);
+}
+
+.bookmark-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.bookmark-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--textPrimary);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmark-url {
+  font-size: 12px;
+  color: var(--textSecondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmark-date {
+  font-size: 11px;
+  color: var(--textSecondary);
+  margin-top: 4px;
+}
+
+.bookmark-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 16px;
+}
+
+.bookmark-action-button {
+  background: transparent;
+  border: none;
+  color: var(--textSecondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.bookmark-action-button:hover {
+  background-color: var(--secondary);
+  color: var(--textPrimary);
+}
+
+.bookmark-action-button[data-action="remove"]:hover {
+  color: var(--error);
+}
+
+#bookmarks-empty {
+  text-align: center;
+  padding: 30px;
+  color: var(--textSecondary);
+}
+
+#bookmarks-empty p {
+  margin: 8px 0;
+}

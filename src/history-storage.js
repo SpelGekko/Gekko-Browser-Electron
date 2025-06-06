@@ -68,8 +68,27 @@ const saveHistory = (history) => {
   }
 };
 
+// Flag to track incognito mode
+let isIncognitoMode = false;
+
+// Toggle incognito mode
+const toggleIncognitoMode = () => {
+  isIncognitoMode = !isIncognitoMode;
+  return isIncognitoMode;
+};
+
+// Get incognito mode status
+const getIncognitoMode = () => {
+  return isIncognitoMode;
+};
+
 // Add an entry to history
 const addHistoryEntry = (url, title) => {
+  // Skip history recording if in incognito mode
+  if (isIncognitoMode) {
+    return true;
+  }
+  
   const history = loadHistory();
   
   // Create new entry
@@ -105,5 +124,7 @@ module.exports = {
   addHistoryEntry,
   clearHistory,
   getHistory,
-  ensureHistoryFile
+  ensureHistoryFile,
+  toggleIncognitoMode,
+  getIncognitoMode
 };

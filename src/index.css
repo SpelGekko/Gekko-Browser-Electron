@@ -376,6 +376,15 @@ body, html {
   color: var(--navIconHover);
 }
 
+.address-bar-action.bookmarked {
+  color: var(--accent);
+}
+
+.address-bar-action.bookmarked:hover {
+  background-color: var(--buttonHover);
+  color: var(--accent);
+}
+
 .browser-actions {
   display: flex;
   align-items: center;
@@ -907,5 +916,89 @@ body, html {
 .font-load-error .fa-window-maximize:before { content: "□"; }
 .font-load-error .fa-solid.fa-plus:before, 
 .font-load-error .fa-plus:before { content: "+"; }
+/* Bookmarks Bar */
+.bookmarks-bar {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  background-color: var(--secondary);
+  border-bottom: 1px solid var(--divider);
+  padding: 0 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.bookmarks-bar::-webkit-scrollbar {
+  height: 3px;
+}
+
+.bookmarks-bar::-webkit-scrollbar-thumb {
+  background-color: var(--divider);
+  border-radius: 3px;
+}
+
+.bookmark-item {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  margin-right: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--textPrimary);
+  transition: background-color 0.2s ease;
+  font-size: 12px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmark-item:hover {
+  background-color: var(--buttonHover);
+}
+
+.bookmark-item img {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  object-fit: contain;
+}
+
+.bookmark-item i {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-bookmark-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--navIcon);
+  transition: background-color 0.2s ease;
+}
+
+.add-bookmark-button:hover {
+  background-color: var(--buttonHover);
+  color: var(--navIconHover);
+}
+
+/* Incognito Mode */
+.incognito-active {
+  background-color: rgba(128, 0, 128, 0.2);
+  color: var(--accent);
+}
+
+.incognito-active:hover {
+  background-color: rgba(128, 0, 128, 0.3);
+}
 
 /* Import Fonts */

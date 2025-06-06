@@ -40,6 +40,56 @@ contextBridge.exposeInMainWorld("api", {
     }
   },
 
+  // History management
+  getHistory: () => {
+    try {
+      return ipcRenderer.sendSync('get-history');
+    } catch (error) {
+      console.error('Error getting history:', error);
+      return [];
+    }
+  },
+  
+  clearHistory: () => {
+    ipcRenderer.send('clear-history');
+  },
+  
+  getIncognitoMode: () => {
+    try {
+      return ipcRenderer.sendSync('get-incognito-mode');
+    } catch (error) {
+      console.error('Error getting incognito mode:', error);
+      return false;
+    }
+  },
+  
+  // Bookmarks management
+  getBookmarks: () => {
+    try {
+      return ipcRenderer.sendSync('get-bookmarks');
+    } catch (error) {
+      console.error('Error getting bookmarks:', error);
+      return [];
+    }
+  },
+  
+  addBookmark: (url, title, favicon) => {
+    ipcRenderer.send('add-bookmark', url, title, favicon);
+  },
+  
+  removeBookmark: (url) => {
+    ipcRenderer.send('remove-bookmark', url);
+  },
+  
+  isBookmarked: (url) => {
+    try {
+      return ipcRenderer.sendSync('is-bookmarked', url);
+    } catch (error) {
+      console.error('Error checking bookmark status:', error);
+      return false;
+    }
+  },
+
   setSetting: (key, value) => {
     console.group('Set Setting');
     console.log("Setting", key, "to:", value);

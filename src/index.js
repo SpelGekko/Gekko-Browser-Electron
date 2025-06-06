@@ -3,6 +3,7 @@ const path = require('path');
 const registerProtocolHandlers = require('./protocol-handlers');
 const historyStorage = require('./history-storage');
 const settingsStorage = require('./settings-storage');
+const bookmarksStorage = require('./bookmarks-storage');
 
 // Cache settings in memory
 let cachedSettings = null;
@@ -240,6 +241,33 @@ ipcMain.on('clear-history', () => {
   historyStorage.clearHistory();
 });
 
+// Incognito mode handlers
+ipcMain.on('toggle-incognito-mode', (event) => {
+  const isIncognito = historyStorage.toggleIncognitoMode();
+  event.returnValue = isIncognito;
+});
+
+ipcMain.on('get-incognito-mode', (event) => {
+  event.returnValue = historyStorage.getIncognitoMode();
+});
+
+// Bookmarks handlers
+ipcMain.on('get-bookmarks', (event) => {
+  event.returnValue = bookmarksStorage.getBookmarks();
+});
+
+ipcMain.on('add-bookmark', (event, url, title, favicon) => {
+  bookmarksStorage.addBookmark(url, title, favicon);
+});
+
+ipcMain.on('remove-bookmark', (event, url) => {
+  bookmarksStorage.removeBookmark(url);
+});
+
+ipcMain.on('is-bookmarked', (event, url) => {
+  event.returnValue = bookmarksStorage.isBookmarked(url);
+});
+
 // Navigation handler
 ipcMain.on('navigate', (event, url) => {
   console.group('Main Process Navigation');
@@ -354,6 +382,7 @@ app.whenReady().then(() => {
   // Initialize history and settings storage
   historyStorage.ensureHistoryFile();
   settingsStorage.ensureSettingsFile();
+  bookmarksStorage.ensureBookmarksFile();
   
   createWindow();
 

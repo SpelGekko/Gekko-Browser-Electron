@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gekko Browser - Bookmarks</title>
+  <link rel="stylesheet" href="gkp://shared.gekko/theme-vars.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
+  <script src="gkp://shared.gekko/theme-utils.js"></script>
+</head>
+<body>
+  <div class="internal-page">
+    <div class="internal-page-header">
+      <h1 class="internal-page-title">Bookmarks</h1>
+      <p class="internal-page-subtitle">View and manage your saved bookmarks</p>
+    </div>
+    
+    <div class="internal-page-content">
+      <div class="bookmarks-controls">
+        <div class="bookmarks-search">
+          <i class="fa-solid fa-magnifying-glass bookmarks-search-icon"></i>
+          <input type="text" class="bookmarks-search-input" id="bookmarks-search" placeholder="Search bookmarks">
+        </div>
+      </div>
+      
+      <div class="card">
+        <div id="bookmarks-empty" class="hidden">
+          <p>You don't have any bookmarks yet.</p>
+          <p>Click the bookmark icon in the address bar to save a page.</p>
+        </div>
+        
+        <ul class="bookmarks-list" id="bookmarks-list">
+          <!-- Bookmarks will be populated dynamically -->
+        </ul>
+      </div>
+    </div>
+  </div>
+  <script src="bookmarks.js"></script>
+</body>
+</html>
