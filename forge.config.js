@@ -8,6 +8,9 @@ module.exports = {
     appBundleId: 'com.thorvaldrovers.gekkobrowser',
     appCategoryType: 'public.app-category.productivity',
     osxSign: {},
+    extraResource: [
+      './app-update.yml'
+    ],
     protocols: [
       {
         name: 'Gekko Protocol',

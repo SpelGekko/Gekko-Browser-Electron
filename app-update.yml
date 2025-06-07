@@ -1,0 +1,4 @@
+owner: spelgekko
+repo: Gekko-Browser-Electron
+provider: github
+updaterCacheDirName: gekko-browser-updater
