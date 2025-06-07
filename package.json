@@ -1,6 +1,5 @@
-{
-  "name": "gekko-browser",
-  "productName": "Gekko Browser",
+{  "name": "gekko-browser",
+  "productName": "GekkoBrowser",
   "version": "1.0.0",
   "description": "A modern, sleek web browser with GKP and GKPS protocol support",
   "main": "src/index.js",
@@ -29,7 +28,7 @@
   },
   "build": {
     "appID": "com.thorvaldrovers.gekkobrowser",
-    "productName": "Gekko Browser",
+    "productName": "Gekko-Browser",
     "win": {
       "target": "nsis",
       "icon": "assets/icons/icon.ico",
