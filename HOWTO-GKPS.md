@@ -142,7 +142,7 @@ When using GKPS:
 
 ## Testing Your URLs
 
-You can test GKP and GKPS URLs using the protocol tester at:
+You can test GKP and GKPS URLs using the protocol tester at: [This will work in the Future, not at this moment as the GKP:// and GKPS:// protocols are internal only for now.]
 ```
 http://localhost:3000
 ```
