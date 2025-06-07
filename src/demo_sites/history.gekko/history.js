@@ -25,7 +25,7 @@ function formatDate(timestamp) {
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (date.toDateString() === yesterday.toDateString()) {
-    return `Yesterday at ${date.toDateString()}`; // Changed this slightly for consistency, if yesterday just date.
+    return `Yesterday at ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
   }
 
   // Otherwise, show full date
@@ -122,18 +122,30 @@ function renderHistory(itemsToDisplay) {
 
       historyList.appendChild(historyItem);
 
+      // Use the direct navigation API consistent with bookmarks.js
       historyItem.addEventListener('click', () => {
         try {
-          console.log('Navigating to:', item.url);
-          if (window.parent && window.parent.postMessage) {
-            window.parent.postMessage({
-              type: 'navigate',
-              url: item.url,
-              target: '_blank'
-            }, '*');
+          console.log('Navigating directly to:', item.url);
+          // Check if window.navigation and window.navigation.navigate are available
+          if (window.navigation && typeof window.navigation.navigate === 'function') {
+            window.navigation.navigate(item.url);
+            console.log('Direct navigation initiated.');
+          } else {
+            console.warn('window.navigation.navigate is not available. Falling back to postMessage (if configured).');
+            // Fallback to postMessage, though direct navigation is preferred if available
+            if (window.parent && typeof window.parent.postMessage === 'function') {
+                window.parent.postMessage({
+                  type: 'navigate',
+                  url: item.url,
+                  target: '_blank'
+                }, '*');
+                console.log('Fallback: Navigation message sent to parent.');
+            } else {
+                console.error('Neither window.navigation.navigate nor window.parent.postMessage are available for navigation.');
+            }
           }
         } catch (error) {
-          console.error('Navigation error:', error);
+          console.error('Error during navigation attempt in history.js:', error);
         }
       });
     });

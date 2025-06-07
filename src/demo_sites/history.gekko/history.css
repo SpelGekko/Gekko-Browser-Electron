@@ -224,7 +224,7 @@
 }
 
 .hidden {
-  display: none !important; /* Added !important */
+  display: none !important; /* This is the critical fix for hiding elements */
 }
 
 /* Empty state styling */
