@@ -25,7 +25,7 @@ module.exports = {
       config: {
         name: 'GekkoBrowser',
         authors: 'SpelGekko',
-        iconUrl: 'https://raw.githubusercontent.com/spelgekko/Gekko-Browser-Electron/main/assets/icons/icon.ico',
+        iconUrl: 'https://raw.githubusercontent.com/Spelgekko/Gekko-Browser-Electron/main/assets/icons/icon.ico',
         setupIcon: './assets/icons/icon.ico'
       },
     },
