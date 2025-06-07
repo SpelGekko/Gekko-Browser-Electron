@@ -15,6 +15,8 @@ autoUpdater.logger.transports.file.level = 'info';
 // Configure auto-updater
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.allowDowngrade = false;
+autoUpdater.logger = log;
 
 // Cache settings in memory
 let cachedSettings = null;
