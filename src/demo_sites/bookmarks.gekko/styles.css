@@ -1,144 +1,472 @@
 /* Bookmarks page styles */
 
+/* Controls Section */
 .bookmarks-controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .bookmarks-search {
-  position: relative;
+  display: flex;
+  align-items: center;
+  background-color: var(--card-background);
+  border-radius: 10px;
+  padding: 0.5rem 1rem;
   flex: 1;
-  max-width: 500px;
+  min-width: 250px;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px var(--shadow-color);
+  position: relative;
+}
+
+.bookmarks-search:focus-within {
+  border-color: var(--accent-color); /* Consistent with history.css */
+  box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb, 138, 180, 248), 0.25); /* Consistent with history.css */
 }
 
 .bookmarks-search-icon {
   position: absolute;
-  left: 12px;
+  left: 1rem; /* Adjusted for consistency */
   top: 50%;
   transform: translateY(-50%);
-  color: var(--textSecondary);
+  color: var(--text-secondary); /* Consistent with history.css */
+  /* No margin-right here as it's absolutely positioned, padding on input handles space */
 }
 
 .bookmarks-search-input {
   width: 100%;
-  padding: 10px 10px 10px 35px;
-  border-radius: 20px;
-  border: 1px solid var(--divider);
-  background-color: var(--secondary);
-  color: var(--textPrimary);
-  font-size: 14px;
+  padding: 0.5rem 1rem 0.5rem 2.5rem; /* Adjusted padding to account for icon */
+  border-radius: 10px; /* Consistent with history.css */
+  border: none; /* Changed from 1px solid var(--divider) */
+  background: none; /* Changed from var(--secondary) to none for input */
+  color: var(--text-color); /* Consistent with history.css */
+  font-size: 1rem; /* Consistent with history.css */
 }
 
 .bookmarks-search-input:focus {
   outline: none;
-  border-color: var(--accent);
+  /* border-color handled by .bookmarks-search:focus-within */
 }
 
 .bookmarks-list {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex; /* Changed from block */
+  flex-direction: column; /* Added for vertical stacking */
+  gap: 0.75rem; /* Consistent with history.css */
+  position: relative; /* Consistent with history.css */
+  z-index: 5; /* Consistent with history.css */
 }
 
 .bookmark-item {
-  display: flex;
+  display: grid; /* Changed from flex */
+  grid-template-columns: auto minmax(0, 1fr) auto; /* Similar to history-item but with minmax for better content handling */
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--divider);
-  transition: background-color 0.2s;
+  gap: 1rem; /* Consistent with history.css */
+  padding: 1.25rem; /* Slightly more padding for better spacing with the new buttons */
+  background-color: var(--card-background); /* Consistent with history.css */
+  border-radius: 12px; /* Consistent with history.css */
+  transition: all 0.3s ease; /* Consistent with history.css */
+  cursor: pointer;
+  border: 1px solid transparent; /* Consistent with history.css */
+  box-shadow: 0 4px 8px var(--shadow-color); /* Consistent with history.css */
+  position: relative; /* Consistent with history.css */
+  overflow: hidden; /* Consistent with history.css */
 }
 
 .bookmark-item:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(var(--accent-color-rgb, 138, 180, 248), 0.05); /* Consistent with history.css */
+  transform: translateY(-2px); /* Consistent with history.css */
+  box-shadow: 0 8px 16px var(--shadow-color); /* Consistent with history.css */
+  border-color: var(--accent-color); /* Consistent with history.css */
+}
+
+.bookmark-item:active {
+  transform: translateY(0); /* Consistent with history.css */
+  box-shadow: 0 2px 4px var(--shadow-color); /* Consistent with history.css */
+}
+
+/* Added pseudo-element for hover effect, consistent with history.css */
+.bookmark-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: var(--accent-color);
+  transition: width 0.3s ease;
+}
+
+.bookmark-item:hover::after {
+  width: 100%;
 }
 
 .bookmark-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  margin-right: 15px;
+  min-width: 42px;
+  height: 42px;
+  margin-right: 5px;
   flex-shrink: 0;
+  color: var(--accent-color);
+  font-size: 1.2rem;
+  background-color: rgba(var(--accent-color-rgb, 138, 180, 248), 0.1);
+  border-radius: 50%;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
 .bookmark-icon img {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   object-fit: contain;
+  border-radius: 2px;
 }
 
 .bookmark-icon i {
-  font-size: 16px;
-  color: var(--textSecondary);
+  font-size: 1.2rem;
+  color: inherit;
+}
+
+/* SVG icon styles for Simple Icons */
+.bookmark-icon svg {
+  width: 22px;
+  height: 22px;
+  color: var(--accent-color);
+  transition: transform 0.2s ease;
+}
+
+.bookmark-item:hover .bookmark-icon {
+  transform: scale(1.05);
+  background-color: rgba(var(--accent-color-rgb, 138, 180, 248), 0.15);
+}
+
+.bookmark-item:hover .bookmark-icon svg {
+  transform: scale(1.1);
 }
 
 .bookmark-content {
   flex: 1;
   min-width: 0;
+  overflow: hidden; /* Added for consistency */
 }
 
 .bookmark-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--textPrimary);
-  margin-bottom: 4px;
+  font-size: 1rem; /* Adjusted for consistency */
+  font-weight: 600; /* Consistent with history.css */
+  color: var(--text-color); /* Consistent with history.css */
+  margin-bottom: 0.25rem; /* Consistent with history.css */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .bookmark-url {
-  font-size: 12px;
-  color: var(--textSecondary);
+  font-size: 0.85rem; /* Consistent with history.css */
+  color: var(--text-secondary); /* Consistent with history.css */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  opacity: 0.8; /* Consistent with history.css */
+  transition: opacity 0.2s ease; /* Consistent with history.css */
+  max-width: 80%; /* Consistent with history.css */
+}
+
+.bookmark-item:hover .bookmark-url {
+  opacity: 1; /* Consistent with history.css */
+  color: var(--accent-color); /* Consistent with history.css */
 }
 
 .bookmark-date {
-  font-size: 11px;
-  color: var(--textSecondary);
-  margin-top: 4px;
+  font-size: 0.85rem; /* Consistent with history.css */
+  color: var(--text-secondary); /* Consistent with history.css */
+  margin-top: 0.25rem; /* Adjusted for consistency */
+  white-space: nowrap; /* Consistent with history.css */
 }
 
 .bookmark-actions {
   display: flex;
-  gap: 8px;
-  margin-left: 16px;
+  gap: 0.75rem;
+  opacity: 0.9;
+  transition: all 0.3s ease;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 220px; /* Ensure enough space for all buttons */
 }
 
-.bookmark-action-button {
-  background: transparent;
-  border: none;
-  color: var(--textSecondary);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  cursor: pointer;
+.bookmark-item:hover .bookmark-actions {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.bookmark-action {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s;
+  background: var(--accent-color);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+  margin: 0 2px;
+}
+
+.bookmark-action svg {
+  width: 24px;
+  height: 24px;
+  color: white;
+  transition: all 0.2s ease;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.bookmark-action i {
+  font-size: 18px;
+  color: white;
+  transition: all 0.2s ease;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.bookmark-action::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.bookmark-action:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+  filter: brightness(1.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.bookmark-action:hover::after {
+  opacity: 1;
+}
+
+.bookmark-action:hover svg,
+.bookmark-action:hover i {
+  transform: scale(1.15);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
+}
+
+.bookmark-action:active {
+  transform: translateY(0) scale(0.98);
+  filter: brightness(0.9);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Specific button colors with enhanced styling */
+.bookmark-action.visit-action {
+  background: linear-gradient(135deg, #4285f4, #3367d6);
+  box-shadow: 0 3px 6px rgba(66, 133, 244, 0.4);
+}
+
+.bookmark-action.up-action {
+  background: linear-gradient(135deg, #0f9d58, #0b8043);
+  box-shadow: 0 3px 6px rgba(15, 157, 88, 0.4);
+}
+
+.bookmark-action.down-action {
+  background: linear-gradient(135deg, #f4b400, #e09b00);
+  box-shadow: 0 3px 6px rgba(244, 180, 0, 0.4);
+}
+
+.bookmark-action.remove-action {
+  background: linear-gradient(135deg, #db4437, #c53929);
+  box-shadow: 0 3px 6px rgba(219, 68, 55, 0.4);
+}
+
+.bookmark-action.drag-handle {
+  background: linear-gradient(135deg, #5f6368, #494c50);
+  box-shadow: 0 3px 6px rgba(95, 99, 104, 0.4);
+}
+
+/* Add button labels for better usability */
+.bookmark-action::before {
+  content: attr(title);
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, bottom 0.2s ease;
+  z-index: 10;
+}
+
+.bookmark-action:hover::before {
+  opacity: 1;
+  bottom: -25px;
 }
 
 .bookmark-action-button:hover {
-  background-color: var(--secondary);
-  color: var(--textPrimary);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+  background-color: var(--button-hover, rgba(var(--accent-color-rgb, 138, 180, 248), 0.1)); /* Light hover */
+  color: var(--text-color); /* Darker on hover */
+}
+
+.bookmark-action-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.bookmark-action-button i {
+  font-size: 1.1rem; /* Slightly larger icon */
+  margin: 0; /* Remove default gap from inline-flex for single icon */
 }
 
 .bookmark-action-button[data-action="remove"]:hover {
-  color: var(--error);
+  color: var(--error-color); /* Consistent with history.css */
+  background-color: rgba(var(--error-color-rgb, 234, 67, 53), 0.1); /* Light red background */
 }
 
-#bookmarks-empty {
+/* Re-applied .hidden with !important for safety, although it should be in a global CSS file */
+.hidden {
+  display: none !important;
+}
+
+/* Adopted empty-state styling from history.css */
+/* Empty state styling */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--card-background);
+  border-radius: 16px;
+  padding: 4rem 2rem;
   text-align: center;
-  padding: 30px;
-  color: var(--textSecondary);
+  color: var(--text-secondary);
+  box-shadow: 0 8px 20px var(--shadow-color);
+  margin: 2rem 0;
+  min-height: 300px;
+  animation: fadeIn 0.5s ease-in-out;
+  position: relative;
+  z-index: 10;
 }
 
-#bookmarks-empty p {
-  margin: 8px 0;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.empty-state i {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+  color: var(--accent-color);
+  opacity: 0.7;
+}
+
+.empty-state p {
+  margin: 0.5rem 0;
+  font-size: 1.1rem;
+}
+
+.empty-state p:first-of-type {
+  color: var(--text-color);
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* Sort menu */
+.sort-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 0.5rem;
+  background-color: var(--card-background);
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  overflow: hidden;
+  min-width: 200px;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.sort-menu.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.sort-option {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sort-option:hover {
+  background-color: rgba(var(--accent-color-rgb, 138, 180, 248), 0.1);
+}
+
+.sort-option.active {
+  background-color: rgba(var(--accent-color-rgb, 138, 180, 248), 0.2);
+  font-weight: 600;
+}
+
+.sort-option i {
+  width: 16px;
+  text-align: center;
+  color: var(--accent-color);
+}
+
+/* Drag and drop styles */
+.bookmark-item.dragging {
+  opacity: 0.5;
+  background-color: rgba(var(--accent-color-rgb, 138, 180, 248), 0.1);
+  transform: scale(0.98);
+  border: 2px dashed var(--accent-color);
+}
+
+.bookmark-item.drag-over {
+  border-top: 3px solid var(--accent-color);
+  padding-top: calc(1rem - 3px);
+  transform: translateY(2px);
+}
+
+.bookmark-action.drag-handle {
+  cursor: grab;
+}
+
+.bookmark-action.drag-handle:active {
+  cursor: grabbing;
 }

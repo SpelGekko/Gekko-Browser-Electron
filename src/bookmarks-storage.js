@@ -118,10 +118,49 @@ const getBookmarks = () => {
   return loadBookmarks();
 };
 
+// Update the order of bookmarks
+const updateBookmarksOrder = (orderedUrls) => {
+  // Validate input
+  if (!Array.isArray(orderedUrls)) {
+    console.error('Invalid ordered URLs input, expected array');
+    return false;
+  }
+  
+  // Load current bookmarks
+  const currentBookmarks = loadBookmarks();
+  
+  // Create a map of URLs to bookmark objects for quick lookup
+  const bookmarkMap = {};
+  currentBookmarks.forEach(bookmark => {
+    bookmarkMap[bookmark.url] = bookmark;
+  });
+  
+  // Create a new array with the specified order
+  const orderedBookmarks = [];
+  
+  // First add bookmarks in the specified order
+  orderedUrls.forEach(url => {
+    if (bookmarkMap[url]) {
+      orderedBookmarks.push(bookmarkMap[url]);
+      delete bookmarkMap[url]; // Remove from map to track processed bookmarks
+    }
+  });
+  
+  // Then add any remaining bookmarks that weren't in the ordered list
+  // (This ensures we don't lose any bookmarks)
+  Object.values(bookmarkMap).forEach(bookmark => {
+    orderedBookmarks.push(bookmark);
+  });
+  
+  // Save the reordered bookmarks
+  return saveBookmarks(orderedBookmarks);
+};
+
 module.exports = {
   ensureBookmarksFile,
   addBookmark,
   removeBookmark,
   isBookmarked,
-  getBookmarks
+  getBookmarks,
+  updateBookmarksOrder
 };

@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gekko Browser - Bookmarks</title>
-  <link rel="stylesheet" href="gkp://shared.gekko/theme-vars.css" />
+  <title>Gekko Browser - Bookmarks</title>  <link rel="stylesheet" href="gkp://shared.gekko/theme-vars.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
-  <script src="gkp://shared.gekko/theme-utils.js"></script>
+  <link rel="stylesheet" href="styles.css" />  <script src="gkp://shared.gekko/theme-utils.js"></script>
+  <script src="gkp://shared.gekko/simple-icons-loader.js"></script>
+  <script src="material-icons.js" defer></script>
 </head>
 <body>
   <div class="internal-page">
@@ -23,18 +24,24 @@
           <i class="fa-solid fa-magnifying-glass bookmarks-search-icon"></i>
           <input type="text" class="bookmarks-search-input" id="bookmarks-search" placeholder="Search bookmarks">
         </div>
+        
+        <div class="bookmarks-actions">
+          <button class="button button-secondary" id="sort-bookmarks-btn">
+            <i class="fa-solid fa-sort"></i>
+            Sort
+          </button>
+        </div>
       </div>
       
-      <div class="card">
-        <div id="bookmarks-empty" class="hidden">
-          <p>You don't have any bookmarks yet.</p>
-          <p>Click the bookmark icon in the address bar to save a page.</p>
-        </div>
-        
-        <ul class="bookmarks-list" id="bookmarks-list">
-          <!-- Bookmarks will be populated dynamically -->
-        </ul>
+      <div id="bookmarks-empty" class="empty-state hidden">
+        <i class="fa-solid fa-bookmark fa-3x"></i>
+        <p>You don't have any bookmarks yet</p>
+        <p class="text-secondary">Click the bookmark icon in the address bar to save a page</p>
       </div>
+      
+      <ul class="bookmarks-list" id="bookmarks-list">
+        <!-- Bookmarks will be populated dynamically -->
+      </ul>
     </div>
   </div>
   <script src="bookmarks.js"></script>

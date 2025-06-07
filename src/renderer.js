@@ -411,29 +411,50 @@ function toggleBookmark() {
   try {
     const isBookmarked = window.api.isBookmarked(url);
     console.log(`URL ${url} is ${isBookmarked ? 'already bookmarked' : 'not bookmarked'}`);
-    
-    if (isBookmarked) {
+      if (isBookmarked) {
       // Remove bookmark
       window.api.removeBookmark(url);
       console.log('Bookmark removed');
     } else {
       // Add bookmark
-      const title = getTabTitle(currentTabId) || 'Untitled';
-      let favicon = null;
+      // Get title directly from the current tab object instead of using getTabTitle
       const tab = tabs.find(tab => tab.id === currentTabId);
+      const title = tab ? tab.title || 'Untitled' : 'Untitled';
+      let favicon = null;
       if (tab && tab.favicon) {
         favicon = tab.favicon;
       }
       console.log(`Adding bookmark: ${url}, ${title}`);
-      window.api.addBookmark(url, title, favicon);
+      window.api.addBookmark(url, title, favicon);    }
+    
+    // Update UI directly instead of calling updateBookmarkButton
+    const bookmarkButton = document.getElementById('bookmark-page-button');
+    if (bookmarkButton) {
+      // Skip protocol pages and empty URLs
+      if (!url || url.startsWith('gkp://') || url === 'about:blank') {
+        console.log('Skipping bookmark button update for special URL:', url);
+        bookmarkButton.innerHTML = '<i class="fa-regular fa-star"></i>';
+        bookmarkButton.classList.remove('bookmarked');
+      } else {
+        const isBookmarked = window.api.isBookmarked(url);
+        bookmarkButton.innerHTML = isBookmarked ? 
+          '<i class="fa-solid fa-star"></i>' : 
+          '<i class="fa-regular fa-star"></i>';
+        bookmarkButton.classList.toggle('bookmarked', isBookmarked);
+      }
+    } else {
+      console.warn('Bookmark button not found in DOM');
     }
     
-    // Update UI
-    updateBookmarkButton(url);
-    
     // Reload bookmarks
-    loadBookmarks();
-    renderBookmarksBar();
+    if (typeof loadBookmarks === 'function') {
+      loadBookmarks();
+    }
+    
+    // Check if renderBookmarksBar exists before calling
+    if (typeof renderBookmarksBar === 'function') {
+      renderBookmarksBar();
+    }
     
     // Update bookmarks page if it's open
     const bookmarksWebview = Array.from(document.querySelectorAll('webview')).find(webview => 

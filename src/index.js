@@ -268,6 +268,23 @@ ipcMain.on('is-bookmarked', (event, url) => {
   event.returnValue = bookmarksStorage.isBookmarked(url);
 });
 
+// Handle custom bookmark ordering
+ipcMain.on('update-bookmarks-order', (event, orderedUrls) => {
+  console.log('Updating bookmark order');
+  const result = bookmarksStorage.updateBookmarksOrder(orderedUrls);
+  
+  // Broadcast bookmark update to all windows
+  BrowserWindow.getAllWindows().forEach(window => {
+    try {
+      window.webContents.send('bookmarks-updated');
+    } catch (error) {
+      console.error('Error broadcasting bookmark update:', error);
+    }
+  });
+  
+  console.log('Bookmark order update complete:', result);
+});
+
 // Navigation handler
 ipcMain.on('navigate', (event, url) => {
   console.group('Main Process Navigation');

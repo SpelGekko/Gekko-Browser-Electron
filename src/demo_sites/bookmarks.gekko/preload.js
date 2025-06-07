@@ -22,6 +22,17 @@ contextBridge.exposeInMainWorld('api', {
   
   isBookmarked: (url) => {
     return ipcRenderer.sendSync('is-bookmarked', url);
+  },
+  
+  // Support for custom ordering
+  updateBookmarksOrder: (orderedUrls) => {
+    // Send the order to the main process
+    ipcRenderer.send('update-bookmarks-order', orderedUrls);
+  },
+
+  // Settings access
+  getSettings: () => {
+    return ipcRenderer.sendSync('get-settings');
   }
 });
 
@@ -31,3 +42,16 @@ contextBridge.exposeInMainWorld('navigation', {
     ipcRenderer.send('navigate', url);
   }
 });
+
+// Expose Simple Icons if available
+try {
+  const simpleIconsModule = window.parent.simpleIcons;
+  if (simpleIconsModule) {
+    contextBridge.exposeInMainWorld('simpleIcons', {
+      getIcon: (slug) => simpleIconsModule.getIcon(slug),
+      hasIcon: (slug) => simpleIconsModule.hasIcon(slug)
+    });
+  }
+} catch (error) {
+  console.warn('Unable to expose Simple Icons to bookmarks page:', error);
+}
