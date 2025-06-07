@@ -18,7 +18,10 @@ const navigationAPI = {
 // Expose navigation API to renderer
 contextBridge.exposeInMainWorld('navigationAPI', navigationAPI);
 
-// API exposed to webviews
+// Log which file is being loaded in the webview
+console.log('Preload: Loading webview for URL:', window.location.href);
+
+// API exposed to webviews  
 contextBridge.exposeInMainWorld("api", {
   // Settings
   getSettings: () => {
@@ -89,7 +92,6 @@ contextBridge.exposeInMainWorld("api", {
       return false;
     }
   },
-
   setSetting: (key, value) => {
     console.group('Set Setting');
     console.log("Setting", key, "to:", value);
@@ -145,5 +147,72 @@ contextBridge.exposeInMainWorld("api", {
       console.groupEnd();
       return false;
     }
+  },
+  
+  // Updates management
+  getAppVersion: () => {
+    try {
+      return ipcRenderer.sendSync('get-app-version');
+    } catch (error) {
+      console.error('Error getting app version:', error);
+      return 'Unknown';
+    }
+  },
+  
+  checkForUpdates: () => {
+    ipcRenderer.send('check-for-updates');
+  },
+  
+  downloadUpdate: () => {
+    ipcRenderer.send('download-update');
+  },
+  
+  installUpdate: () => {
+    ipcRenderer.send('install-update');
+  },
+  
+  getUpdateStatus: () => {
+    try {
+      return ipcRenderer.invoke('get-update-status');
+    } catch (error) {
+      console.error('Error getting update status:', error);
+      return { status: 'error', info: { message: 'Failed to get update status' } };
+    }
+  },
+  
+  onUpdateStatus: (callback) => {
+    ipcRenderer.on('update-status', (event, status, info) => {
+      callback(status, info);
+    });
+  },
+  getSetting: (key) => {
+    console.log('Calling getSetting with key:', key);
+    return ipcRenderer.invoke('get-setting', key);
+  },
+  
+  setSetting: (key, value) => {
+    console.log('Calling setSetting with key:', key, 'and value:', value);
+    try {
+      ipcRenderer.send('set-setting', key, value);
+      return true;
+    } catch (error) {
+      console.error('Error in setSetting:', error);
+      return false;
+    }
+  },
+  
+  // Additional debug method to see what API methods are available
+  getAvailableMethods: () => {
+    return {
+      apiMethods: [
+        'getSettings', 'getThemes', 'applyTheme', 
+        'getHistory', 'getBookmarks', 'addBookmark', 'removeBookmark', 'isBookmarked',
+        'getAppVersion', 'checkForUpdates', 'downloadUpdate', 'installUpdate', 
+        'getUpdateStatus', 'onUpdateStatus', 'getSetting', 'setSetting'
+      ],
+      hasGetSettings: typeof ipcRenderer.sendSync === 'function',
+      hasSetSetting: typeof ipcRenderer.send === 'function',
+      hasGetSetting: typeof ipcRenderer.invoke === 'function'
+    };
   }
 });

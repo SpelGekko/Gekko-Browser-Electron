@@ -4,12 +4,27 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 module.exports = {
   packagerConfig: {
     asar: true,
+    icon: './assets/icons/icon',
+    appBundleId: 'com.thorvaldrovers.gekkobrowser',
+    appCategoryType: 'public.app-category.productivity',
+    osxSign: {},
+    protocols: [
+      {
+        name: 'Gekko Protocol',
+        schemes: ['gkp', 'gkps']
+      }
+    ]
   },
   rebuildConfig: {},
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
-      config: {},
+      config: {
+        name: 'Gekko Browser',
+        authors: 'SpelGekko',
+        iconUrl: 'https://raw.githubusercontent.com/spelgekko/gekko-browser/main/assets/icons/icon.ico',
+        setupIcon: './assets/icons/icon.ico'
+      },
     },
     {
       name: '@electron-forge/maker-zip',
@@ -40,5 +55,18 @@ module.exports = {
       [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
       [FuseV1Options.OnlyLoadAppFromAsar]: true,
     }),
+  ],
+  publishers: [
+    {
+      name: '@electron-forge/publisher-github',
+      config: {
+        repository: {
+          owner: 'spelgekko',
+          name: 'gekko-browser'
+        },
+        prerelease: false,
+        draft: true
+      }
+    }
   ],
 };

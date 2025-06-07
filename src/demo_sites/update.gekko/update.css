@@ -1,0 +1,153 @@
+/* Update Page Styles */
+.back-button-container {
+  margin-bottom: 15px;
+}
+
+.update-status-container {
+  display: flex;
+  background-color: var(--panel-bg-color);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.update-icon-container {
+  flex: 0 0 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.update-icon {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.update-icon svg {
+  width: 100%;
+  height: 100%;
+  color: var(--primary-color);
+}
+
+.update-info {
+  flex: 1;
+  padding-left: 20px;
+}
+
+.update-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.action-button {
+  padding: 8px 16px;
+  background-color: var(--primary-color);
+  color: var(--button-text-color);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.action-button:hover {
+  background-color: var(--accent-color);
+}
+
+.action-button:disabled {
+  background-color: var(--disabled-color);
+  cursor: not-allowed;
+}
+
+.progress-bar-container {
+  height: 8px;
+  background-color: var(--disabled-color);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 10px 0;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: var(--primary-color);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.release-notes-container {
+  background-color: var(--panel-bg-color);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.release-notes {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 10px;
+  background-color: var(--card-bg-color);
+  border-radius: 4px;
+}
+
+.update-info-box {
+  background-color: var(--panel-bg-color);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.update-info-box h3 {
+  margin-top: 15px;
+  margin-bottom: 5px;
+  color: var(--text-color);
+}
+
+.update-info-box h3:first-child {
+  margin-top: 0;
+}
+
+.update-info-box p {
+  margin: 5px 0 15px;
+  color: var(--secondary-text-color);
+}
+
+/* Update status colors */
+.update-status-checking .update-icon {
+  color: var(--info-color, #2196F3);
+}
+
+.update-status-available .update-icon {
+  color: var(--primary-color, #4CAF50);
+}
+
+.update-status-downloading .update-icon {
+  color: var(--accent-color, #FF9800);
+}
+
+.update-status-downloaded .update-icon {
+  color: var(--success-color, #4CAF50);
+}
+
+.update-status-error .update-icon {
+  color: var(--error-color, #F44336);
+}
+
+.update-status-up-to-date .update-icon {
+  color: var(--info-color, #2196F3);
+}
+
+/* Animation for checking icon */
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.update-icon-checking {
+  animation: rotate 2s linear infinite;
+}

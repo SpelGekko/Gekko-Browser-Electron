@@ -1,9 +1,20 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const registerProtocolHandlers = require('./protocol-handlers');
 const historyStorage = require('./history-storage');
 const settingsStorage = require('./settings-storage');
 const bookmarksStorage = require('./bookmarks-storage');
+const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
+
+// Configure logging for updater
+log.transports.file.level = 'info';
+autoUpdater.logger = log;
+autoUpdater.logger.transports.file.level = 'info';
+
+// Configure auto-updater
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
 
 // Cache settings in memory
 let cachedSettings = null;
@@ -251,6 +262,26 @@ ipcMain.on('get-incognito-mode', (event) => {
   event.returnValue = historyStorage.getIncognitoMode();
 });
 
+// Update handlers
+ipcMain.on('check-for-updates', (event) => {
+  log.info('Manual update check requested');
+  autoUpdater.checkForUpdates().catch(err => {
+    log.error('Error checking for updates:', err);
+  });
+});
+
+ipcMain.on('download-update', (event) => {
+  log.info('Update download requested');
+  autoUpdater.downloadUpdate().catch(err => {
+    log.error('Error downloading update:', err);
+  });
+});
+
+ipcMain.on('install-update', (event) => {
+  log.info('Update installation requested');
+  autoUpdater.quitAndInstall();
+});
+
 // Bookmarks handlers
 ipcMain.on('get-bookmarks', (event) => {
   event.returnValue = bookmarksStorage.getBookmarks();
@@ -266,6 +297,58 @@ ipcMain.on('remove-bookmark', (event, url) => {
 
 ipcMain.on('is-bookmarked', (event, url) => {
   event.returnValue = bookmarksStorage.isBookmarked(url);
+});
+
+// Update handlers
+ipcMain.on('get-app-version', (event) => {
+  event.returnValue = app.getVersion();
+});
+
+ipcMain.handle('get-update-status', async () => {
+  // If we have a stored status, return it
+  if (autoUpdater.getStatus) {
+    return autoUpdater.getStatus();
+  }
+  
+  // Check if an update is already downloaded
+  if (autoUpdater.currentVersion) {
+    return { 
+      status: 'downloaded', 
+      info: { 
+        version: autoUpdater.currentVersion.version,
+        releaseNotes: autoUpdater.currentVersion.releaseNotes
+      }
+    };
+  }
+  
+  // No update state information available
+  return { status: 'unknown' };
+});
+
+// Special handler for update page navigation
+ipcMain.on('open-update-page', () => {
+  log.info('Opening update page requested');
+  
+  // Find the focused window or create one if needed
+  let focusedWindow = BrowserWindow.getFocusedWindow();
+  if (!focusedWindow) {
+    if (BrowserWindow.getAllWindows().length > 0) {
+      focusedWindow = BrowserWindow.getAllWindows()[0];
+    } else {
+      // Create a new window if none exists
+      createWindow();
+      focusedWindow = BrowserWindow.getFocusedWindow();
+    }
+  }
+  
+  if (focusedWindow) {
+    // Send the navigation command to the renderer
+    focusedWindow.webContents.send('navigate-from-main', 'gkp://update.gekko/');
+  }
+});
+
+ipcMain.handle('get-setting', async (event, key) => {
+  return settingsStorage.getSetting(key);
 });
 
 // Handle custom bookmark ordering
@@ -402,6 +485,9 @@ app.whenReady().then(() => {
   bookmarksStorage.ensureBookmarksFile();
   
   createWindow();
+  
+  // Setup auto-updater
+  setupAutoUpdater();
 
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
@@ -410,6 +496,12 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+  
+  // Check for updates on startup (with delay to not slow down startup)
+  setTimeout(() => {
+    log.info('Checking for updates...');
+    autoUpdater.checkForUpdates();
+  }, 3000);
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -420,3 +512,106 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
+// Setup auto-updater events
+function setupAutoUpdater() {
+  let mainWindow = BrowserWindow.getAllWindows()[0];
+  
+  // Store update status for later access
+  let updateStatus = {
+    status: 'unknown',
+    info: null
+  };
+  
+  autoUpdater.on('checking-for-update', () => {
+    log.info('Checking for update...');
+    updateStatus = { status: 'checking', info: null };
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', 'checking');
+    }
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    log.info('Update available:', info.version);
+    updateStatus = { status: 'available', info };
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', 'available', info);
+      
+      const dialogOpts = {
+        type: 'info',
+        buttons: ['Download Now', 'Later'],
+        title: 'Update Available',
+        message: `A new version (${info.version}) of Gekko Browser is available!`,
+        detail: 'Would you like to download it now?'
+      };
+      
+      dialog.showMessageBox(mainWindow, dialogOpts).then((returnValue) => {
+        if (returnValue.response === 0) {
+          autoUpdater.downloadUpdate();
+        }
+      });
+    }
+  });
+  autoUpdater.on('update-not-available', (info) => {
+    log.info('No updates available');
+    updateStatus = { status: 'not-available', info };
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', 'not-available');
+      
+      // Only show dialog if explicitly requested by user (through manual check)
+      if (info.explicitCheck) {
+        dialog.showMessageBox(mainWindow, {
+          type: 'info',
+          title: 'No Updates Available',
+          message: 'You are already running the latest version of Gekko Browser.',
+          buttons: ['OK']
+        });
+      }
+    }
+  });
+
+  autoUpdater.on('error', (err) => {
+    log.error('Error in auto-updater:', err);
+    updateStatus = { status: 'error', info: err };
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', 'error', err);
+    }
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    log.info(`Download progress: ${progressObj.percent}%`);
+    updateStatus = { status: 'progress', info: progressObj };
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', 'progress', progressObj);
+    }
+  });
+  autoUpdater.on('update-downloaded', (info) => {
+    log.info('Update downloaded:', info.version);
+    updateStatus = { status: 'downloaded', info };
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', 'downloaded', info);
+      
+      const dialogOpts = {
+        type: 'info',
+        buttons: ['Restart Now', 'Later'],
+        title: 'Update Ready',
+        message: `A new version (${info.version}) has been downloaded`,
+        detail: 'Restart the app to apply the updates.'
+      };
+      
+      dialog.showMessageBox(mainWindow, dialogOpts).then((returnValue) => {
+        if (returnValue.response === 0) {
+          autoUpdater.quitAndInstall();
+        }
+      });
+    }
+  });
+  
+  // Expose the update status for other functions
+  autoUpdater.getStatus = () => updateStatus;
+}

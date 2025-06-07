@@ -1,8 +1,7 @@
 // Initialize theme handling
 document.addEventListener('DOMContentLoaded', () => {
   console.group('Settings Page Initialization');
-  
-  // Get current settings
+    // Get current settings
   let settings = { theme: 'dark', homePage: '', searchEngine: 'https://www.google.com/search?q=', enableDevTools: false };
 
   try {
@@ -12,6 +11,14 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (window.parent && window.parent.api && typeof window.parent.api.getSettings === 'function') {
       settings = window.parent.api.getSettings();
       console.log('Settings loaded from window.parent.api:', settings);
+    }
+    
+    // Update version text
+    if (window.api && typeof window.api.getAppVersion === 'function') {
+      const versionText = document.getElementById('version-text');
+      if (versionText) {
+        versionText.textContent = window.api.getAppVersion();
+      }
     }
   } catch (error) {
     console.error('Error getting settings:', error);
@@ -190,14 +197,125 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Initialize theme if possible
-  console.log('Attempting to initialize theme handling...');
+  // Initialize theme if possible  console.log('Attempting to initialize theme handling...');
   if (typeof window.initThemeHandling === 'function') {
     console.log('Found initThemeHandling, calling...');
     window.initThemeHandling();
   } else {
     console.error('initThemeHandling not found on window object');
   }
-
+  
+  // Setup navigation buttons
+  setupNavigationButtons();
+  
   console.groupEnd();
 });
+
+// Function to set up navigation buttons
+function setupNavigationButtons() {
+  console.group('Setting up navigation buttons');
+  
+  // About button handler
+  const aboutButton = document.getElementById('about-btn');
+  if (aboutButton) {
+    aboutButton.addEventListener('click', () => {
+      navigateToPage('gkp://about.gekko/');
+    });
+    console.log('About button handler added');
+  } else {
+    console.warn('About button not found');
+  }
+  
+  // Updates button handler
+  const updatesButton = document.getElementById('updates-btn');
+  if (updatesButton) {
+    updatesButton.addEventListener('click', () => {
+      navigateToPage('gkp://update.gekko/');
+    });
+    console.log('Updates button handler added');
+  } else {
+    console.warn('Updates button not found');
+  }
+  
+  // Protocols button handler
+  const protocolsButton = document.getElementById('view-protocols-btn');
+  if (protocolsButton) {
+    protocolsButton.addEventListener('click', () => {
+      navigateToPage('gkp://protocols.gekko/');
+    });
+    console.log('Protocols button handler added');
+  } else {
+    console.warn('Protocols button not found');
+  }
+  
+  console.groupEnd();
+}
+
+// Helper function to navigate to a page with multiple fallback methods
+function navigateToPage(url) {
+  console.group('Navigation');
+  console.log('Navigating to:', url);
+  
+  try {
+    let navigationSucceeded = false;
+    
+    // Try method 1: window.api.navigate (most reliable for Electron)
+    if (window.api && typeof window.api.navigate === 'function') {
+      console.log('Using window.api.navigate');
+      window.api.navigate(url);
+      console.log('Navigation initiated via window.api.navigate');
+      navigationSucceeded = true;
+    }
+    
+    // Try method 2: navigation API (standard web API)
+    else if (window.navigation && typeof window.navigation.navigate === 'function') {
+      console.log('Using window.navigation.navigate');
+      window.navigation.navigate(url);
+      console.log('Navigation initiated via window.navigation.navigate');
+      navigationSucceeded = true;
+    }
+    
+    // Try method 3: navigationAPI (webview specific)
+    else if (window.navigationAPI && typeof window.navigationAPI.navigate === 'function') {
+      console.log('Using window.navigationAPI.navigate');
+      window.navigationAPI.navigate(url);
+      console.log('Navigation initiated via window.navigationAPI.navigate');
+      navigationSucceeded = true;
+    }
+    
+    // Try method 4: postMessage to parent (works for iframe scenarios)
+    else if (window.parent && typeof window.parent.postMessage === 'function') {
+      console.log('Using window.parent.postMessage');
+      window.parent.postMessage({ 
+        type: 'navigate', 
+        url: url, 
+        target: '_blank'  // Match history.js by including target
+      }, '*');
+      console.log('Navigation message sent to parent');
+      navigationSucceeded = true;
+    }
+    
+    // Last resort: Direct location change
+    else {
+      console.log('Using direct location change as last resort');
+      window.location.href = url;
+      navigationSucceeded = true;
+    }
+    
+    if (!navigationSucceeded) {
+      console.error('All navigation methods failed');
+    }
+  } catch (error) {
+    console.error('Error during navigation attempt:', error);
+    
+    // Final fallback if all else fails
+    try {
+      console.log('Attempting final fallback via location.href');
+      window.location.href = url;
+    } catch (e) {
+      console.error('Final fallback navigation failed:', e);
+    }
+  }
+  
+  console.groupEnd();
+}

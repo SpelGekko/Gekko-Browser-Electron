@@ -18,6 +18,12 @@ ipcRenderer.on('theme-changed', (event, themeId) => {
   window.postMessage({ type: 'themeChange', theme: themeId }, '*');
 });
 
+// Expose handleNavigation to window object
+window.handleNavigation = (url) => {
+  console.log('Window handleNavigation called with:', url);
+  ipcRenderer.send('navigate', url);
+};
+
 // Listen for settings updates
 ipcRenderer.on('settings-updated', (event, newSettings) => {
   cachedSettings = newSettings;
@@ -54,7 +60,7 @@ function loadThemes() {
 }
 
 // Allowed channels for IPC communication
-const allowedChannels = ['theme-changed', 'settings-changed', 'navigate'];
+const allowedChannels = ['theme-changed', 'settings-changed', 'navigate', 'update-status'];
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -158,21 +164,30 @@ contextBridge.exposeInMainWorld('api', {
   minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),
-  
-  // Navigation API
+    // Navigation API
   navigate: (url) => {
     console.log('Preload: Navigation request for:', url);
     ipcRenderer.send('navigate', url);
   },
   
-  on: (channel, callback) => {
+  handleNavigation: (url) => {
+    console.log('Preload: handleNavigation called with:', url);
+    ipcRenderer.send('navigate', url);
+  },
+  
+  // Specific page navigation shortcuts
+  openUpdatePage: () => {
+    console.log('Preload: Opening update page');
+    ipcRenderer.send('open-update-page');
+  },
+    on: (channel, callback) => {
     // Whitelist channels we will listen to
-    const validChannels = ['theme-changed', 'settings-changed', 'navigate'];
+    const validChannels = ['theme-changed', 'settings-changed', 'navigate', 'update-status'];
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (event, ...args) => callback(...args));
     }
   },
-    onNavigate: (callback) => {
+  onNavigate: (callback) => {
     ipcRenderer.on('navigate-from-main', (event, url) => {
       console.log('Preload: Received navigate-from-main for URL:', url);
       callback(url);
@@ -181,7 +196,7 @@ contextBridge.exposeInMainWorld('api', {
   
   // For removing listeners when needed
   removeListener: (channel, callback) => {
-    const validChannels = ['theme-changed', 'settings-changed', 'navigate'];
+    const validChannels = ['theme-changed', 'settings-changed', 'navigate', 'update-status'];
     if (validChannels.includes(channel)) {
       ipcRenderer.removeListener(channel, callback);
     }
@@ -191,5 +206,50 @@ contextBridge.exposeInMainWorld('api', {
     if (allowedChannels.includes(channel)) {
       ipcRenderer.on(channel, (event, ...args) => callback(...args));
     }
+  },
+  
+  // Updates management
+  getAppVersion: () => {
+    try {
+      return ipcRenderer.sendSync('get-app-version');
+    } catch (error) {
+      console.error('Error getting app version:', error);
+      return 'Unknown';
+    }
+  },
+  
+  checkForUpdates: () => {
+    ipcRenderer.send('check-for-updates');
+  },
+  
+  downloadUpdate: () => {
+    ipcRenderer.send('download-update');
+  },
+  
+  installUpdate: () => {
+    ipcRenderer.send('install-update');
+  },
+  
+  getUpdateStatus: () => {
+    try {
+      return ipcRenderer.invoke('get-update-status');
+    } catch (error) {
+      console.error('Error getting update status:', error);
+      return { status: 'error', info: { message: 'Failed to get update status' } };
+    }
+  },
+  
+  onUpdateStatus: (callback) => {
+    ipcRenderer.on('update-status', (event, status, info) => {
+      callback(status, info);
+    });
+  },
+  
+  getSetting: (key) => {
+    return ipcRenderer.invoke('get-setting', key);
+  },
+  
+  setSetting: (key, value) => {
+    ipcRenderer.send('set-setting', key, value);
   }
 });

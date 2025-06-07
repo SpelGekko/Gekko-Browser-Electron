@@ -626,12 +626,11 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     } else {
       console.error('Bookmark page button not found in DOM');
-    }
-    
-    // Browser actions
+    }    // Browser actions
     bookmarksButton.addEventListener('click', () => showBookmarks());
     historyButton.addEventListener('click', () => showHistory());
     incognitoButton.addEventListener('click', toggleIncognitoMode);
+      // Direct navigation to settings page
     settingsButton.addEventListener('click', () => showSettings());
     
     // Listen for messages from internal pages

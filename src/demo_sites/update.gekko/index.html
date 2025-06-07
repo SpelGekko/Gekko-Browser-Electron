@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' node: gkp: gkps: https://*.google.com; img-src 'self' data: gkp: gkps: https: http:; style-src 'self' 'unsafe-inline' gkp: gkps:; font-src 'self' gkp: gkps: data:; script-src 'self' node: 'unsafe-inline' 'unsafe-eval' gkp: gkps:;">
+  <title>Gekko Browser - Updates</title>  <link rel="stylesheet" href="gkp://shared.gekko/theme-vars.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
+  <link rel="stylesheet" href="update.css" />
+  <script src="update.js" defer></script>
+</head>
+<body>  <div class="internal-page">
+    <div class="internal-page-header">
+      <div class="back-button-container">
+        <button id="back-to-settings" class="setting-button"><i class="fa-solid fa-arrow-left"></i> Back to Settings</button>
+      </div>
+      <h1 class="internal-page-title">Updates</h1>
+      <p class="internal-page-subtitle">Check for and manage Gekko Browser updates</p>
+    </div>
+    
+    <div class="internal-page-content">
+      <div class="update-status-container">
+        <div class="update-icon-container">
+          <div id="update-icon" class="update-icon update-icon-checking">
+            <svg viewBox="0 0 24 24" id="icon-checking">
+              <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-14h2v6h-2zm0 8h2v2h-2z"/>
+            </svg>
+            <svg viewBox="0 0 24 24" id="icon-available" style="display:none">
+              <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-14h2v7h5v2H11V6z"/>
+            </svg>
+            <svg viewBox="0 0 24 24" id="icon-downloading" style="display:none">
+              <path fill="currentColor" d="M19,9h-4V3H9v6H5l7,7L19,9z M5,18v2h14v-2H5z"/>
+            </svg>
+            <svg viewBox="0 0 24 24" id="icon-downloaded" style="display:none">
+              <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            <svg viewBox="0 0 24 24" id="icon-up-to-date" style="display:none">
+              <path fill="currentColor" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+            </svg>
+            <svg viewBox="0 0 24 24" id="icon-error" style="display:none">
+              <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            </svg>
+          </div>
+        </div>
+        
+        <div class="update-info">
+          <h2 id="update-status-title">Checking for updates...</h2>
+          <p id="update-status-message">Please wait while we check for available updates.</p>
+          
+          <div id="update-progress-container" style="display:none">
+            <div class="progress-bar-container">
+              <div id="update-progress-bar" class="progress-bar"></div>
+            </div>
+            <p id="update-progress-text">0%</p>
+          </div>
+          
+          <div class="update-actions">
+            <button id="check-for-updates-btn" class="action-button">Check for Updates</button>
+            <button id="download-update-btn" class="action-button" style="display:none">Download Update</button>
+            <button id="install-update-btn" class="action-button" style="display:none">Install Update</button>
+          </div>
+        </div>
+      </div>
+      
+      <div id="release-notes-container" class="release-notes-container" style="display:none">
+        <h2>Release Notes</h2>
+        <div id="release-notes" class="release-notes">
+          <!-- Release notes will be inserted here -->
+        </div>
+      </div>
+      
+      <div class="update-info-box">
+        <h3>Current Version</h3>
+        <p id="current-version">Loading...</p>
+        
+        <h3>Latest Version</h3>
+        <p id="latest-version">Checking...</p>
+        
+        <h3>Last Checked</h3>
+        <p id="last-checked">Never</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
