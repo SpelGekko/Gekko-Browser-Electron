@@ -1,53 +1,101 @@
-# How to Use GKP and GKPS Protocols
+# How to Use GKP and GKPS Protocols in Gekko Browser
 
-The Gekko Protocol (GKP) and its secure variant (GKPS) are specialized protocols for accessing resources across different domains. This guide will help you understand how to use them effectively.
+<p align="center">
+  <img src="assets/icons/128x128.png" alt="Gekko Browser Logo" width="64" height="64">
+</p>
+
+The Gekko Protocol (GKP) and its secure variant (GKPS) are specialized protocols for accessing internal browser resources. This guide explains how to use them effectively within Gekko Browser.
 
 ## Basic URL Structure
 
 GKP URLs follow this format:
 ```
-gkp://<domain>.<tld>/
+gkp://<domain>.gekko/[path][file][parameters]
 ```
 
 For secure connections, use GKPS:
 ```
-gkps://<domain>.<tld>/
+gkps://<domain>.gekko/[path][file][parameters]
 ```
 
-## Supported Top-Level Domains (TLDs)
+## Available Internal Domains
 
-The protocol supports three specialized TLDs:
+Gekko Browser comes with several built-in domains:
 
-1. `.rust`
-2. `.gekko`
-3. `.kewl`
+1. `home.gekko` - Browser home page with search and shortcuts
+2. `about.gekko` - Information about the browser
+3. `bookmarks.gekko` - Bookmark management interface
+4. `history.gekko` - Browsing history viewer
+5. `settings.gekko` - Browser settings and configuration
+6. `secure.gekko` - Example of secure content (accessible via GKPS)
+7. `shared.gekko` - Shared resources used by internal pages
+8. `protocols.gekko` - Information about supported protocols
 
 ## Content Types
 
-The protocol automatically detects content types based on file extensions:
+The protocol automatically detects and serves content with appropriate MIME types:
+
 - `.html` - HTML content (text/html)
+- `.js` - JavaScript files (text/javascript)
+- `.css` - Stylesheets (text/css)
 - `.json` - JSON data (application/json)
+- `.png`, `.jpg`, `.gif`, `.svg` - Images (image/*)
+- `.woff`, `.woff2`, `.ttf`, `.eot`, `.otf` - Fonts (font/*)
 - `.md` - Markdown content (text/markdown)
-- `.txt` - Plain text (text/plain)
-- Other extensions default to application/octet-stream
 
-## Examples
+## Usage Examples
 
-### Basic GKP Requests
+### Basic Navigation
 ```
-gkp://hello.gekko/search.html
-gkp://docs.rust/guide.md
-gkp://blog.kewl/posts/latest.md
+gkp://home.gekko/         # Browser home page
+gkp://about.gekko/        # About page
+gkp://bookmarks.gekko/    # Bookmarks manager
+gkp://history.gekko/      # History viewer
+gkp://settings.gekko/     # Settings page
 ```
 
-### Secure GKPS Requests
+### Secure Resources
 ```
-gkps://vault.rust/user/profile.json
-gkps://secure.gekko/api/data.json
-gkps://private.kewl/dashboard.html
+gkps://secure.gekko/      # Example secure content
+```
+
+### Shared Resources
+```
+gkp://shared.gekko/styles.css           # Common stylesheet
+gkp://shared.gekko/theme-utils.js       # Theme utilities
+gkp://shared.gekko/bookmark-handler.js  # Bookmark handling functions
 ```
 
 ## Security Features
+
+The GKPS protocol provides:
+
+1. **Transport Security** - Communications are handled internally without network exposure
+2. **Content Isolation** - Content is isolated from regular web content
+3. **Resource Restrictions** - Only approved resources can be loaded
+4. **CSP Enforcement** - Content Security Policy controls what can be loaded and executed
+
+## Extending with Custom Pages
+
+You can create custom pages by adding HTML files to the appropriate directories:
+
+1. Create a new folder under `src/demo_sites/` with a `.gekko` extension
+2. Add an `index.html` file with your content
+3. Include any required JavaScript and CSS files
+4. Access your page via `gkp://yourfolder.gekko/`
+
+## Troubleshooting
+
+If you encounter issues with GKP or GKPS protocols:
+
+1. Check the URL format to ensure it follows the required structure
+2. Verify that the domain and path exist in the browser's internal pages
+3. Check browser console for any error messages
+4. Ensure the content type is supported by the protocol handlers
+
+## Additional Resources
+
+For more information about the internal structure and functionality of the Gekko Browser, refer to the source code or the [main README](README.md).
 
 When using GKPS:
 - Connections are encrypted
