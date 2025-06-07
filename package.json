@@ -36,6 +36,24 @@
       "directories": {
         "output": "dist/win"
       }
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icons/icon.icns",
+      "directories": {
+        "output": "dist/mac"
+      }
+    },	
+    "linux": {
+      "target": [
+        "deb",
+        "rpm",
+        "zip"
+      ],
+      "icon": "assets/icons/icon.png",
+      "directories": {
+        "output": "dist/linux"
+      }
     }
   },
   "dependencies": {
