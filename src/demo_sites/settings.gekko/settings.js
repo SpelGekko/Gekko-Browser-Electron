@@ -16,45 +16,34 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (error) {
     console.error('Error getting settings:', error);
   }
-
   // Create theme buttons container
   const themeButtonsContainer = document.createElement('div');
   themeButtonsContainer.className = 'theme-buttons';
-  themeButtonsContainer.style.cssText = 'display: flex; gap: 10px; flex-wrap: wrap;';
-
+  themeButtonsContainer.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin: 20px 0;';
   // Default themes with colors
   const themes = [
-    { id: "dark", name: "Dark Theme", color: '#202124' },
-    { id: "light", name: "Light Theme", color: '#f8f9fa' },
-    { id: "purple", name: "Purple Theme", color: '#20123a' },
-    { id: "blue", name: "Blue Theme", color: '#0d2149' },
-    { id: "red", name: "Red Theme", color: '#3c1014' }
+    { id: "dark", name: "Dark Theme", color: '#202124', textColor: '#ffffff', icon: 'moon' },
+    { id: "light", name: "Light Theme", color: '#f8f9fa', textColor: '#202124', icon: 'sun' },
+    { id: "purple", name: "Purple Theme", color: '#20123a', textColor: '#ffffff', icon: 'palette' },
+    { id: "blue", name: "Blue Theme", color: '#0d2149', textColor: '#ffffff', icon: 'water' },
+    { id: "red", name: "Red Theme", color: '#3c1014', textColor: '#ffffff', icon: 'fire' }
   ];
 
   // Current theme for highlighting
   const currentTheme = settings.theme || 'dark';
   console.log('Current theme:', currentTheme);
-
   // Create a button for each theme
   themes.forEach(theme => {
     const button = document.createElement('button');
-    button.className = 'theme-button';
+    button.className = theme.id === currentTheme ? 'theme-button active' : 'theme-button';
     button.setAttribute('data-theme', theme.id);
-    button.style.cssText = `
-      padding: 10px 20px;
-      margin: 5px;
-      border: 2px solid ${theme.id === currentTheme ? '#8ab4f8' : 'transparent'};
-      border-radius: 8px;
-      background: ${theme.color};
-      color: ${theme.id === 'light' ? '#202124' : '#ffffff'};
-      cursor: pointer;
-      transition: all 0.3s ease;
-      min-width: 150px;
-    `;
+    button.style.backgroundColor = theme.color;
+    button.style.color = theme.textColor;
+    
     button.innerHTML = `
-      <div style="margin-bottom: 5px;">${theme.name}</div>
-      <div class="debug-info" style="font-size: 0.8em; opacity: 0.8;">ID: ${theme.id}</div>
-    `;    // Handle theme change
+      <i class="fa-solid fa-${theme.icon}"></i>
+      <div class="theme-title">${theme.name}</div>
+    `;// Handle theme change
     button.addEventListener('click', () => {
       // Enhanced debouncing with stronger checks
       if (button.dataset.changing) {
@@ -72,13 +61,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      console.log('Changing theme to:', theme.id);
-
-      // Update button borders
+      console.log('Changing theme to:', theme.id);      // Update active class on buttons
       document.querySelectorAll('.theme-button').forEach(btn => {
-        btn.style.border = '2px solid transparent';
+        btn.classList.remove('active');
       });
-      button.style.border = '2px solid #8ab4f8';      
+      button.classList.add('active');
       
       // Save theme setting and apply it
       try {

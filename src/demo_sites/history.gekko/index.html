@@ -2,11 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">  <title>Gekko Browser - History</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gekko Browser - History</title>
   <link rel="stylesheet" href="gkp://shared.gekko/theme-vars.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
+  <link rel="stylesheet" href="history.css" />
   <script src="gkp://shared.gekko/theme-utils.js"></script>
 </head>
 <body>
@@ -24,42 +26,24 @@
         </div>
         
         <div class="history-actions">
-          <button class="setting-button" id="clear-history-btn">Clear History</button>
+          <button class="button button-danger" id="clear-history-btn">
+            <i class="fa-solid fa-trash-can"></i>
+            Clear History
+          </button>
         </div>
       </div>
       
-      <div class="card">
-        <div id="history-empty" class="hidden">
-          <p>Your browsing history is empty.</p>
-        </div>
-        
-        <ul class="history-list" id="history-list">
-          <!-- History items will be populated dynamically -->
-        </ul>
-      </div>    </div>
+      <div id="history-empty" class="empty-state hidden">
+        <i class="fa-solid fa-clock-rotate-left fa-3x"></i>
+        <p>Your browsing history is empty</p>
+        <p class="text-secondary">Websites you visit will appear here</p>
+      </div>
+      
+      <ul class="history-list" id="history-list">
+        <!-- History items will be populated dynamically -->
+      </ul>
+    </div>
   </div>
   <script src="history.js"></script>
-</body>
-</html>
-        filteredHistory = history.filter(item => {
-          return (
-            (item.title && item.title.toLowerCase().includes(query)) ||
-            item.url.toLowerCase().includes(query)
-          );
-        });
-      }
-      
-      renderHistory(filteredHistory);
-    });
-    
-    // Clear history
-    clearHistoryBtn.addEventListener('click', () => {
-      if (confirm('Are you sure you want to clear your browsing history?')) {
-        window.parent.api.clearHistory();
-        history.length = 0;
-        renderHistory(history);
-      }
-    });
-  </script>
 </body>
 </html>

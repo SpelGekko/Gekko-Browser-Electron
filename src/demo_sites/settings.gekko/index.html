@@ -9,9 +9,8 @@
   <link rel="stylesheet" href="gkp://shared.gekko/theme-vars.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
   <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
-  
-  <!-- Font loading with onload error handling -->
   <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" onerror="window.safeDOM?.applyFontFallbacks()" />
+  <link rel="stylesheet" href="settings.css" />
   
   <script src="gkp://shared.gekko/theme-utils.js"></script>
   <!-- Font fallback detection script -->
@@ -201,8 +200,9 @@
               <div class="setting-label">GKP and GKPS Protocols</div>
               <div class="setting-description">Learn about the Gekko Protocols</div>
             </div>
-            <div class="setting-control">
-              <button id="view-protocols-btn" class="setting-button">View Documentation</button>
+            <div class="setting-control">              <button id="view-protocols-btn" class="setting-button">
+                <i class="fa-solid fa-book"></i> View Documentation
+              </button>
             </div>
           </div>
         </div>
@@ -218,8 +218,9 @@
               <div class="setting-label">Browsing History</div>
               <div class="setting-description">Clear your browsing history</div>
             </div>
-            <div class="setting-control">
-              <button id="clear-history-btn" class="setting-button">Clear History</button>
+            <div class="setting-control">              <button id="clear-history-btn" class="setting-button danger">
+                <i class="fa-solid fa-trash-can"></i> Clear History
+              </button>
             </div>
           </div>
         </div>
@@ -235,8 +236,9 @@
               <div class="setting-label">Version</div>
               <div class="setting-description" id="version-text">1.0.0</div>
             </div>
-            <div class="setting-control">
-              <button id="about-btn" class="setting-button">About</button>
+            <div class="setting-control">              <button id="about-btn" class="setting-button">
+                <i class="fa-solid fa-info-circle"></i> About
+              </button>
             </div>
           </div>
         </div>

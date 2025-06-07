@@ -84,8 +84,8 @@ const getIncognitoMode = () => {
 
 // Add an entry to history
 const addHistoryEntry = (url, title) => {
-  // Skip history recording if in incognito mode
-  if (isIncognitoMode) {
+  // Skip history recording if in incognito mode or if URL is a .gekko domain
+  if (isIncognitoMode || url.includes('.gekko') || url.startsWith('gkp://')) {
     return true;
   }
   
@@ -97,7 +97,6 @@ const addHistoryEntry = (url, title) => {
     title: title || url,
     timestamp: Date.now()
   };
-  
   // Add to beginning (most recent first)
   history.unshift(newEntry);
   
