@@ -58,6 +58,10 @@ let cachedSettings = null;
 // Bookmarks and incognito variables
 let bookmarks = [];
 let isIncognito = false;
+// Update notification variables
+let hasUpdateAvailable = false;
+let updateInfo = null;
+let updateToastTimeout = null;
 
 // Set up navigation event listener from main process
 if (window.api && typeof window.api.onNavigate === 'function') {
@@ -75,53 +79,100 @@ if (window.api && typeof window.api.onNavigate === 'function') {
   });
 }
 
-// Helper function to get a theme object by its ID
-function getThemeObject(themeId) {
-  // Try to get theme from the API
-  try {
-    const allThemes = window.api.getThemes();
-    if (allThemes && allThemes[themeId]) {
-      return allThemes[themeId];
+// Set up update status listener
+if (window.api && typeof window.api.onUpdateStatus === 'function') {
+  window.api.onUpdateStatus((status, info) => {
+    console.log('Update status changed:', status, info);
+    const updateButton = document.getElementById('update-notification-button');
+    const updateBadge = document.getElementById('update-badge');
+    
+    if (status === 'available') {
+      hasUpdateAvailable = true;
+      updateInfo = info;
+      
+      // Show update notification
+      if (updateButton && updateBadge) {
+        updateButton.classList.add('update-button-active');
+        updateBadge.classList.add('available');
+        updateButton.setAttribute('title', `Update available: ${info.version}`);
+        
+        // Show toast notification
+        showUpdateToast(info);
+      }
+    } else {
+      hasUpdateAvailable = false;
+      
+      // Hide update notification
+      if (updateButton && updateBadge) {
+        updateButton.classList.remove('update-button-active');
+        updateBadge.classList.remove('available');
+        updateButton.setAttribute('title', 'No updates available');
+      }
     }
-  } catch (error) {
-    console.error('Error getting theme from API:', error);
+  });
+}
+
+// Helper function to show update toast notification
+function showUpdateToast(info) {
+  // Clear any existing timeouts
+  if (updateToastTimeout) {
+    clearTimeout(updateToastTimeout);
   }
   
-  // Fallback to default themes
-  const fallbackThemes = {
-    dark: {
-      name: 'Dark Theme',
-      colors: {
-        primary: '#202124',
-        secondary: '#303134',
-        accent: '#8ab4f8',
-        textPrimary: '#e8eaed',
-        textSecondary: '#9aa0a6'
-      }
-    },
-    light: {
-      name: 'Light Theme',
-      colors: {
-        primary: '#ffffff',
-        secondary: '#f1f3f4',
-        accent: '#1a73e8',
-        textPrimary: '#202124',
-        textSecondary: '#5f6368'
-      }
-    },
-    red: {
-      name: 'Red Theme',
-      colors: {
-        primary: '#7C0A02',
-        secondary: '#B22222',
-        accent: '#FF3131',
-        textPrimary: '#ffffff',
-        textSecondary: '#e0e0e0'
-      }
-    }
-  };
+  // Remove any existing toasts
+  const existingToast = document.querySelector('.update-notification-toast');
+  if (existingToast) {
+    existingToast.remove();
+  }
+    // Create toast element
+  const toast = document.createElement('div');
+  toast.className = 'update-notification-toast';
+  toast.innerHTML = `
+    <div class="update-icon">
+      <i class="fa-solid fa-arrow-up-right-from-square"></i>
+    </div>
+    <div class="toast-content">
+      <div class="toast-title">Update Available</div>
+      <div class="toast-message">Version ${info.version} is now available. Click the update button to install.</div>
+    </div>
+    <div class="close-toast">
+      <i class="fa-solid fa-xmark"></i>
+    </div>
+  `;
   
-  return fallbackThemes[themeId] || fallbackThemes.dark;
+  // Add to document
+  document.body.appendChild(toast);
+  
+  // Make it visible after a small delay
+  setTimeout(() => {
+    toast.classList.add('visible');
+  }, 100);
+  
+  // Set timeout to hide the toast
+  updateToastTimeout = setTimeout(() => {
+    toast.classList.remove('visible');
+    setTimeout(() => toast.remove(), 300);
+  }, 5000);
+  
+  // Add click event to close button
+  const closeButton = toast.querySelector('.close-toast');
+  if (closeButton) {
+    closeButton.addEventListener('click', () => {
+      toast.classList.remove('visible');
+      setTimeout(() => toast.remove(), 300);
+      clearTimeout(updateToastTimeout);
+    });
+  }
+  
+  // Add click event to the entire toast to open the update page
+  toast.addEventListener('click', (event) => {
+    if (!event.target.closest('.close-toast')) {
+      navigateTo('gkp://update.gekko/');
+      toast.classList.remove('visible');
+      setTimeout(() => toast.remove(), 300);
+      clearTimeout(updateToastTimeout);
+    }
+  });
 }
 
 // Helper to safely load settings
@@ -560,6 +611,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Create initial tab with home page
   createTab(settings?.homePage || 'gkp://home.gekko/');
   
+  // Check for updates
+  if (window.api && typeof window.api.checkForUpdates === 'function') {
+    // Wait a bit before checking for updates to not slow down startup
+    setTimeout(() => {
+      window.api.checkForUpdates();
+    }, 5000);
+  }
+  
   // Load bookmarks bar
   function loadBookmarksBar() {
     // Load bookmarks from storage
@@ -570,7 +629,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Make handleNavigation function available to window object for internal pages
   window.handleNavigation = handleNavigation;
-
   // Verify all required DOM elements are present (defined here, not duplicated)
   function verifyRequiredElements() {
     const requiredElements = [
@@ -584,6 +642,8 @@ document.addEventListener('DOMContentLoaded', () => {
       { el: refreshButton, name: 'refresh-button' },
       { el: homeButton, name: 'home-button' },
       { el: clearButton, name: 'clear-button' },
+      { el: document.getElementById('update-notification-button'), name: 'update-notification-button' },
+      { el: document.getElementById('update-badge'), name: 'update-badge' },
       { el: bookmarksButton, name: 'bookmarks-button' },
       { el: historyButton, name: 'history-button' },
       { el: incognitoButton, name: 'incognito-button' },
@@ -642,7 +702,28 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     } else {
       console.error('Bookmark page button not found in DOM');
-    }    // Browser actions
+    }    // Update notification button
+    const updateNotificationButton = document.getElementById('update-notification-button');
+    if (updateNotificationButton) {
+      updateNotificationButton.addEventListener('click', () => {
+        // Navigate to update page
+        navigateTo('gkp://update.gekko/');
+        
+        // If update is available, show toast again
+        if (hasUpdateAvailable && updateInfo) {
+          showUpdateToast(updateInfo);
+        } else {
+          // Check for updates
+          if (window.api && typeof window.api.checkForUpdates === 'function') {
+            window.api.checkForUpdates();
+          }
+        }
+      });
+    } else {
+      console.error('Update notification button not found in DOM');
+    }
+    
+    // Browser actions
     bookmarksButton.addEventListener('click', () => showBookmarks());
     historyButton.addEventListener('click', () => showHistory());
     incognitoButton.addEventListener('click', toggleIncognitoMode);

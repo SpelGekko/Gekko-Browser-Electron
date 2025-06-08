@@ -278,6 +278,7 @@ body, html {
   align-items: center;
   gap: 2px;
   margin-left: 8px;
+  order: 0; /* Explicit ordering for flexbox */
 }
 
 .browser-action {
@@ -1001,4 +1002,103 @@ body, html {
   background-color: rgba(128, 0, 128, 0.3);
 }
 
-/* Import Fonts */
+/* Update notification button styles */
+.browser-action#update-notification-button {
+  position: relative;
+  margin-right: 6px; /* Add some spacing after the update button */
+  order: -1; /* Ensure it's always first */
+}
+
+.update-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: transparent;
+  display: none;
+}
+
+.update-badge.available {
+  display: block;
+  background-color: var(--success);
+  animation: pulse 2s infinite;
+  width: 10px;   /* Slightly larger badge */
+  height: 10px;  /* Slightly larger badge */
+  border: 1px solid var(--primary); /* Add border for better visibility */
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(129, 201, 149, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(129, 201, 149, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(129, 201, 149, 0);
+  }
+}
+
+.update-notification-toast {
+  position: fixed;
+  top: 80px; /* Adjusted to be below the navigation bar */
+  right: 20px;
+  background-color: var(--secondary);
+  color: var(--textPrimary);
+  padding: 12px 16px; /* Slightly larger padding */
+  border-radius: 8px; /* Rounded corners */
+  box-shadow: 0 3px 12px var(--shadow);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+  border-left: 4px solid var(--success); /* Add a colored border */
+  max-width: 320px; /* Limit the width */
+}
+
+.update-notification-toast.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+}
+
+.update-notification-toast .update-icon {
+  color: var(--success);
+  font-size: 1.2em;
+}
+
+.update-notification-toast .toast-content {
+  flex: 1;
+}
+
+.update-notification-toast .toast-title {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.update-notification-toast .toast-message {
+  font-size: 0.9em;
+  color: var(--textSecondary);
+}
+
+.update-notification-toast .close-toast {
+  margin-left: auto;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.update-notification-toast .close-toast:hover {
+  opacity: 1;
+}
+
+.update-button-active {
+  color: var(--success) !important;
+  background-color: rgba(129, 201, 149, 0.1) !important; /* Add a subtle background */
+  box-shadow: 0 0 0 1px var(--success); /* Add a subtle outline */
+}
