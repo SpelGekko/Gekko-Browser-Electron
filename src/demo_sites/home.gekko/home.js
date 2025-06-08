@@ -10,7 +10,7 @@ const ICONS = {
 
 document.addEventListener('DOMContentLoaded', () => {
   // Get settings from the API
-  let settings = { theme: 'dark' };
+  let settings = { theme: 'dark', searchEngine: 'google' };
   try {
     if (window.api && typeof window.api.getSettings === 'function') {
       settings = window.api.getSettings();
@@ -25,6 +25,95 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const searchInput = document.getElementById('search-input');
   const searchEngineSelect = document.getElementById('search-engine-select');
+  const searchForm = document.getElementById('search-form');
+  
+  // Setup search form submission
+  if (searchForm && searchInput) {
+    searchForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const query = searchInput.value.trim();
+      if (!query) return;
+      
+      // Get the selected search engine
+      let searchEngine = 'google';
+      
+      // Try to get from select if available
+      if (searchEngineSelect) {
+        searchEngine = searchEngineSelect.value;
+      } 
+      // Otherwise try to get from settings
+      else if (settings && settings.searchEngine) {
+        searchEngine = settings.searchEngine;
+      }
+      
+      console.log(`Searching with ${searchEngine} for: ${query}`);
+      
+      // Build the search URL based on the selected engine
+      let searchUrl;
+      switch (searchEngine) {
+        case 'google':
+          searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+          break;
+        case 'bing':
+          searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
+          break;
+        case 'duckduckgo':
+          searchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
+          break;
+        case 'yahoo':
+          searchUrl = `https://search.yahoo.com/search?p=${encodeURIComponent(query)}`;
+          break;
+        default:
+          searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+      }
+      
+      // Try all navigation methods
+      let navigationSucceeded = false;
+      
+      // Method 1: Use window.api
+      if (window.api && typeof window.api.navigate === 'function') {
+        try {
+          console.log('Using window.api.navigate to search');
+          window.api.navigate(searchUrl);
+          navigationSucceeded = true;
+        } catch (error) {
+          console.error('window.api.navigate failed:', error);
+        }
+      }
+      
+      // Method 2: Use navigationAPI
+      if (!navigationSucceeded && window.navigationAPI && typeof window.navigationAPI.navigate === 'function') {
+        try {
+          console.log('Using navigationAPI.navigate to search');
+          navigationSucceeded = window.navigationAPI.navigate(searchUrl);
+        } catch (error) {
+          console.error('navigationAPI.navigate failed:', error);
+        }
+      }
+      
+      // Method 3: Use postMessage
+      if (!navigationSucceeded && window.parent && window.parent !== window) {
+        try {
+          console.log('Using postMessage to search');
+          window.parent.postMessage({ type: 'navigate', url: searchUrl }, '*');
+          navigationSucceeded = true;
+        } catch (error) {
+          console.error('postMessage navigation failed:', error);
+        }
+      }
+      
+      // Method 4: Direct location change (last resort)
+      if (!navigationSucceeded) {
+        console.log('Using direct navigation as last resort');
+        try {
+          window.location.href = searchUrl;
+        } catch (error) {
+          console.error('Direct navigation failed:', error);
+        }
+      }
+    });
+  }
 
   // Apply Material Design icons to Gekko browser shortcuts
   const gekkoIcons = {
@@ -146,25 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       console.error('Error loading icon:', error);
       iconDiv.innerHTML = ICONS.home;
-    }
-  });
-
-  // Handle search form submission
-  searchInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      const query = searchInput.value.trim();
-      if (query) {
-        const searchEngine = searchEngineSelect.value;
-        const searchUrl = searchEngine + encodeURIComponent(query);
-        console.log('Search requested, navigating to:', searchUrl);
-        if (window.navigationAPI) {
-          window.navigationAPI.navigate(searchUrl);
-        } else if (window.parent && window.parent !== window) {
-          window.parent.postMessage({ type: 'navigate', url: searchUrl }, '*');
-        } else {
-          window.location.href = searchUrl;
-        }
-      }
     }
   });
 });

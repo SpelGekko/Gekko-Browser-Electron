@@ -90,6 +90,13 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.send('set-setting', key, value);
   },
   
+  // Navigation
+  navigate: (url) => {
+    console.log('API navigate called with:', url);
+    ipcRenderer.send('navigate', url);
+    return true; // Return success
+  },
+  
   // Paths
   getPaths: () => {
     return {
@@ -186,12 +193,16 @@ contextBridge.exposeInMainWorld('api', {
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (event, ...args) => callback(...args));
     }
-  },
-  onNavigate: (callback) => {
+  },  onNavigate: (callback) => {
     ipcRenderer.on('navigate-from-main', (event, url) => {
       console.log('Preload: Received navigate-from-main for URL:', url);
       callback(url);
     });
+  },
+  
+  // Enhanced navigation with consistent behavior
+  getActiveTabId: () => {
+    return ipcRenderer.sendSync('get-active-tab-id');
   },
   
   // For removing listeners when needed

@@ -59,6 +59,22 @@ let cachedSettings = null;
 let bookmarks = [];
 let isIncognito = false;
 
+// Set up navigation event listener from main process
+if (window.api && typeof window.api.onNavigate === 'function') {
+  window.api.onNavigate((url) => {
+    console.log('Received navigation event from main process:', url);
+    if (url) {
+      // If we have a current tab, navigate to the URL
+      if (currentTabId) {
+        navigateTo(url);
+      } else {
+        // Otherwise create a new tab
+        createTab(url);
+      }
+    }
+  });
+}
+
 // Helper function to get a theme object by its ID
 function getThemeObject(themeId) {
   // Try to get theme from the API
@@ -1257,16 +1273,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/;
     if (ipRegex.test(url)) {
       return 'http://' + url;
-    }
-    // Check if it looks like a domain (contains a dot and no spaces)
+    }    // Check if it looks like a domain (contains a dot and no spaces)
     if (url.includes('.') && !url.includes(' ') && !/\s/.test(url)) {
       return 'https://' + url;
     }
     // Get search engine from settings
     const settings = window.api.getSettings();
-    const searchEngine = settings.searchEngine || 'https://www.google.com/search?q=';
+    let searchEngine = settings.searchEngine || 'google';
+    let searchUrl;
+    
+    // Convert search engine ID to actual URL
+    switch (searchEngine) {
+      case 'google':
+        searchUrl = 'https://www.google.com/search?q=';
+        break;
+      case 'bing':
+        searchUrl = 'https://www.bing.com/search?q=';
+        break;
+      case 'duckduckgo':
+        searchUrl = 'https://duckduckgo.com/?q=';
+        break;
+      case 'yahoo':
+        searchUrl = 'https://search.yahoo.com/search?p=';
+        break;
+      default:
+        // Handle legacy format where the full URL was stored
+        searchUrl = searchEngine.includes('://') ? searchEngine : 'https://www.google.com/search?q=';
+    }
+    
     // Treat as a search query
-    return searchEngine + encodeURIComponent(url);
+    return searchUrl + encodeURIComponent(url);
   }
 
   // Process URL and navigate

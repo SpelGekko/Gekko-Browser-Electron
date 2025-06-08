@@ -617,3 +617,12 @@ function setupAutoUpdater() {
   // Expose the update status for other functions
   autoUpdater.getStatus = () => updateStatus;
 }
+
+// Handle active tab ID requests
+ipcMain.on('get-active-tab-id', (event) => {
+  // This can't be answered by the main process directly
+  // We'll just return a success value and let the renderer handle it
+  event.returnValue = true;
+});
+
+// Get update status

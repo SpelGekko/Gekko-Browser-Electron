@@ -20,6 +20,44 @@ document.addEventListener('DOMContentLoaded', () => {
         versionText.textContent = window.api.getAppVersion();
       }
     }
+    
+    // Initialize search engine and homepage form elements
+    const searchEngineSelect = document.getElementById('search-engine-select');
+    const customHomepageInput = document.getElementById('custom-homepage-input');
+    
+    if (searchEngineSelect) {
+      // Set initial value from settings
+      searchEngineSelect.value = settings.searchEngine || 'google';
+      
+      // Add event listener to save changes
+      searchEngineSelect.addEventListener('change', () => {
+        console.log('Search engine changed to:', searchEngineSelect.value);
+        if (window.api && typeof window.api.setSetting === 'function') {
+          window.api.setSetting('searchEngine', searchEngineSelect.value);
+        }
+      });
+    }
+    
+    if (customHomepageInput) {
+      // Set initial value from settings
+      customHomepageInput.value = settings.homePage || 'gkp://home.gekko/';
+      
+      // Add event listener to save changes
+      customHomepageInput.addEventListener('input', () => {
+        console.log('Custom homepage changed to:', customHomepageInput.value);
+        if (window.api && typeof window.api.setSetting === 'function') {
+          window.api.setSetting('homePage', customHomepageInput.value);
+        }
+      });
+      
+      // Also add a blur event to save when the field loses focus
+      customHomepageInput.addEventListener('blur', () => {
+        if (window.api && typeof window.api.setSetting === 'function') {
+          window.api.setSetting('homePage', customHomepageInput.value);
+        }
+      });
+    }
+    
   } catch (error) {
     console.error('Error getting settings:', error);
   }
