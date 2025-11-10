@@ -266,5 +266,15 @@ contextBridge.exposeInMainWorld('api', {
   
   setSetting: (key, value) => {
     ipcRenderer.send('set-setting', key, value);
-  }
+  },
+
+  // Download management
+  onDownloadUpdate: (callback) => ipcRenderer.on('download-update', (event, item) => callback(item)),
+  cancelDownload: (startTime) => ipcRenderer.send('cancel-download', startTime),
+  getDownloads: () => ipcRenderer.sendSync('get-downloads'),
+  clearDownloads: () => ipcRenderer.send('clear-downloads'),
+  showDownloadInFolder: (startTime) => ipcRenderer.send('show-download-in-folder', startTime),
+
+  // Context Menu
+  showContextMenu: (params) => ipcRenderer.send('show-context-menu', params),
 });

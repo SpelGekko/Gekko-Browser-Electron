@@ -214,5 +214,28 @@ contextBridge.exposeInMainWorld("api", {
       hasSetSetting: typeof ipcRenderer.send === 'function',
       hasGetSetting: typeof ipcRenderer.invoke === 'function'
     };
-  }
+  },
+  
+  // Downloads
+  onDownloadUpdate: (callback) => ipcRenderer.on('download-update', (event, item) => callback(item)),
+  getDownloads: () => ipcRenderer.sendSync('get-downloads'),
+  clearDownloads: () => ipcRenderer.send('clear-downloads'),
+  cancelDownload: (startTime) => ipcRenderer.send('cancel-download', startTime),
+  showDownloadInFolder: (startTime) => ipcRenderer.send('show-download-in-folder', startTime),
 });
+
+// Listen for context menu requests
+window.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  ipcRenderer.send('show-context-menu', {
+    x: e.x,
+    y: e.y,
+    target: {
+      tagName: e.target.tagName,
+      src: e.target.src,
+      href: e.target.href,
+      text: e.target.innerText,
+    }
+  });
+});
+

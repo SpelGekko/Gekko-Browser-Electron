@@ -998,107 +998,117 @@ body, html {
   color: var(--accent);
 }
 
-.incognito-active:hover {
-  background-color: rgba(128, 0, 128, 0.3);
-}
-
-/* Update notification button styles */
-.browser-action#update-notification-button {
-  position: relative;
-  margin-right: 6px; /* Add some spacing after the update button */
-  order: -1; /* Ensure it's always first */
-}
-
-.update-badge {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: transparent;
-  display: none;
-}
-
-.update-badge.available {
-  display: block;
-  background-color: var(--success);
-  animation: pulse 2s infinite;
-  width: 10px;   /* Slightly larger badge */
-  height: 10px;  /* Slightly larger badge */
-  border: 1px solid var(--primary); /* Add border for better visibility */
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(129, 201, 149, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 6px rgba(129, 201, 149, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(129, 201, 149, 0);
-  }
-}
-
-.update-notification-toast {
+/* Download Notifications */
+#download-notifications-container {
   position: fixed;
-  top: 80px; /* Adjusted to be below the navigation bar */
+  bottom: 30px; /* Above status bar */
   right: 20px;
-  background-color: var(--secondary);
-  color: var(--textPrimary);
-  padding: 12px 16px; /* Slightly larger padding */
-  border-radius: 8px; /* Rounded corners */
-  box-shadow: 0 3px 12px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   z-index: 1000;
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.download-notification-item {
+  width: 320px;
+  background-color: var(--secondary);
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+  padding: 12px;
   display: flex;
   align-items: center;
   gap: 12px;
+  box-shadow: 0 4px 8px var(--shadow);
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
   opacity: 0;
-  transform: translateY(-20px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  pointer-events: none;
-  border-left: 4px solid var(--success); /* Add a colored border */
-  max-width: 320px; /* Limit the width */
+  transform: translateX(110%);
 }
 
-.update-notification-toast.visible {
+.download-notification-item.visible {
   opacity: 1;
-  transform: translateY(0);
-  pointer-events: all;
+  transform: translateX(0);
 }
 
-.update-notification-toast .update-icon {
-  color: var(--success);
-  font-size: 1.2em;
+.download-notification-item .download-icon {
+  font-size: 24px;
+  color: var(--accent);
+  flex-shrink: 0;
 }
 
-.update-notification-toast .toast-content {
+.download-notification-item .download-info {
   flex: 1;
+  min-width: 0;
 }
 
-.update-notification-toast .toast-title {
+.download-notification-item .download-filename {
   font-weight: 500;
-  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  color: var(--textPrimary);
 }
 
-.update-notification-toast .toast-message {
-  font-size: 0.9em;
+.download-notification-item .download-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.download-notification-item .download-progress-bar {
+  flex: 1;
+  height: 6px;
+  background-color: var(--primary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.download-notification-item .download-progress-fill {
+  width: 0%;
+  height: 100%;
+  background-color: var(--accent);
+  transition: width 0.2s linear;
+}
+
+.download-notification-item .download-progress-text {
+  font-size: 12px;
   color: var(--textSecondary);
+  white-space: nowrap;
 }
 
-.update-notification-toast .close-toast {
-  margin-left: auto;
+.download-notification-item.completed .download-progress-fill {
+  background-color: var(--success);
+}
+
+.download-notification-item.cancelled .download-progress-fill,
+.download-notification-item.interrupted .download-progress-fill {
+  background-color: var(--error);
+}
+
+.download-notification-item .download-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.download-action-button {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--navIcon);
+  border-radius: 50%;
   cursor: pointer;
-  opacity: 0.7;
+  transition: all 0.2s ease;
+  background-color: transparent;
 }
 
-.update-notification-toast .close-toast:hover {
-  opacity: 1;
-}
-
-.update-button-active {
-  color: var(--success) !important;
-  background-color: rgba(129, 201, 149, 0.1) !important; /* Add a subtle background */
-  box-shadow: 0 0 0 1px var(--success); /* Add a subtle outline */
+.download-action-button:hover {
+  background-color: var(--buttonHover);
+  color: var(--navIconHover);
 }

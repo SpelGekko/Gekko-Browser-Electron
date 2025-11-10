@@ -4,6 +4,7 @@ const registerProtocolHandlers = require('./protocol-handlers');
 const historyStorage = require('./history-storage');
 const settingsStorage = require('./settings-storage');
 const bookmarksStorage = require('./bookmarks-storage');
+const downloadsStorage = require('./downloads-storage');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 
@@ -483,6 +484,85 @@ const createWindow = () => {
   ipcMain.on('window:close', () => {
     mainWindow.close();
   });
+
+  session.defaultSession.on('will-download', (event, item, webContents) => {
+    const isDev = process.env.NODE_ENV === 'development';
+    if (isDev) {
+      console.log('[DEV-DOWNLOAD] Event triggered.');
+      console.log(`  - Filename: ${item.getFilename()}`);
+      console.log(`  - URL: ${item.getURL()}`);
+      console.log(`  - MIME type: ${item.getMimeType()}`);
+      console.log(`  - Total bytes: ${item.getTotalBytes()}`);
+    }
+
+    const startTime = Date.now();
+    const downloadPath = path.join(app.getPath('downloads'), item.getFilename());
+    item.setSavePath(downloadPath);
+
+    if (isDev) console.log(`[DEV-DOWNLOAD] Save path set to: ${downloadPath}`);
+
+    const sendUpdate = (stateOverride = null) => {
+      const currentState = stateOverride || item.getState();
+      const payload = {
+        startTime,
+        filename: item.getFilename(),
+        state: currentState,
+        receivedBytes: item.getReceivedBytes(),
+        totalBytes: item.getTotalBytes(),
+        path: downloadPath,
+        url: item.getURL(),
+        mimeType: item.getMimeType(),
+      };
+      if (isDev) console.log('[DEV-DOWNLOAD] Broadcasting update to all webContents:', payload);
+      
+      // Broadcast to all windows and their webviews
+      const allWebContents = require('electron').webContents.getAllWebContents();
+      allWebContents.forEach(wc => {
+        if (!wc.isDestroyed()) {
+          wc.send('download-update', payload);
+        }
+      });
+    };
+
+    sendUpdate(); // Initial update
+
+    item.on('updated', (event, state) => {
+      if (isDev) console.log(`[DEV-DOWNLOAD] Item updated. State: ${state}`);
+      sendUpdate();
+    });
+
+    item.on('done', (event, state) => {
+      if (isDev) console.log(`[DEV-DOWNLOAD] Item done. State: ${state}`);
+      
+      sendUpdate(state);
+
+      const downloadInfo = {
+        startTime,
+        filename: item.getFilename(),
+        totalBytes: item.getTotalBytes(),
+        mimeType: item.getMimeType(),
+        url: item.getURL(),
+        path: downloadPath,
+        state: state,
+      };
+      if (isDev) console.log('[DEV-DOWNLOAD] Saving download info to storage:', downloadInfo);
+      downloadsStorage.addDownload(downloadInfo);
+    });
+  });
+
+  ipcMain.on('cancel-download', (event, startTime) => {
+    // This is a bit tricky as the 'item' is not stored against startTime.
+    // This part of the implementation will be left for future improvement.
+    console.log(`Cancellation for ${startTime} requested, but not implemented yet.`);
+  });
+
+  ipcMain.on('show-download-in-folder', (event, startTime) => {
+    const download = downloadsStorage.getDownloads().find(d => d.startTime === startTime);
+    if (download && download.path) {
+        const { shell } = require('electron');
+        shell.showItemInFolder(download.path);
+    }
+  });
 };
 
 // This method will be called when Electron has finished
@@ -496,6 +576,7 @@ app.whenReady().then(() => {
   historyStorage.ensureHistoryFile();
   settingsStorage.ensureSettingsFile();
   bookmarksStorage.ensureBookmarksFile();
+  downloadsStorage.ensureDownloadsFile();
   
   createWindow();
   
@@ -634,6 +715,54 @@ ipcMain.on('get-active-tab-id', (event) => {
   // This can't be answered by the main process directly
   // We'll just return a success value and let the renderer handle it
   event.returnValue = true;
+});
+
+// Handle context menu requests from webviews
+ipcMain.on('show-context-menu', (event, params) => {
+  const { Menu, MenuItem } = require('electron');
+  const menu = new Menu();
+
+  if (params.target.src) {
+    menu.append(new MenuItem({
+      label: 'Download Image',
+      click: () => {
+        event.sender.downloadURL(params.target.src);
+      }
+    }));
+  }
+
+  if (params.target.href) {
+    menu.append(new MenuItem({
+      label: 'Open Link in New Tab',
+      click: () => {
+        BrowserWindow.fromWebContents(event.sender).webContents.send('open-new-tab', params.target.href);
+      }
+    }));
+  }
+
+  menu.append(new MenuItem({ type: 'separator' }));
+  menu.append(new MenuItem({ label: 'Back', click: () => event.sender.goBack(), enabled: event.sender.canGoBack() }));
+  menu.append(new MenuItem({ label: 'Forward', click: () => event.sender.goForward(), enabled: event.sender.canGoForward() }));
+  menu.append(new MenuItem({ label: 'Reload', click: () => event.sender.reload() }));
+
+  const win = BrowserWindow.fromWebContents(event.sender);
+  menu.popup(win);
+});
+
+ipcMain.on('get-downloads', (event) => {
+  event.returnValue = downloadsStorage.getDownloads();
+});
+
+ipcMain.on('clear-downloads', () => {
+  downloadsStorage.clearDownloads();
+});
+
+ipcMain.on('show-download-in-folder', (event, downloadId) => {
+    const download = downloadsStorage.getDownloads().find(d => d.startTime === downloadId);
+    if (download && download.path) {
+        const { shell } = require('electron');
+        shell.showItemInFolder(download.path);
+    }
 });
 
 // Get update status

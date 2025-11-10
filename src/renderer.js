@@ -546,6 +546,125 @@ function toggleBookmark() {
   }
 }
 
+// Helper to format bytes
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+// Create the HTML for a download notification item
+function createDownloadNotification(item) {
+    const notification = document.createElement('div');
+    notification.id = `download-${item.startTime}`;
+    notification.className = 'download-notification-item';
+
+    notification.innerHTML = `
+        <div class="download-icon">
+            <i class="fa-solid fa-download"></i>
+        </div>
+        <div class="download-info">
+            <div class="download-filename">${item.filename}</div>
+            <div class="download-progress-container">
+                <div class="download-progress-bar">
+                    <div class="download-progress-fill"></div>
+                </div>
+                <span class="download-progress-text">Starting...</span>
+            </div>
+        </div>
+        <div class="download-actions">
+            <div class="download-action-button cancel-download" title="Cancel">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+        </div>
+    `;
+
+    // Add event listener for cancel button
+    notification.querySelector('.cancel-download').addEventListener('click', () => {
+        window.api.cancelDownload(item.startTime);
+    });
+
+    return notification;
+}
+
+// Handle download updates for visual feedback
+function handleDownloadUpdate(item) {
+    const container = document.getElementById('download-notifications-container');
+    if (!container) return;
+
+    let notification = document.getElementById(`download-${item.startTime}`);
+
+    if (!notification) {
+        notification = createDownloadNotification(item);
+        container.appendChild(notification);
+        // Make it visible
+        setTimeout(() => notification.classList.add('visible'), 100);
+    }
+
+    // Update progress
+    const progressBar = notification.querySelector('.download-progress-fill');
+    const progressText = notification.querySelector('.download-progress-text');
+    const receivedBytes = item.receivedBytes || 0;
+    const totalBytes = item.totalBytes || 1; // Avoid division by zero
+    const percent = Math.floor((receivedBytes / totalBytes) * 100);
+
+    if (progressBar) {
+        progressBar.style.width = `${percent}%`;
+    }
+
+    if (progressText) {
+        if (item.state === 'progressing') {
+            progressText.textContent = `${formatBytes(receivedBytes)} / ${formatBytes(totalBytes)} (${percent}%)`;
+        }
+    }
+    
+    notification.classList.remove('completed', 'cancelled', 'interrupted');
+    const actionsContainer = notification.querySelector('.download-actions');
+
+    // Handle state changes
+    switch (item.state) {
+        case 'completed':
+            notification.classList.add('completed');
+            if (progressText) progressText.textContent = 'Completed';
+            if (actionsContainer) actionsContainer.innerHTML = `
+                <div class="download-action-button open-folder" title="Show in folder">
+                    <i class="fa-solid fa-folder"></i>
+                </div>`;
+            notification.querySelector('.open-folder').addEventListener('click', () => {
+                window.api.showDownloadInFolder(item.startTime);
+            });
+            // Remove after a delay
+            setTimeout(() => {
+                notification.classList.remove('visible');
+                setTimeout(() => notification.remove(), 500);
+            }, 4000);
+            break;
+        case 'cancelled':
+            notification.classList.add('cancelled');
+            if (progressText) progressText.textContent = 'Cancelled';
+            if (actionsContainer) actionsContainer.innerHTML = '';
+            // Remove after a delay
+            setTimeout(() => {
+                notification.classList.remove('visible');
+                setTimeout(() => notification.remove(), 500);
+            }, 2000);
+            break;
+        case 'interrupted':
+            notification.classList.add('interrupted');
+            if (progressText) progressText.textContent = 'Interrupted';
+            if (actionsContainer) actionsContainer.innerHTML = '';
+             // Remove after a delay
+             setTimeout(() => {
+                notification.classList.remove('visible');
+                setTimeout(() => notification.remove(), 500);
+            }, 2000);
+            break;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Reset global variables to initial state
   currentTabId = null;
@@ -739,6 +858,31 @@ document.addEventListener('DOMContentLoaded', () => {
     incognitoButton.addEventListener('click', toggleIncognitoMode);
       // Direct navigation to settings page
     settingsButton.addEventListener('click', () => showSettings());
+    
+    // Downloads button
+    const downloadsButton = document.getElementById('downloads-button');
+    if (downloadsButton) {
+      downloadsButton.addEventListener('click', () => {
+        navigateTo('gkp://downloads.gekko/');
+      });
+    }
+    
+    // Add a download notification badge
+    let downloadBadge = document.getElementById('download-badge');
+    if (!downloadBadge) {
+      const downloadsButton = document.getElementById('downloads-button');
+      if (downloadsButton) {
+        downloadBadge = document.createElement('div');
+        downloadBadge.className = 'download-badge';
+        downloadBadge.id = 'download-badge';
+        downloadsButton.appendChild(downloadBadge);
+      }
+    }
+
+    // Listen for download updates to show a notification
+    if (window.api && typeof window.api.onDownloadUpdate === 'function') {
+      window.api.onDownloadUpdate(handleDownloadUpdate);
+    }
     
     // Listen for messages from internal pages
     window.addEventListener('message', (event) => {
