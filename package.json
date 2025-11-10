@@ -1,6 +1,6 @@
 {  "name": "gekko-browser",
   "productName": "GekkoBrowser",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A modern, sleek web browser with GKP and GKPS protocol support",
   "main": "src/index.js",
   "scripts": {

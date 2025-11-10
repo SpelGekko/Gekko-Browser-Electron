@@ -1,8 +1,8 @@
-version: 1.0.1
+version: 1.0.2
 files:
-  - url: GekkoBrowser-1.0.1 Setup.exe
-    sha512: d14863ab4c1195c8ce7dff9d00083e6d3fa5acda4dd535a997b234b32ac2dfe4e1be032a37787cde8c2eec5f8c583ba2141119dbed2c103866b118864df3f542
-    size: 133641728
-path: GekkoBrowser-1.0.1 Setup.exe
-sha512: d14863ab4c1195c8ce7dff9d00083e6d3fa5acda4dd535a997b234b32ac2dfe4e1be032a37787cde8c2eec5f8c583ba2141119dbed2c103866b118864df3f542
-releaseDate: '2025-06-07T22:12:33.325Z'
+  - url: GekkoBrowser-1.0.2 Setup.exe
+    sha512: 04e446e7d3052355984df6dc82763af99575c2cf351278ea3a6639e7d0aeaa5a9bd9ea6176a56bbaf3be150dce3f47d3d80c0190dda0e04f7084d2f43cf8df61
+    size: 133645312
+path: GekkoBrowser-1.0.2 Setup.exe
+sha512: 04e446e7d3052355984df6dc82763af99575c2cf351278ea3a6639e7d0aeaa5a9bd9ea6176a56bbaf3be150dce3f47d3d80c0190dda0e04f7084d2f43cf8df61
+releaseDate: '2025-06-08T09:27:22.233Z'
