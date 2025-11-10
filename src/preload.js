@@ -82,6 +82,10 @@ contextBridge.exposeInMainWorld('api', {
     });
   },
   
+  onOpenNewTab: (callback) => {
+    ipcRenderer.on('open-new-tab', (event, url) => callback(url));
+  },
+
   onThemeChanged: (callback) => {
     ipcRenderer.on('theme-changed', (event, theme) => callback(theme));
   },

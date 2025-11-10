@@ -63,6 +63,16 @@ let hasUpdateAvailable = false;
 let updateInfo = null;
 let updateToastTimeout = null;
 
+// Set up listener for new tab requests from main process
+if (window.api && typeof window.api.onOpenNewTab === 'function') {
+  window.api.onOpenNewTab((url) => {
+    console.log(`Received open-new-tab event for URL: ${url}`);
+    if (url) {
+      createTab(url);
+    }
+  });
+}
+
 // Set up navigation event listener from main process
 if (window.api && typeof window.api.onNavigate === 'function') {
   window.api.onNavigate((url) => {
@@ -860,7 +870,6 @@ document.addEventListener('DOMContentLoaded', () => {
     webview.setAttribute('webpreferences', 'contextIsolation=true, sandbox=true, javascript=true, webviewTag=false, nodeIntegration=false');
     webview.setAttribute('preload', window.api.getPaths().webviewPreload);
     webview.setAttribute('httpreferrer', 'strict-origin-when-cross-origin');
-    webview.setAttribute('allowpopups', 'false');
     webview.setAttribute('enableremotemodule', 'false');
     
     // Set content security policy for internal pages

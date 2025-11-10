@@ -429,6 +429,17 @@ const createWindow = () => {
     show: false, // Don't show until ready-to-show
   });
 
+  // Handle new window requests (e.g., window.open)
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    console.log(`Intercepted new window request for URL: ${url}`);
+    
+    // Send the URL to the renderer process to open in a new tab
+    mainWindow.webContents.send('open-new-tab', url);
+    
+    // Deny the new window creation
+    return { action: 'deny' };
+  });
+
   // and load the index.html of the app.
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
