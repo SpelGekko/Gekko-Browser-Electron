@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.api.onDownloadUpdate((item) => {
+        console.log('Downloads Page: Received download-update event:', item);
         if (item.state === 'progressing') {
             inProgress.set(item.startTime, item);
         } else {

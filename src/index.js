@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const path = require('path');
 const registerProtocolHandlers = require('./protocol-handlers');
 const historyStorage = require('./history-storage');

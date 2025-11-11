@@ -881,7 +881,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Listen for download updates to show a notification
     if (window.api && typeof window.api.onDownloadUpdate === 'function') {
-      window.api.onDownloadUpdate(handleDownloadUpdate);
+      console.log('Renderer: Setting up download update listener.');
+      window.api.onDownloadUpdate((item) => {
+        console.log('Renderer: Received download-update event:', item);
+        handleDownloadUpdate(item);
+      });
+    } else {
+      console.error('Renderer: onDownloadUpdate API not found.');
     }
     
     // Listen for messages from internal pages

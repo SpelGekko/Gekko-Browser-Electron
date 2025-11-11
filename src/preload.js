@@ -66,209 +66,59 @@ const allowedChannels = ['theme-changed', 'settings-changed', 'navigate', 'updat
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('api', {
   // Settings
-  getSettings: () => {
-    // Use cached settings if available, otherwise get fresh from main process
-    if (!cachedSettings) {
-      cachedSettings = ipcRenderer.sendSync('get-settings');
-    }
-    return cachedSettings;
-  },
-  
-  // Add IPC listeners for settings and theme updates
-  onSettingsUpdated: (callback) => {
-    ipcRenderer.on('settings-updated', (event, settings) => {
-      cachedSettings = settings;
-      callback(settings);
-    });
-  },
-  
-  onOpenNewTab: (callback) => {
-    ipcRenderer.on('open-new-tab', (event, url) => callback(url));
-  },
+  getSettings: () => ipcRenderer.sendSync('get-settings'),
+  onSettingsUpdated: (callback) => ipcRenderer.on('settings-updated', (event, settings) => {
+    cachedSettings = settings;
+    callback(settings);
+  }),
+  setSetting: (key, value) => ipcRenderer.send('set-setting', key, value),
+  getSetting: (key) => ipcRenderer.invoke('get-setting', key),
 
-  onThemeChanged: (callback) => {
-    ipcRenderer.on('theme-changed', (event, theme) => callback(theme));
-  },
-  
-  setSetting: (key, value) => {
-    ipcRenderer.send('set-setting', key, value);
-  },
-  
+  // Theme
+  onThemeChanged: (callback) => ipcRenderer.on('theme-changed', (event, theme) => callback(theme)),
+  getThemes: () => loadThemes(),
+  applyTheme: (themeId) => ipcRenderer.send('apply-theme', themeId),
+
   // Navigation
-  navigate: (url) => {
-    console.log('API navigate called with:', url);
-    ipcRenderer.send('navigate', url);
-    return true; // Return success
-  },
+  navigate: (url) => ipcRenderer.send('navigate', url),
+  onNavigate: (callback) => ipcRenderer.on('navigate-from-main', (event, url) => callback(url)),
+  openUpdatePage: () => ipcRenderer.send('open-update-page'),
   
-  // Paths
-  getPaths: () => {
-    return {
-      webviewPreload: webviewPreloadPath
-    };
-  },
-  
-  // Theme management
-  getThemes: () => {
-    console.log('Getting themes...');
-    return loadThemes();
-  },
-  
-  applyTheme: (themeId) => {
-    console.group('Apply Theme IPC');
-    try {
-      console.log('Sending apply-theme IPC message:', themeId);
-      ipcRenderer.send('apply-theme', themeId);
-      console.log('IPC message sent successfully');
-      console.groupEnd();
-      return true;
-    } catch (error) {
-      console.error('Error sending apply-theme IPC message:', error);
-      console.groupEnd();
-      return false;
-    }
-  },
-  
+  // Tabs
+  onOpenNewTab: (callback) => ipcRenderer.on('open-new-tab', (event, url) => callback(url)),
+  getActiveTabId: () => ipcRenderer.sendSync('get-active-tab-id'),
+
   // History
-  getHistory: () => {
-    return ipcRenderer.sendSync('get-history');
-  },
-  
+  getHistory: () => ipcRenderer.sendSync('get-history'),
   addToHistory: (historyEntry) => {
     if (typeof historyEntry === 'object') {
       ipcRenderer.send('add-history', historyEntry.url, historyEntry.title);
-    } else {
-      console.error('Invalid history entry:', historyEntry);
     }
   },
-  
-  clearHistory: () => {
-    ipcRenderer.send('clear-history');
-  },
-  
-  toggleIncognitoMode: () => {
-    return ipcRenderer.sendSync('toggle-incognito-mode');
-  },
-  
-  getIncognitoMode: () => {
-    return ipcRenderer.sendSync('get-incognito-mode');
-  },
-  
+  clearHistory: () => ipcRenderer.send('clear-history'),
+  toggleIncognitoMode: () => ipcRenderer.sendSync('toggle-incognito-mode'),
+  getIncognitoMode: () => ipcRenderer.sendSync('get-incognito-mode'),
+
   // Bookmarks
-  getBookmarks: () => {
-    return ipcRenderer.sendSync('get-bookmarks');
-  },
-  
-  addBookmark: (url, title, favicon) => {
-    ipcRenderer.send('add-bookmark', url, title, favicon);
-  },
-  
-  removeBookmark: (url) => {
-    ipcRenderer.send('remove-bookmark', url);
-  },
-  
-  isBookmarked: (url) => {
-    return ipcRenderer.sendSync('is-bookmarked', url);
-  },
-  
-  // Window controls
+  getBookmarks: () => ipcRenderer.sendSync('get-bookmarks'),
+  addBookmark: (url, title, favicon) => ipcRenderer.send('add-bookmark', url, title, favicon),
+  removeBookmark: (url) => ipcRenderer.send('remove-bookmark', url),
+  isBookmarked: (url) => ipcRenderer.sendSync('is-bookmarked', url),
+
+  // Window Controls
   minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),
-    // Navigation API
-  navigate: (url) => {
-    console.log('Preload: Navigation request for:', url);
-    ipcRenderer.send('navigate', url);
-  },
-  
-  handleNavigation: (url) => {
-    console.log('Preload: handleNavigation called with:', url);
-    ipcRenderer.send('navigate', url);
-  },
-  
-  // Specific page navigation shortcuts
-  openUpdatePage: () => {
-    console.log('Preload: Opening update page');
-    ipcRenderer.send('open-update-page');
-  },
-    on: (channel, callback) => {
-    // Whitelist channels we will listen to
-    const validChannels = ['theme-changed', 'settings-changed', 'navigate', 'update-status'];
-    if (validChannels.includes(channel)) {
-      ipcRenderer.on(channel, (event, ...args) => callback(...args));
-    }
-  },  onNavigate: (callback) => {
-    ipcRenderer.on('navigate-from-main', (event, url) => {
-      console.log('Preload: Received navigate-from-main for URL:', url);
-      callback(url);
-    });
-  },
-  
-  // Enhanced navigation with consistent behavior
-  getActiveTabId: () => {
-    return ipcRenderer.sendSync('get-active-tab-id');
-  },
-  
-  // For removing listeners when needed
-  removeListener: (channel, callback) => {
-    const validChannels = ['theme-changed', 'settings-changed', 'navigate', 'update-status'];
-    if (validChannels.includes(channel)) {
-      ipcRenderer.removeListener(channel, callback);
-    }
-  },
-  
-  receive: (channel, callback) => {
-    if (allowedChannels.includes(channel)) {
-      ipcRenderer.on(channel, (event, ...args) => callback(...args));
-    }
-  },
-  
-  // Updates management
-  getAppVersion: () => {
-    try {
-      return ipcRenderer.sendSync('get-app-version');
-    } catch (error) {
-      console.error('Error getting app version:', error);
-      return 'Unknown';
-    }
-  },
-  
-  checkForUpdates: () => {
-    ipcRenderer.send('check-for-updates');
-  },
-  
-  downloadUpdate: () => {
-    ipcRenderer.send('download-update');
-  },
-  
-  installUpdate: () => {
-    ipcRenderer.send('install-update');
-  },
-  
-  getUpdateStatus: () => {
-    try {
-      return ipcRenderer.invoke('get-update-status');
-    } catch (error) {
-      console.error('Error getting update status:', error);
-      return { status: 'error', info: { message: 'Failed to get update status' } };
-    }
-  },
-  
-  onUpdateStatus: (callback) => {
-    ipcRenderer.on('update-status', (event, status, info) => {
-      callback(status, info);
-    });
-  },
-  
-  getSetting: (key) => {
-    return ipcRenderer.invoke('get-setting', key);
-  },
-  
-  setSetting: (key, value) => {
-    ipcRenderer.send('set-setting', key, value);
-  },
 
-  // Download management
+  // Updates
+  getAppVersion: () => ipcRenderer.sendSync('get-app-version'),
+  checkForUpdates: () => ipcRenderer.send('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.send('download-update'),
+  installUpdate: () => ipcRenderer.send('install-update'),
+  getUpdateStatus: () => ipcRenderer.invoke('get-update-status'),
+  onUpdateStatus: (callback) => ipcRenderer.on('update-status', (event, status, info) => callback(status, info)),
+
+  // Downloads
   onDownloadUpdate: (callback) => ipcRenderer.on('download-update', (event, item) => callback(item)),
   cancelDownload: (startTime) => ipcRenderer.send('cancel-download', startTime),
   getDownloads: () => ipcRenderer.sendSync('get-downloads'),
@@ -277,4 +127,11 @@ contextBridge.exposeInMainWorld('api', {
 
   // Context Menu
   showContextMenu: (params) => ipcRenderer.send('show-context-menu', params),
+
+  // Paths
+  getPaths: () => {
+    return {
+      webviewPreload: webviewPreloadPath
+    };
+  },
 });
