@@ -21,7 +21,7 @@
     "email": "spelgekko@gmail.com"
   },
   "license": "MIT",
-  "repository": "https://github.com/SpelGekko/Gekko-Browser-Electron/releases",
+  "repository": "https://github.com/SpelGekko/Gekko-Browser-Electron",
   "publish": {
     "provider": "github",
     "releaseType": "release"

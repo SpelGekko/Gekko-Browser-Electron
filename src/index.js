@@ -758,10 +758,13 @@ ipcMain.on('clear-downloads', () => {
 });
 
 ipcMain.on('show-download-in-folder', (event, downloadId) => {
-    const download = downloadsStorage.getDownloads().find(d => d.startTime === downloadId);
+    const idAsNumber = parseInt(downloadId, 10);
+    const download = downloadsStorage.getDownloads().find(d => d.startTime === idAsNumber);
     if (download && download.path) {
         const { shell } = require('electron');
         shell.showItemInFolder(download.path);
+    } else {
+        console.log(`Could not find download with ID: ${idAsNumber}`);
     }
 });
 

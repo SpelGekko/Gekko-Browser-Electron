@@ -65,7 +65,7 @@ module.exports = {
       config: {
         repository: {
           owner: 'spelgekko',
-          name: 'gekko-browser'
+          name: 'Gekko-Browser-Electron'
         },
         prerelease: false,
         draft: true

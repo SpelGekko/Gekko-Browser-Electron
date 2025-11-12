@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (target.classList.contains('cancel-download')) {
             window.api.cancelDownload(downloadId);
         } else if (target.classList.contains('show-in-folder')) {
-            window.api.showDownloadInFolder(downloadId);
+            window.api.showDownloadInFolder(downloadId); 
         }
     });
 
