@@ -134,4 +134,13 @@ contextBridge.exposeInMainWorld('api', {
       webviewPreload: webviewPreloadPath
     };
   },
+  
+  // Extensions
+  getExtensions: () => ipcRenderer.sendSync('get-extensions'),
+  setExtensionState: (id, enabled) => ipcRenderer.sendSync('set-extension-state', id, enabled),
+
+  // Window controls
+  minimize: () => ipcRenderer.send('window:minimize'),
+  maximize: () => ipcRenderer.send('window:maximize'),
+  close: () => ipcRenderer.send('window-close'),
 });

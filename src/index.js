@@ -565,33 +565,55 @@ const createWindow = () => {
   });
 };
 
+
+// Load uBlock Origin browser extension before any windows are created
+async function loadExtensions() {
+  // Allow all response headers for Manifest V2 extensions
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({ responseHeaders: details.responseHeaders });
+  });
+
+  try {
+    const ublockPath = path.join(__dirname, 'extensions', 'ublock');
+    console.log(`[EXTENSIONS] Loading uBlock Origin from: ${ublockPath}`);
+    // Load the extension with file access enabled
+    const ext = await session.defaultSession.loadExtension(ublockPath, { allowFileAccess: true });
+    console.log(`[EXTENSIONS] uBlock Origin loaded:`, ext ? ext.name : 'Unknown');
+  } catch (error) {
+    console.error('[EXTENSIONS] Failed to load uBlock Origin:', error);
+  }
+}
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Load uBlock Origin and any other extensions before window creation
+  await loadExtensions();
+
   // Register custom protocol handlers
   registerProtocolHandlers();
-  
-  // Initialize history and settings storage
+
+  // Initialize persistent storage
   historyStorage.ensureHistoryFile();
   settingsStorage.ensureSettingsFile();
   bookmarksStorage.ensureBookmarksFile();
   downloadsStorage.ensureDownloadsFile();
-  
+
+  // Create the main browser window
   createWindow();
-  
+
   // Setup auto-updater
   setupAutoUpdater();
 
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
+  // On macOS, re-create a window when the dock icon is clicked and there are no open windows
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
   });
-  
-  // Check for updates on startup (with delay to not slow down startup)
+
+  // Check for updates on startup (with delay)
   setTimeout(() => {
     log.info('Checking for updates...');
     autoUpdater.checkForUpdates();
