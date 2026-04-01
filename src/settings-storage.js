@@ -21,7 +21,9 @@ const defaultSettings = {
   theme: 'dark',
   homePage: '',
   searchEngine: 'https://www.google.com/search?q=',
-  enableDevTools: false
+  enableDevTools: false,
+  homeBackgroundEnabled: false,
+  homeBackgroundUrl: ''
 };
 
 // Cache for settings

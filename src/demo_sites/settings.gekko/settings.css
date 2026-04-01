@@ -263,6 +263,32 @@ input:checked + .slider:before {
   text-align: center;
 }
 
+.setting-control-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.setting-control-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.setting-help {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.setting-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: var(--text-color);
+}
+
 /* Modern buttons override */
 .setting-button {
   background-color: var(--accent-color);

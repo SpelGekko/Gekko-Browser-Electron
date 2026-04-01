@@ -2,7 +2,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   console.group('Settings Page Initialization');
     // Get current settings
-  let settings = { theme: 'dark', homePage: '', searchEngine: 'https://www.google.com/search?q=', enableDevTools: false };
+  let settings = { theme: 'dark', homePage: '', searchEngine: 'https://www.google.com/search?q=', enableDevTools: false, homeBackgroundEnabled: false, homeBackgroundUrl: '' };
 
   try {
     if (window.api && typeof window.api.getSettings === 'function') {
@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize search engine and homepage form elements
     const searchEngineSelect = document.getElementById('search-engine-select');
     const customHomepageInput = document.getElementById('custom-homepage-input');
+    const homeBackgroundEnabled = document.getElementById('home-background-enabled');
+    const homeBackgroundUrl = document.getElementById('home-background-url');
+    const homeBackgroundFile = document.getElementById('home-background-file');
+    const homeBackgroundStatus = document.getElementById('home-background-status');
     
     if (searchEngineSelect) {
       // Set initial value from settings
@@ -55,6 +59,67 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.api && typeof window.api.setSetting === 'function') {
           window.api.setSetting('homePage', customHomepageInput.value);
         }
+      });
+    }
+
+    if (homeBackgroundEnabled) {
+      homeBackgroundEnabled.checked = !!settings.homeBackgroundEnabled;
+      homeBackgroundEnabled.addEventListener('change', () => {
+        if (window.api && typeof window.api.setSetting === 'function') {
+          window.api.setSetting('homeBackgroundEnabled', homeBackgroundEnabled.checked);
+        }
+      });
+    }
+
+    if (homeBackgroundUrl) {
+      homeBackgroundUrl.value = settings.homeBackgroundUrl?.startsWith('data:') ? '' : (settings.homeBackgroundUrl || '');
+      updateHomeBackgroundStatus(settings.homeBackgroundUrl || '', homeBackgroundStatus);
+      homeBackgroundUrl.addEventListener('input', () => {
+        const value = homeBackgroundUrl.value.trim();
+        if (window.api && typeof window.api.setSetting === 'function') {
+          window.api.setSetting('homeBackgroundUrl', value);
+        }
+        updateHomeBackgroundStatus(value, homeBackgroundStatus);
+      });
+      homeBackgroundUrl.addEventListener('blur', () => {
+        const value = homeBackgroundUrl.value.trim();
+        if (window.api && typeof window.api.setSetting === 'function') {
+          window.api.setSetting('homeBackgroundUrl', value);
+        }
+        updateHomeBackgroundStatus(value, homeBackgroundStatus);
+      });
+    }
+
+    if (homeBackgroundFile) {
+      homeBackgroundFile.addEventListener('click', async () => {
+        console.log('Home background file picker clicked');
+        if (!window.api || typeof window.api.pickHomeBackground !== 'function') {
+          console.warn('pickHomeBackground API is not available');
+          return;
+        }
+
+        const result = await window.api.pickHomeBackground();
+        if (!result || !result.dataUrl) {
+          console.log('Home background selection canceled or empty');
+          return;
+        }
+
+        if (homeBackgroundEnabled) {
+          homeBackgroundEnabled.checked = true;
+          if (window.api && typeof window.api.setSetting === 'function') {
+            window.api.setSetting('homeBackgroundEnabled', true);
+          }
+        }
+
+        if (window.api && typeof window.api.setSetting === 'function') {
+          window.api.setSetting('homeBackgroundUrl', result.dataUrl);
+        }
+
+        if (homeBackgroundUrl) {
+          homeBackgroundUrl.value = '';
+        }
+
+        updateHomeBackgroundStatus(result.dataUrl, homeBackgroundStatus, result.fileName);
       });
     }
     
@@ -244,4 +309,20 @@ function navigateToPage(url) {
   }
   
   console.groupEnd();
+}
+
+function updateHomeBackgroundStatus(value, statusEl, fileName = '') {
+  if (!statusEl) return;
+
+  if (!value) {
+    statusEl.textContent = 'No background selected.';
+    return;
+  }
+
+  if (value.startsWith('data:')) {
+    statusEl.textContent = fileName ? `Local image selected: ${fileName}` : 'Local image selected.';
+    return;
+  }
+
+  statusEl.textContent = `Using URL: ${value}`;
 }

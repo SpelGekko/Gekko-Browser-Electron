@@ -42,6 +42,11 @@ contextBridge.exposeInMainWorld("api", {
       return { theme: "dark" };
     }
   },
+  onSettingsUpdated: (callback) => {
+    ipcRenderer.on('settings-updated', (event, settings) => {
+      callback(settings);
+    });
+  },
 
   // History management
   getHistory: () => {
@@ -200,6 +205,8 @@ contextBridge.exposeInMainWorld("api", {
       return false;
     }
   },
+
+  pickHomeBackground: () => ipcRenderer.invoke('pick-home-background'),
   
   // Additional debug method to see what API methods are available
   getAvailableMethods: () => {

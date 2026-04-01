@@ -354,6 +354,44 @@ ipcMain.handle('get-setting', async (event, key) => {
   return settingsStorage.getSetting(key);
 });
 
+ipcMain.handle('pick-home-background', async () => {
+  const result = await dialog.showOpenDialog({
+    title: 'Select Home Screen Background',
+    properties: ['openFile'],
+    filters: [
+      { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'] }
+    ]
+  });
+
+  if (result.canceled || !result.filePaths?.length) {
+    return null;
+  }
+
+  const filePath = result.filePaths[0];
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeMap = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.svg': 'image/svg+xml'
+  };
+  const mimeType = mimeMap[ext] || 'application/octet-stream';
+
+  try {
+    const data = require('fs').readFileSync(filePath);
+    const base64 = data.toString('base64');
+    return {
+      dataUrl: `data:${mimeType};base64,${base64}`,
+      fileName: path.basename(filePath)
+    };
+  } catch (error) {
+    console.error('Failed to read home background file:', error);
+    return null;
+  }
+});
+
 // Handle custom bookmark ordering
 ipcMain.on('update-bookmarks-order', (event, orderedUrls) => {
   console.log('Updating bookmark order');

@@ -159,6 +159,27 @@
           </div>
           <div class="setting-item">
             <div>
+              <div class="setting-label">Home Screen Background</div>
+              <div class="setting-description">Use an image or GIF on the home page</div>
+            </div>
+            <div class="setting-control">
+              <div class="setting-control-stack">
+                <label class="setting-toggle">
+                  <input type="checkbox" id="home-background-enabled">
+                  <span>Enable custom background</span>
+                </label>
+                <div class="setting-control-row">
+                  <input type="text" id="home-background-url" class="setting-input" placeholder="Image/GIF URL (https://...)" aria-describedby="home-background-status">
+                  <button type="button" id="home-background-file" class="setting-button">
+                    <i class="fa-solid fa-image"></i> Choose File
+                  </button>
+                </div>
+                <div class="setting-help" id="home-background-status"></div>
+              </div>
+            </div>
+          </div>
+          <div class="setting-item">
+            <div>
               <div class="setting-label">Search Engine</div>
               <div class="setting-description">Default search engine for address bar searches</div>
             </div>

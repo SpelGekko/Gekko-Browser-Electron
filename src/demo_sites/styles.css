@@ -134,6 +134,7 @@ body {
   border-radius: 24px;
   padding: 0.75rem 1.5rem;
   box-shadow: 0 2px 8px var(--shadow-color);
+  position: relative;
 }
 
 .search-icon {
@@ -148,6 +149,7 @@ body {
   color: var(--text-color);
   font-size: 1.1rem;
   padding: 0.5rem 0;
+  padding-left: 2.25rem;
 }
 
 .search-input:focus {

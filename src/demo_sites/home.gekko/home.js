@@ -19,9 +19,14 @@ document.addEventListener('DOMContentLoaded', () => {
     console.warn('Error getting settings:', error);
   }
 
+  console.log('Home page settings:', settings);
+
   // Apply theme class to body
   document.body.className = `theme-${settings.theme || 'dark'}`;
+  document.body.classList.add('home-page');
   console.log('Theme applied:', settings.theme);
+
+  applyHomeBackground(settings);
 
   const searchInput = document.getElementById('search-input');
   const searchEngineSelect = document.getElementById('search-engine-select');
@@ -237,4 +242,40 @@ document.addEventListener('DOMContentLoaded', () => {
       iconDiv.innerHTML = ICONS.home;
     }
   });
+
+  if (window.api && typeof window.api.onSettingsUpdated === 'function') {
+    window.api.onSettingsUpdated((newSettings) => {
+      applyHomeBackground(newSettings);
+    });
+  }
 });
+
+function applyHomeBackground(settings) {
+  if (!settings) return;
+
+  const enabled = !!settings.homeBackgroundEnabled;
+  const url = typeof settings.homeBackgroundUrl === 'string' ? settings.homeBackgroundUrl.trim() : '';
+
+  console.log('Home background settings:', { enabled, hasUrl: !!url, isDataUrl: url.startsWith('data:') });
+
+  if (enabled && url) {
+    const safeUrl = url.replace(/"/g, '\\"');
+    const imageValue = `url("${safeUrl}")`;
+    document.body.style.backgroundImage = imageValue;
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundAttachment = 'fixed';
+    document.body.style.backgroundRepeat = 'no-repeat';
+    document.body.style.setProperty('--home-bg-image', imageValue);
+    document.body.style.setProperty('--home-bg-overlay-opacity', '0.45');
+    console.log('Home background applied');
+  } else {
+    document.body.style.backgroundImage = 'none';
+    document.body.style.setProperty('--home-bg-image', 'none');
+    document.body.style.setProperty('--home-bg-overlay-opacity', '0');
+    console.log('Home background cleared');
+  }
+
+  const computedBg = getComputedStyle(document.body).backgroundImage;
+  console.log('Computed body background-image:', computedBg);
+}

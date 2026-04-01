@@ -134,6 +134,9 @@ contextBridge.exposeInMainWorld('api', {
       webviewPreload: webviewPreloadPath
     };
   },
+
+  // Home background picker
+  pickHomeBackground: () => ipcRenderer.invoke('pick-home-background'),
   
   // Extensions
   getExtensions: () => ipcRenderer.sendSync('get-extensions'),
