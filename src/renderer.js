@@ -62,128 +62,8 @@ let isIncognito = false;
 let hasUpdateAvailable = false;
 let updateInfo = null;
 let updateToastTimeout = null;
-
-// Set up listener for new tab requests from main process
-if (window.api && typeof window.api.onOpenNewTab === 'function') {
-  window.api.onOpenNewTab((url) => {
-    console.log(`Received open-new-tab event for URL: ${url}`);
-    if (url) {
-      createTab(url);
-    }
-  });
-}
-
-// Set up navigation event listener from main process
-if (window.api && typeof window.api.onNavigate === 'function') {
-  window.api.onNavigate((url) => {
-    console.log('Received navigation event from main process:', url);
-    if (url) {
-      // If we have a current tab, navigate to the URL
-      if (currentTabId) {
-        navigateTo(url);
-      } else {
-        // Otherwise create a new tab
-        createTab(url);
-      }
-    }
-  });
-}
-
-// Set up update status listener
-if (window.api && typeof window.api.onUpdateStatus === 'function') {
-  window.api.onUpdateStatus((status, info) => {
-    console.log('Update status changed:', status, info);
-    const updateButton = document.getElementById('update-notification-button');
-    const updateBadge = document.getElementById('update-badge');
-    
-    if (status === 'available') {
-      hasUpdateAvailable = true;
-      updateInfo = info;
-      
-      // Show update notification
-      if (updateButton && updateBadge) {
-        updateButton.classList.add('update-button-active');
-        updateBadge.classList.add('available');
-        updateButton.setAttribute('title', `Update available: ${info.version}`);
-        
-        // Show toast notification
-        showUpdateToast(info);
-      }
-    } else {
-      hasUpdateAvailable = false;
-      
-      // Hide update notification
-      if (updateButton && updateBadge) {
-        updateButton.classList.remove('update-button-active');
-        updateBadge.classList.remove('available');
-        updateButton.setAttribute('title', 'No updates available');
-      }
-    }
-  });
-}
-
-// Helper function to show update toast notification
-function showUpdateToast(info) {
-  // Clear any existing timeouts
-  if (updateToastTimeout) {
-    clearTimeout(updateToastTimeout);
-  }
-  
-  // Remove any existing toasts
-  const existingToast = document.querySelector('.update-notification-toast');
-  if (existingToast) {
-    existingToast.remove();
-  }
-    // Create toast element
-  const toast = document.createElement('div');
-  toast.className = 'update-notification-toast';
-  toast.innerHTML = `
-    <div class="update-icon">
-      <i class="fa-solid fa-arrow-up-right-from-square"></i>
-    </div>
-    <div class="toast-content">
-      <div class="toast-title">Update Available</div>
-      <div class="toast-message">Version ${info.version} is now available. Click the update button to install.</div>
-    </div>
-    <div class="close-toast">
-      <i class="fa-solid fa-xmark"></i>
-    </div>
-  `;
-  
-  // Add to document
-  document.body.appendChild(toast);
-  
-  // Make it visible after a small delay
-  setTimeout(() => {
-    toast.classList.add('visible');
-  }, 100);
-  
-  // Set timeout to hide the toast
-  updateToastTimeout = setTimeout(() => {
-    toast.classList.remove('visible');
-    setTimeout(() => toast.remove(), 300);
-  }, 5000);
-  
-  // Add click event to close button
-  const closeButton = toast.querySelector('.close-toast');
-  if (closeButton) {
-    closeButton.addEventListener('click', () => {
-      toast.classList.remove('visible');
-      setTimeout(() => toast.remove(), 300);
-      clearTimeout(updateToastTimeout);
-    });
-  }
-  
-  // Add click event to the entire toast to open the update page
-  toast.addEventListener('click', (event) => {
-    if (!event.target.closest('.close-toast')) {
-      navigateTo('gkp://update.gekko/');
-      toast.classList.remove('visible');
-      setTimeout(() => toast.remove(), 300);
-      clearTimeout(updateToastTimeout);
-    }
-  });
-}
+let lastWorkspaceOpenId = null;
+let lastWorkspaceOpenTime = 0;
 
 // Helper to safely load settings
 function loadSettingsSafely() {
@@ -337,6 +217,14 @@ function applyTheme(newTheme) {
   }
   
   console.groupEnd();
+}
+
+function applyLayoutSettings(settings) {
+  const useVerticalTaskbar = Boolean(settings?.verticalTaskbar);
+  if (document.body) {
+    document.body.classList.toggle('vertical-taskbar', useVerticalTaskbar);
+  }
+  document.documentElement.classList.toggle('vertical-taskbar', useVerticalTaskbar);
 }
 
 // Listen for theme changes from internal pages to apply to webviews
@@ -672,6 +560,132 @@ document.addEventListener('DOMContentLoaded', () => {
   cachedSettings = null;
   bookmarks = [];
   isIncognito = false;
+  updateToastTimeout = null;
+  let memorySaverEnabled = false;
+  let memorySaverIntervalId = null;
+  let memorySaverIdleMs = 15 * 60 * 1000;
+
+  // Helper function to show update toast notification
+  function showUpdateToast(info) {
+    // Clear any existing timeouts
+    if (updateToastTimeout) {
+      clearTimeout(updateToastTimeout);
+    }
+    
+    // Remove any existing toasts
+    const existingToast = document.querySelector('.update-notification-toast');
+    if (existingToast) {
+      existingToast.remove();
+    }
+      // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'update-notification-toast';
+    toast.innerHTML = `
+      <div class="update-icon">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+      </div>
+      <div class="toast-content">
+        <div class="toast-title">Update Available</div>
+        <div class="toast-message">Version ${info.version} is now available. Click the update button to install.</div>
+      </div>
+      <div class="close-toast">
+        <i class="fa-solid fa-xmark"></i>
+      </div>
+    `;
+    
+    // Add to document
+    document.body.appendChild(toast);
+    
+    // Make it visible after a small delay
+    setTimeout(() => {
+      toast.classList.add('visible');
+    }, 100);
+    
+    // Set timeout to hide the toast
+    updateToastTimeout = setTimeout(() => {
+      toast.classList.remove('visible');
+      setTimeout(() => toast.remove(), 300);
+    }, 5000);
+    
+    // Add click event to close button
+    const closeButton = toast.querySelector('.close-toast');
+    if (closeButton) {
+      closeButton.addEventListener('click', () => {
+        toast.classList.remove('visible');
+        setTimeout(() => toast.remove(), 300);
+        clearTimeout(updateToastTimeout);
+      });
+    }
+    
+    // Add click event to the entire toast to open the update page
+    toast.addEventListener('click', (event) => {
+      if (!event.target.closest('.close-toast')) {
+        navigateTo('gkp://update.gekko/');
+        toast.classList.remove('visible');
+        setTimeout(() => toast.remove(), 300);
+        clearTimeout(updateToastTimeout);
+      }
+    });
+  }
+
+  // Set up listener for new tab requests from main process
+  if (window.api && typeof window.api.onOpenNewTab === 'function') {
+    window.api.onOpenNewTab((url) => {
+      console.log(`Received open-new-tab event for URL: ${url}`);
+      if (url) {
+        createTab(url);
+      }
+    });
+  }
+
+  // Set up navigation event listener from main process
+  if (window.api && typeof window.api.onNavigate === 'function') {
+    window.api.onNavigate((url) => {
+      console.log('Received navigation event from main process:', url);
+      if (url) {
+        // If we have a current tab, navigate to the URL
+        if (currentTabId) {
+          navigateTo(url);
+        } else {
+          // Otherwise create a new tab
+          createTab(url);
+        }
+      }
+    });
+  }
+
+  // Set up update status listener
+  if (window.api && typeof window.api.onUpdateStatus === 'function') {
+    window.api.onUpdateStatus((status, info) => {
+      console.log('Update status changed:', status, info);
+      const updateButton = document.getElementById('update-notification-button');
+      const updateBadge = document.getElementById('update-badge');
+      
+      if (status === 'available') {
+        hasUpdateAvailable = true;
+        updateInfo = info;
+        
+        // Show update notification
+        if (updateButton && updateBadge) {
+          updateButton.classList.add('update-button-active');
+          updateBadge.classList.add('available');
+          updateButton.setAttribute('title', `Update available: ${info.version}`);
+          
+          // Show toast notification
+          showUpdateToast(info);
+        }
+      } else {
+        hasUpdateAvailable = false;
+        
+        // Hide update notification
+        if (updateButton && updateBadge) {
+          updateButton.classList.remove('update-button-active');
+          updateBadge.classList.remove('available');
+          updateButton.setAttribute('title', 'No updates available');
+        }
+      }
+    });
+  }
   
   // DOM Elements (declared once)
   const tabBar = document.getElementById('tab-bar');
@@ -733,9 +747,35 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     console.warn('Could not get theme object for initial application:', theme);
   }
+
+  applyLayoutSettings(settings);
+  applyMemorySettings(settings);
   
   // Set up event listeners
   setupEventListeners();
+
+  if (window.api && typeof window.api.onTabContextAction === 'function') {
+    window.api.onTabContextAction((action, payload) => {
+      handleTabContextAction(action, payload);
+    });
+  }
+
+  if (window.api && typeof window.api.onBookmarksUpdated === 'function') {
+    window.api.onBookmarksUpdated((updatedBookmarks) => {
+      if (Array.isArray(updatedBookmarks)) {
+        bookmarks = updatedBookmarks;
+      } else {
+        loadBookmarks();
+      }
+      renderBookmarksBar();
+    });
+  }
+
+  if (window.api && typeof window.api.onWorkspaceOpen === 'function') {
+    window.api.onWorkspaceOpen((workspace) => {
+      openWorkspaceTabs(workspace);
+    });
+  }
   
   // Create initial tab with home page
   createTab(settings?.homePage || 'gkp://home.gekko/');
@@ -811,6 +851,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Tab management
     newTabButton.addEventListener('click', () => createTab());
+    tabBar.addEventListener('contextmenu', handleTabContextMenu);
     
     // Navigation controls
     backButton.addEventListener('click', () => goBack());
@@ -947,6 +988,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
         });
+      } else if (event.data && event.data.type === 'open-workspace' && event.data.workspace) {
+        openWorkspaceTabs(event.data.workspace);
       }
     });
   }
@@ -957,6 +1000,395 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const url = addressBar.value;
       handleNavigation(url);
+    }
+  }
+
+  function getTabById(tabId) {
+    return tabs.find(tab => tab.id === tabId);
+  }
+
+  function getTabIdsInOrder() {
+    return Array.from(tabBar.querySelectorAll('.tab'))
+      .map(tab => tab.getAttribute('data-tab-id'))
+      .filter(Boolean);
+  }
+
+  function getMemorySaverIdleMs(settings) {
+    const minutes = Number(settings?.memorySaverIdleMinutes);
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      return 15 * 60 * 1000;
+    }
+    return minutes * 60 * 1000;
+  }
+
+  function applyMemorySettings(settings) {
+    const enabled = settings?.memorySaverEnabled !== false;
+    const idleMs = getMemorySaverIdleMs(settings);
+    const shouldReset = enabled !== memorySaverEnabled || idleMs !== memorySaverIdleMs;
+
+    memorySaverEnabled = enabled;
+    memorySaverIdleMs = idleMs;
+
+    if (!shouldReset) {
+      return;
+    }
+
+    if (memorySaverIntervalId) {
+      clearInterval(memorySaverIntervalId);
+      memorySaverIntervalId = null;
+    }
+
+    if (memorySaverEnabled) {
+      const intervalMs = Math.min(60 * 1000, Math.max(10 * 1000, Math.floor(memorySaverIdleMs / 2)));
+      memorySaverIntervalId = setInterval(runMemorySaver, intervalMs);
+      runMemorySaver();
+    }
+  }
+
+  function runMemorySaver() {
+    if (!memorySaverEnabled) {
+      return;
+    }
+
+    const now = Date.now();
+    tabs.forEach((tab) => {
+      if (!tab || tab.id === currentTabId || tab.isDiscarded) {
+        return;
+      }
+
+      if (!tab.webview) {
+        return;
+      }
+
+      let currentUrl = tab.url;
+      try {
+        if (typeof tab.webview.getURL === 'function') {
+          currentUrl = tab.webview.getURL() || currentUrl;
+        }
+      } catch (error) {
+        currentUrl = tab.url;
+      }
+
+      if (isInternalUrl(currentUrl)) {
+        return;
+      }
+
+      const lastActiveAt = tab.lastActiveAt || tab.createdAt || 0;
+      if (now - lastActiveAt < memorySaverIdleMs) {
+        return;
+      }
+
+      discardTab(tab);
+    });
+  }
+
+  function discardTab(tab) {
+    if (!tab || tab.isDiscarded || !tab.webview) {
+      return;
+    }
+
+    let discardUrl = tab.url;
+    try {
+      if (typeof tab.webview.getURL === 'function') {
+        discardUrl = tab.webview.getURL() || discardUrl;
+      }
+    } catch (error) {
+      discardUrl = tab.url;
+    }
+
+    tab.discardedUrl = discardUrl || tab.url || '';
+    tab.isDiscarded = true;
+    tab.element?.classList.add('tab-discarded');
+
+    try {
+      tab.webview.remove();
+    } catch (error) {
+      console.warn('Failed to remove discarded webview:', error);
+    }
+
+    tab.webview = null;
+  }
+
+  function restoreDiscardedTab(tab) {
+    if (!tab || !tab.isDiscarded) {
+      return;
+    }
+
+    const settings = loadSettingsSafely();
+    const fallbackUrl = settings?.homePage || 'gkp://home.gekko/';
+    const restoreUrl = tab.discardedUrl || tab.url || fallbackUrl;
+
+    tab.webview = createWebviewForTab(tab.id, restoreUrl);
+    tab.isDiscarded = false;
+    tab.discardedUrl = null;
+    tab.element?.classList.remove('tab-discarded');
+  }
+
+  function handleTabContextMenu(event) {
+    if (!window.api || typeof window.api.showContextMenu !== 'function') {
+      return;
+    }
+
+    const target = event.target;
+    const tabElement = target && target.closest ? target.closest('.tab') : null;
+    if (!tabElement) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const tabId = tabElement.getAttribute('data-tab-id');
+    if (!tabId) {
+      return;
+    }
+
+    const tabIds = getTabIdsInOrder();
+    const tabIndex = tabIds.indexOf(tabId);
+
+    window.api.showContextMenu({
+      context: 'tab',
+      tabId,
+      tabIndex,
+      tabCount: tabIds.length,
+      x: event.x,
+      y: event.y
+    });
+  }
+
+  function handleTabContextAction(action, payload) {
+    const tabId = payload?.tabId;
+    if (!action) {
+      return;
+    }
+
+    if (action === 'save-workspace') {
+      saveWorkspaceFromTabs();
+      return;
+    }
+
+    if (!tabId) {
+      return;
+    }
+
+    switch (action) {
+      case 'new-tab':
+        createTab();
+        break;
+      case 'duplicate-tab':
+        duplicateTab(tabId);
+        break;
+      case 'reload-tab':
+        reloadTab(tabId);
+        break;
+      case 'close-tab':
+        closeTab(tabId);
+        break;
+      case 'close-other-tabs':
+        closeOtherTabs(tabId);
+        break;
+      case 'close-tabs-to-right':
+        closeTabsToRight(tabId);
+        break;
+      case 'save-workspace':
+        saveWorkspaceFromTabs();
+        break;
+      default:
+        console.warn('Unknown tab context action:', action);
+    }
+  }
+
+  function duplicateTab(tabId) {
+    const tab = getTabById(tabId);
+    if (!tab) {
+      return;
+    }
+
+    const url = tab.webview && typeof tab.webview.getURL === 'function'
+      ? tab.webview.getURL()
+      : tab.url;
+
+    createTab(url);
+  }
+
+  function reloadTab(tabId) {
+    const tab = getTabById(tabId);
+    if (!tab) {
+      return;
+    }
+
+    if (tab.isDiscarded) {
+      restoreDiscardedTab(tab);
+    }
+
+    if (tab.webview && typeof tab.webview.reload === 'function') {
+      tab.webview.reload();
+    }
+  }
+
+  function closeOtherTabs(tabId) {
+    setActiveTab(tabId);
+    const tabIdsToClose = tabs
+      .filter(tab => tab.id !== tabId)
+      .map(tab => tab.id);
+
+    tabIdsToClose.forEach(id => closeTab(id));
+  }
+
+  function closeTabsToRight(tabId) {
+    const tabIds = getTabIdsInOrder();
+    const tabIndex = tabIds.indexOf(tabId);
+    if (tabIndex < 0) {
+      return;
+    }
+
+    const tabIdsToClose = tabIds.slice(tabIndex + 1);
+    tabIdsToClose.forEach(id => closeTab(id));
+  }
+
+  async function saveWorkspaceFromTabs() {
+    if (!window.api || typeof window.api.addWorkspace !== 'function') {
+      return;
+    }
+
+    const tabsSnapshot = tabs
+      .map((tab) => {
+        let url = tab.url;
+        try {
+          if (tab.webview && typeof tab.webview.getURL === 'function') {
+            const currentUrl = tab.webview.getURL();
+            if (currentUrl) {
+              url = currentUrl;
+            }
+          }
+        } catch (error) {
+          url = tab.url;
+        }
+
+        if (!url) {
+          return null;
+        }
+
+        return {
+          url,
+          title: tab.title || url
+        };
+      })
+      .filter(Boolean);
+
+    if (tabsSnapshot.length === 0) {
+      return;
+    }
+
+    const defaultName = `Workspace ${new Date().toISOString().replace('T', ' ').slice(0, 16)}`;
+    const name = await requestWorkspaceName(defaultName);
+    if (!name || !name.trim()) {
+      return;
+    }
+
+    window.api.addWorkspace({
+      name: name.trim(),
+      tabs: tabsSnapshot
+    });
+  }
+
+  function requestWorkspaceName(defaultName) {
+    return new Promise((resolve) => {
+      const existing = document.querySelector('.workspace-prompt-overlay');
+      if (existing) {
+        existing.remove();
+      }
+
+      const overlay = document.createElement('div');
+      overlay.className = 'workspace-prompt-overlay';
+
+      const dialog = document.createElement('div');
+      dialog.className = 'workspace-prompt';
+
+      const title = document.createElement('div');
+      title.className = 'workspace-prompt-title';
+      title.textContent = 'Save Workspace';
+
+      const description = document.createElement('div');
+      description.className = 'workspace-prompt-description';
+      description.textContent = 'Name this workspace to save your current tabs.';
+
+      const input = document.createElement('input');
+      input.className = 'workspace-prompt-input';
+      input.type = 'text';
+      input.value = defaultName;
+
+      const actions = document.createElement('div');
+      actions.className = 'workspace-prompt-actions';
+
+      const cancelButton = document.createElement('button');
+      cancelButton.className = 'workspace-prompt-button';
+      cancelButton.textContent = 'Cancel';
+
+      const saveButton = document.createElement('button');
+      saveButton.className = 'workspace-prompt-button primary';
+      saveButton.textContent = 'Save';
+
+      actions.appendChild(cancelButton);
+      actions.appendChild(saveButton);
+
+      dialog.appendChild(title);
+      dialog.appendChild(description);
+      dialog.appendChild(input);
+      dialog.appendChild(actions);
+      overlay.appendChild(dialog);
+
+      const cleanup = (value) => {
+        overlay.remove();
+        resolve(value);
+      };
+
+      cancelButton.addEventListener('click', () => cleanup(''));
+      saveButton.addEventListener('click', () => cleanup(input.value));
+
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+          cleanup('');
+        }
+      });
+
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          cleanup(input.value);
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          cleanup('');
+        }
+      });
+
+      document.body.appendChild(overlay);
+      input.focus();
+      input.select();
+    });
+  }
+
+  function openWorkspaceTabs(workspace) {
+    if (!workspace || !Array.isArray(workspace.tabs)) {
+      return;
+    }
+
+    const now = Date.now();
+    if (workspace.id && workspace.id === lastWorkspaceOpenId && now - lastWorkspaceOpenTime < 1500) {
+      return;
+    }
+
+    lastWorkspaceOpenId = workspace.id || null;
+    lastWorkspaceOpenTime = now;
+
+    let lastTabId = null;
+    workspace.tabs.forEach((tab) => {
+      if (tab && tab.url) {
+        lastTabId = createTab(tab.url, { activate: false });
+      }
+    });
+
+    if (lastTabId) {
+      setActiveTab(lastTabId);
     }
   }
 
@@ -980,11 +1412,58 @@ document.addEventListener('DOMContentLoaded', () => {
     window.api.addToHistory(historyEntry);
   }
 
+  function createWebviewForTab(tabId, url) {
+    const existing = document.getElementById(`webview-${tabId}`);
+    if (existing) {
+      existing.remove();
+    }
+
+    const webview = document.createElement('webview');
+    webview.setAttribute('id', `webview-${tabId}`);
+    webview.setAttribute('class', 'webview hidden');
+    webview.setAttribute('data-tab-id', tabId);
+    webview.setAttribute('nodeintegration', 'false');
+    webview.setAttribute('contextIsolation', 'true');
+    webview.setAttribute('webpreferences', 'contextIsolation=true, sandbox=true, javascript=true, webviewTag=false, nodeIntegration=false');
+    webview.setAttribute('preload', window.api.getPaths().webviewPreload);
+    webview.setAttribute('httpreferrer', 'strict-origin-when-cross-origin');
+    webview.setAttribute('enableremotemodule', 'false');
+    webview.dataset.ready = 'false';
+
+    if (url.startsWith('gkp://') || url.startsWith('gkps://')) {
+      webview.setAttribute('contentSecurityPolicy', `
+        default-src 'self' gkp: gkps:;
+        script-src 'self' 'unsafe-inline' 'unsafe-eval' gkp: gkps:;
+        style-src 'self' 'unsafe-inline' gkp: gkps:;
+        img-src 'self' data: gkp: gkps: https:;
+        font-src 'self' gkp: gkps: data:;
+        connect-src 'self' gkp: gkps:;
+      `);
+    } else {
+      webview.setAttribute(
+        'contentSecurityPolicy',
+        "default-src 'self' 'unsafe-inline' 'unsafe-eval' gkp: gkps: file: data: blob:; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' gkp: gkps: chrome: file: data: blob:; " +
+        "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' gkp: gkps: chrome: file: data: blob:; " +
+        "style-src 'self' 'unsafe-inline' gkp: gkps: file: data: blob:; " +
+        "style-src-elem 'self' 'unsafe-inline' gkp: gkps: file: data: blob:; " +
+        "font-src 'self' 'unsafe-inline' gkp: gkps: file: data: blob:; " +
+        "img-src 'self' gkp: gkps: file: data: blob:;"
+      );
+    }
+
+    webview.setAttribute('src', url);
+    browserContent.appendChild(webview);
+    setupWebviewEvents(webview, tabId);
+    return webview;
+  }
+
   // Create a new tab
-  function createTab(url) {
+  function createTab(url, options = {}) {
     const settings = window.api.getSettings();
     const tabId = generateTabId();
     const homePage = settings.homePage || 'gkp://home.gekko/';
+    const shouldActivate = options.activate !== false;
 
     // Default URL if none provided
     url = url || homePage;
@@ -1010,46 +1489,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Insert tab before the new tab button
     tabBar.insertBefore(tab, newTabButton);
 
-    // Create webview with secure settings
-    const webview = document.createElement('webview');
-    webview.setAttribute('id', `webview-${tabId}`);
-    webview.setAttribute('class', 'webview hidden');
-    webview.setAttribute('data-tab-id', tabId);
-    webview.setAttribute('nodeintegration', 'false');
-    webview.setAttribute('contextIsolation', 'true');
-    webview.setAttribute('webpreferences', 'contextIsolation=true, sandbox=true, javascript=true, webviewTag=false, nodeIntegration=false');
-    webview.setAttribute('preload', window.api.getPaths().webviewPreload);
-    webview.setAttribute('httpreferrer', 'strict-origin-when-cross-origin');
-    webview.setAttribute('enableremotemodule', 'false');
-    
-    // Set content security policy for internal pages
-    if (url.startsWith('gkp://') || url.startsWith('gkps://')) {
-      webview.setAttribute('contentSecurityPolicy', `
-        default-src 'self' gkp: gkps:;
-        script-src 'self' 'unsafe-inline' 'unsafe-eval' gkp: gkps:;
-        style-src 'self' 'unsafe-inline' gkp: gkps:;
-        img-src 'self' data: gkp: gkps: https:;
-        font-src 'self' gkp: gkps: data:;
-        connect-src 'self' gkp: gkps:;
-      `);
-    } else {
-      // For external pages, use a stricter CSP
-      webview.setAttribute('contentSecurityPolicy',
-        "default-src 'self' 'unsafe-inline' 'unsafe-eval' gkp: gkps: file: data: blob:; " +
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' gkp: gkps: chrome: file: data: blob:; " +
-        "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' gkp: gkps: chrome: file: data: blob:; " +
-        "style-src 'self' 'unsafe-inline' gkp: gkps: file: data: blob:; " +
-        "style-src-elem 'self' 'unsafe-inline' gkp: gkps: file: data: blob:; " +
-        "font-src 'self' 'unsafe-inline' gkp: gkps: file: data: blob:; " +
-        "img-src 'self' gkp: gkps: file: data: blob:;"
-      );
-    }
-    
-    // Set the src attribute initially
-    webview.setAttribute('src', url);
-
-    // Add webview to the browser content
-    browserContent.appendChild(webview);
+    const webview = createWebviewForTab(tabId, url);
 
     // Store tab info
     tabs.push({
@@ -1058,8 +1498,16 @@ document.addEventListener('DOMContentLoaded', () => {
       title: 'New Tab',
       favicon: null,
       element: tab,
-      webview: webview
+      webview: webview,
+      createdAt: Date.now(),
+      lastActiveAt: Date.now(),
+      isDiscarded: false,
+      discardedUrl: null
     });
+
+    if (isInternalUrl(url)) {
+      updateTabFavicon(tabId, getInternalFaviconUrl());
+    }
 
     // Set up tab event listeners
     const closeButton = tab.querySelector('.tab-close');
@@ -1070,6 +1518,8 @@ document.addEventListener('DOMContentLoaded', () => {
       setActiveTab(tabId);
     });
 
+    tab.addEventListener('contextmenu', handleTabContextMenu);
+
     // Handle tab closing
     closeButton.addEventListener('click', (e) => {
       e.preventDefault();
@@ -1077,11 +1527,10 @@ document.addEventListener('DOMContentLoaded', () => {
       closeTab(tabId);
     });
 
-    // Set up webview events
-    setupWebviewEvents(webview, tabId);
-
     // Set as active tab
-    setActiveTab(tabId);
+    if (shouldActivate) {
+      setActiveTab(tabId);
+    }
 
     return tabId;
   }
@@ -1091,6 +1540,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // DOM ready
     webview.addEventListener('dom-ready', () => {
       console.log(`WebView DOM ready for tab ${tabId}`);
+      webview.dataset.ready = 'true';
       
       // Wait for webview to be fully initialized
       const initWebview = async () => {
@@ -1149,6 +1599,19 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       
       initWebview();
+
+      if (tabId === currentTabId) {
+        try {
+          const actualUrl = webview.getURL ? webview.getURL() : webview.getAttribute('src');
+          if (actualUrl) {
+            updateBookmarkButton(actualUrl);
+          }
+        } catch (error) {
+          console.warn('Unable to update bookmark button on dom-ready:', error);
+        }
+
+        updateNavigationButtons(tabId);
+      }
     });
     
     // Page title updated
@@ -1158,6 +1621,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Page favicon updated
     webview.addEventListener('page-favicon-updated', (e) => {
+      let currentUrl = null;
+      try {
+        currentUrl = typeof webview.getURL === 'function' ? webview.getURL() : null;
+      } catch (error) {
+        currentUrl = null;
+      }
+
+      if (isInternalUrl(currentUrl || webview.getAttribute('src'))) {
+        updateTabFavicon(tabId, getInternalFaviconUrl());
+        return;
+      }
+
       if (e.favicons && e.favicons.length > 0) {
         updateTabFavicon(tabId, e.favicons[0]);
       }
@@ -1197,6 +1672,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const finalUrl = e.url;
       updateAddressBar(finalUrl, tabId);
       updateNavigationButtons(tabId);
+
+      if (isInternalUrl(finalUrl)) {
+        updateTabFavicon(tabId, getInternalFaviconUrl());
+      }
       
       try {
         addToHistory(finalUrl, getTabTitle(tabId));
@@ -1252,7 +1731,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set the active tab
   function setActiveTab(tabId) {
     // Update current tab ID
+    const previousTab = getTabById(currentTabId);
+    if (previousTab) {
+      previousTab.lastActiveAt = Date.now();
+    }
     currentTabId = tabId;
+
+    const targetTab = getTabById(tabId);
+    if (targetTab) {
+      targetTab.lastActiveAt = Date.now();
+      if (targetTab.isDiscarded) {
+        restoreDiscardedTab(targetTab);
+      }
+    }
     
     // Update tab UI
     document.querySelectorAll('.tab').forEach(tab => {
@@ -1279,25 +1770,28 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update address bar
       updateAddressBar(currentUrl, tabId);
       
-      // Update bookmark button
-      try {
-        const actualUrl = activeWebview.getURL ? activeWebview.getURL() : currentUrl;
-        if (actualUrl) {
-          updateBookmarkButton(actualUrl);
+      const isReady = activeWebview.dataset.ready === 'true';
+      if (isReady) {
+        // Update bookmark button
+        try {
+          const actualUrl = activeWebview.getURL ? activeWebview.getURL() : currentUrl;
+          if (actualUrl) {
+            updateBookmarkButton(actualUrl);
+          }
+        } catch (error) {
+          console.error('Error updating bookmark button in setActiveTab:', error);
         }
-      } catch (error) {
-        console.error('Error updating bookmark button in setActiveTab:', error);
       }
+
+      updateNavigationButtons(tabId);
       
-      // Only update navigation buttons if webview is ready
-      if (activeWebview.isConnected && typeof activeWebview.canGoBack === 'function') {
-        updateNavigationButtons(tabId);
-      }
-      
-      // Ensure the webview has loaded the URL
-      if (currentUrl && (!activeWebview.getURL || !activeWebview.getURL())) {
-        console.log(`Ensuring URL is loaded: ${currentUrl}`);
-        safeLoadURL(activeWebview, currentUrl);
+      // Ensure the webview has loaded the URL when ready
+      if (currentUrl) {
+        const needsLoad = !activeWebview.getURL || (isReady && !activeWebview.getURL());
+        if (needsLoad) {
+          console.log(`Ensuring URL is loaded: ${currentUrl}`);
+          safeLoadURL(activeWebview, currentUrl);
+        }
       }
     }
   }
@@ -1313,7 +1807,9 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Remove elements
       tab.element.remove();
-      tab.webview.remove();
+      if (tab.webview) {
+        tab.webview.remove();
+      }
       
       // Remove from tabs array
       tabs.splice(tabIndex, 1);
@@ -1347,6 +1843,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function getTabTitle(tabId) {
     const tab = tabs.find(tab => tab.id === tabId);
     return tab ? tab.title : 'New Tab';
+  }
+
+  function isInternalUrl(url) {
+    return typeof url === 'string' && (url.startsWith('gkp://') || url.startsWith('gkps://'));
+  }
+
+  function getInternalFaviconUrl() {
+    return 'gkp://assets.gekko/icons/32x32.png';
   }
 
   // Update tab favicon
@@ -1449,6 +1953,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     try {
+      if (webview.dataset.ready !== 'true') {
+        backButton.classList.add('disabled');
+        forwardButton.classList.add('disabled');
+        return;
+      }
       // Check if DOM is ready and methods are available
       if (!webview.isConnected || typeof webview.canGoBack !== 'function') {
         console.log('WebView not fully initialized yet, disabling navigation buttons');
@@ -1732,33 +2241,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Clear current bookmarks
     bookmarksBar.innerHTML = '';
     
-    // Add bookmark button
-    const addBookmarkButton = document.createElement('div');
-    addBookmarkButton.className = 'add-bookmark-button';
-    addBookmarkButton.innerHTML = '<i class="fa-solid fa-plus"></i>';
-    addBookmarkButton.title = 'Add current page to bookmarks';
-    addBookmarkButton.addEventListener('click', () => {
-      const activeWebview = document.querySelector(`#webview-${currentTabId}`);
-      if (activeWebview) {
-        const url = activeWebview.getURL();
-        const title = getTabTitle(currentTabId);
-        let favicon = null;
-        const tab = tabs.find(tab => tab.id === currentTabId);
-        if (tab && tab.favicon) {
-          favicon = tab.favicon;
-        }
-        window.api.addBookmark(url, title, favicon);
-        loadBookmarks();
-        renderBookmarksBar();
-        updateBookmarkButton(url);
-      }
+    // Bookmark toggle button
+    const toggleBookmarkButton = document.createElement('div');
+    toggleBookmarkButton.className = 'add-bookmark-button';
+    toggleBookmarkButton.innerHTML = '<i class="fa-regular fa-star"></i>';
+    toggleBookmarkButton.title = 'Add or remove bookmark for current page';
+    toggleBookmarkButton.addEventListener('click', () => {
+      toggleBookmark();
     });
-    bookmarksBar.appendChild(addBookmarkButton);
-    
-    // Show top 5 bookmarks
-    const topBookmarks = bookmarks.slice(0, 5);
-    
-    topBookmarks.forEach(bookmark => {
+    bookmarksBar.appendChild(toggleBookmarkButton);
+
+    bookmarks.forEach(bookmark => {
       const bookmarkItem = document.createElement('div');
       bookmarkItem.className = 'bookmark-item';
       bookmarkItem.title = bookmark.title;
@@ -1785,6 +2278,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update the bookmark button state based on whether the current URL is bookmarked
   function updateBookmarkButton(url) {
     const bookmarkButton = document.getElementById('bookmark-page-button');
+    const barToggleButton = document.querySelector('.bookmarks-bar .add-bookmark-button');
     if (!bookmarkButton) {
       console.warn('Bookmark button not found in DOM');
       return;
@@ -1797,6 +2291,9 @@ document.addEventListener('DOMContentLoaded', () => {
       bookmarkButton.classList.remove('bookmarked');
       bookmarkButton.setAttribute('title', 'Cannot bookmark this page');
       bookmarkButton.classList.add('disabled');
+      if (barToggleButton) {
+        barToggleButton.innerHTML = '<i class="fa-regular fa-star"></i>';
+      }
       return;
     } else {
       // Make sure the button is enabled for normal URLs
@@ -1812,17 +2309,26 @@ document.addEventListener('DOMContentLoaded', () => {
         bookmarkButton.innerHTML = '<i class="fa-solid fa-star"></i>';
         bookmarkButton.classList.add('bookmarked');
         bookmarkButton.setAttribute('title', 'Remove from bookmarks');
+        if (barToggleButton) {
+          barToggleButton.innerHTML = '<i class="fa-solid fa-star"></i>';
+        }
       } else {
         console.log('URL is not bookmarked, updating button state');
         bookmarkButton.innerHTML = '<i class="fa-regular fa-star"></i>';
         bookmarkButton.classList.remove('bookmarked');
         bookmarkButton.setAttribute('title', 'Add to bookmarks');
+        if (barToggleButton) {
+          barToggleButton.innerHTML = '<i class="fa-regular fa-star"></i>';
+        }
       }
     } catch (error) {
       console.error('Error updating bookmark button:', error);
       bookmarkButton.innerHTML = '<i class="fa-regular fa-star"></i>';
       bookmarkButton.classList.remove('bookmarked');
       bookmarkButton.setAttribute('title', 'Bookmark functionality unavailable');
+      if (barToggleButton) {
+        barToggleButton.innerHTML = '<i class="fa-regular fa-star"></i>';
+      }
     }
   }  // Listen for settings updates
   const handleSettingsUpdate = (settings) => {
@@ -1858,6 +2364,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Theme unchanged, skipping application');
       }
     }
+
+    applyLayoutSettings(settings);
+    applyMemorySettings(settings);
     
     console.groupEnd();
   };

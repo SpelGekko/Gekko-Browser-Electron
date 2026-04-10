@@ -2,7 +2,16 @@
 document.addEventListener('DOMContentLoaded', () => {
   console.group('Settings Page Initialization');
     // Get current settings
-  let settings = { theme: 'dark', homePage: '', searchEngine: 'https://www.google.com/search?q=', enableDevTools: false, homeBackgroundEnabled: false, homeBackgroundUrl: '' };
+  let settings = {
+    theme: 'dark',
+    homePage: '',
+    searchEngine: 'https://www.google.com/search?q=',
+    enableDevTools: false,
+    homeBackgroundEnabled: false,
+    homeBackgroundUrl: '',
+    verticalTaskbar: false,
+    memorySaverEnabled: true
+  };
 
   try {
     if (window.api && typeof window.api.getSettings === 'function') {
@@ -28,6 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const homeBackgroundUrl = document.getElementById('home-background-url');
     const homeBackgroundFile = document.getElementById('home-background-file');
     const homeBackgroundStatus = document.getElementById('home-background-status');
+    const verticalTaskbarCheckbox = document.getElementById('vertical-taskbar-checkbox');
+    const memorySaverCheckbox = document.getElementById('memory-saver-checkbox');
     
     if (searchEngineSelect) {
       // Set initial value from settings
@@ -122,6 +133,24 @@ document.addEventListener('DOMContentLoaded', () => {
         updateHomeBackgroundStatus(result.dataUrl, homeBackgroundStatus, result.fileName);
       });
     }
+
+    if (verticalTaskbarCheckbox) {
+      verticalTaskbarCheckbox.checked = !!settings.verticalTaskbar;
+      verticalTaskbarCheckbox.addEventListener('change', () => {
+        if (window.api && typeof window.api.setSetting === 'function') {
+          window.api.setSetting('verticalTaskbar', verticalTaskbarCheckbox.checked);
+        }
+      });
+    }
+
+    if (memorySaverCheckbox) {
+      memorySaverCheckbox.checked = settings.memorySaverEnabled !== false;
+      memorySaverCheckbox.addEventListener('change', () => {
+        if (window.api && typeof window.api.setSetting === 'function') {
+          window.api.setSetting('memorySaverEnabled', memorySaverCheckbox.checked);
+        }
+      });
+    }
     
   } catch (error) {
     console.error('Error getting settings:', error);
@@ -134,7 +163,8 @@ document.addEventListener('DOMContentLoaded', () => {
     { id: "light", name: "Light Theme", color: '#f8f9fa', textColor: '#202124', icon: 'sun' },
     { id: "purple", name: "Purple Theme", color: '#20123a', textColor: '#ffffff', icon: 'palette' },
     { id: "blue", name: "Blue Theme", color: '#0d2149', textColor: '#ffffff', icon: 'water' },
-    { id: "red", name: "Red Theme", color: '#3c1014', textColor: '#ffffff', icon: 'fire' }
+    { id: "red", name: "Red Theme", color: '#3c1014', textColor: '#ffffff', icon: 'fire' },
+    { id: "gekko", name: "Gekko Theme", color: '#0f1d12', textColor: '#e5f9d6', icon: 'frog' }
   ];
   const currentTheme = settings.theme || 'dark';
   themes.forEach(theme => {

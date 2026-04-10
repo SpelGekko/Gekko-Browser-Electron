@@ -249,6 +249,55 @@ const themes = {
       shadow: 'rgba(0, 0, 0, 0.3)',
       overlay: 'rgba(0, 0, 0, 0.5)'
     }
+  },
+
+  // Gekko Theme
+  gekko: {
+    name: 'Gekko Theme',
+    colors: {
+      // Base colors
+      primary: '#0f1d12',
+      secondary: '#17331e',
+      accent: '#7cff00',
+
+      // Text colors
+      textPrimary: '#e5f9d6',
+      textSecondary: '#9bc48b',
+      textAccent: '#7cff00',
+
+      // UI elements
+      tabActive: '#17331e',
+      tabInactive: '#0f1d12',
+      tabHover: '#1f4026',
+      tabBorder: '#1f4026',
+
+      // Controls
+      button: '#17331e',
+      buttonHover: '#1f4026',
+      buttonText: '#e5f9d6',
+
+      // Address bar
+      addressBar: '#17331e',
+      addressBarText: '#e5f9d6',
+      addressBarBorder: '#1f4026',
+
+      // Navigation
+      navIcon: '#9bc48b',
+      navIconHover: '#e5f9d6',
+      navIconActive: '#7cff00',
+
+      // Status and indicators
+      error: '#f28b82',
+      warning: '#fdd663',
+      success: '#81c995',
+      secure: '#81c995',
+      insecure: '#f28b82',
+
+      // Misc
+      divider: '#1f4026',
+      shadow: 'rgba(0, 0, 0, 0.3)',
+      overlay: 'rgba(0, 0, 0, 0.5)'
+    }
   }
 };
 

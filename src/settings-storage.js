@@ -23,7 +23,10 @@ const defaultSettings = {
   searchEngine: 'https://www.google.com/search?q=',
   enableDevTools: false,
   homeBackgroundEnabled: false,
-  homeBackgroundUrl: ''
+  homeBackgroundUrl: '',
+  verticalTaskbar: false,
+  memorySaverEnabled: true,
+  memorySaverIdleMinutes: 15
 };
 
 // Cache for settings
@@ -137,7 +140,7 @@ const saveSettings = (settings) => {
     const finalSettings = { ...defaultSettings, ...settings };
     
     if (finalSettings.theme) {
-      const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red'];
+      const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red', 'gekko'];
       if (!allowedThemes.includes(finalSettings.theme)) {
         finalSettings.theme = 'dark';
       }
@@ -239,7 +242,7 @@ const setSetting = (key, value) => {
       };
     }
     
-    const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red'];
+    const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red', 'gekko'];
     if (!allowedThemes.includes(value)) {
       console.warn(`Theme ${value} not allowed, defaulting to 'dark'`);
       value = 'dark';
@@ -269,7 +272,7 @@ const getSettings = () => {
   
   // Ensure theme is valid
   if (settings && settings.theme) {
-    const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red'];
+    const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red', 'gekko'];
     if (!allowedThemes.includes(settings.theme)) {
       settings.theme = 'dark';
       setSetting('theme', 'dark');

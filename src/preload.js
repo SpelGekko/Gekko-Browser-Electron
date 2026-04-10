@@ -86,6 +86,7 @@ contextBridge.exposeInMainWorld('api', {
   
   // Tabs
   onOpenNewTab: (callback) => ipcRenderer.on('open-new-tab', (event, url) => callback(url)),
+  onTabContextAction: (callback) => ipcRenderer.on('tab-context-action', (event, action, payload) => callback(action, payload)),
   getActiveTabId: () => ipcRenderer.sendSync('get-active-tab-id'),
 
   // History
@@ -104,6 +105,23 @@ contextBridge.exposeInMainWorld('api', {
   addBookmark: (url, title, favicon) => ipcRenderer.send('add-bookmark', url, title, favicon),
   removeBookmark: (url) => ipcRenderer.send('remove-bookmark', url),
   isBookmarked: (url) => ipcRenderer.sendSync('is-bookmarked', url),
+  onBookmarksUpdated: (callback) => ipcRenderer.on('bookmarks-updated', (event, bookmarks) => callback(bookmarks)),
+
+  // Clippings
+  getClippings: () => ipcRenderer.sendSync('get-clippings'),
+  addClipping: (clipping) => ipcRenderer.send('add-clipping', clipping),
+  removeClipping: (clipId) => ipcRenderer.send('remove-clipping', clipId),
+  clearClippings: () => ipcRenderer.send('clear-clippings'),
+  onClippingsUpdated: (callback) => ipcRenderer.on('clippings-updated', (event, clippings) => callback(clippings)),
+
+  // Workspaces
+  getWorkspaces: () => ipcRenderer.sendSync('get-workspaces'),
+  addWorkspace: (workspace) => ipcRenderer.send('add-workspace', workspace),
+  removeWorkspace: (workspaceId) => ipcRenderer.send('remove-workspace', workspaceId),
+  clearWorkspaces: () => ipcRenderer.send('clear-workspaces'),
+  openWorkspace: (workspaceId) => ipcRenderer.send('open-workspace', workspaceId),
+  onWorkspacesUpdated: (callback) => ipcRenderer.on('workspaces-updated', (event, workspaces) => callback(workspaces)),
+  onWorkspaceOpen: (callback) => ipcRenderer.on('open-workspace', (event, workspace) => callback(workspace)),
 
   // Window Controls
   minimize: () => ipcRenderer.send('window-minimize'),

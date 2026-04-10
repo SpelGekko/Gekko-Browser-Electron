@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gekko Browser - Settings</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="gkp://assets.gekko/icons/32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="gkp://assets.gekko/icons/16x16.png" />
   <!-- Theme marker for DOM-based persistence -->
   <meta id="gekko-theme-marker" name="theme" content="">
   <link rel="stylesheet" href="gkp://shared.gekko/theme-vars.css" />
@@ -201,6 +203,15 @@
               <input type="checkbox" id="dev-tools-checkbox">
             </div>
           </div>
+          <div class="setting-item">
+            <div>
+              <div class="setting-label">Vertical Taskbar</div>
+              <div class="setting-description">Move tabs into a vertical rail on the left</div>
+            </div>
+            <div class="setting-control">
+              <input type="checkbox" id="vertical-taskbar-checkbox">
+            </div>
+          </div>
         </div>
       </div>
       
@@ -235,6 +246,15 @@
             <div class="setting-control">              <button id="clear-history-btn" class="setting-button danger">
                 <i class="fa-solid fa-trash-can"></i> Clear History
               </button>
+            </div>
+          </div>
+          <div class="setting-item">
+            <div>
+              <div class="setting-label">Memory Saver</div>
+              <div class="setting-description">Discard inactive tabs after 15 minutes to reduce memory use</div>
+            </div>
+            <div class="setting-control">
+              <input type="checkbox" id="memory-saver-checkbox">
             </div>
           </div>
         </div>

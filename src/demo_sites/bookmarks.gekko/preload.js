@@ -43,6 +43,11 @@ contextBridge.exposeInMainWorld('navigation', {
   }
 });
 
+// Relay bookmark updates to the bookmarks page
+ipcRenderer.on('bookmarks-updated', () => {
+  window.dispatchEvent(new Event('bookmarks-updated'));
+});
+
 // Expose Simple Icons if available
 try {
   const simpleIconsModule = window.parent.simpleIcons;

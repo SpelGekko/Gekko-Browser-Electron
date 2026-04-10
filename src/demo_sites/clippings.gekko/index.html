@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gekko Browser - Clippings</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="gkp://assets.gekko/icons/32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="gkp://assets.gekko/icons/16x16.png" />
+  <link rel="stylesheet" href="gkp://shared.gekko/theme-vars.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="gkp://shared.gekko/theme-utils.js"></script>
+</head>
+<body>
+  <div class="internal-page">
+    <div class="internal-page-header">
+      <h1 class="internal-page-title">Clippings</h1>
+      <p class="internal-page-subtitle">Save and organize snippets from the web</p>
+    </div>
+
+    <div class="internal-page-content">
+      <div class="clippings-controls">
+        <div class="clippings-search">
+          <i class="fa-solid fa-magnifying-glass clippings-search-icon"></i>
+          <input
+            type="text"
+            class="clippings-search-input"
+            id="clippings-search"
+            placeholder="Search clippings"
+          >
+        </div>
+        <div class="clippings-actions">
+          <button class="button button-danger" id="clear-clippings-btn">
+            <i class="fa-solid fa-trash-can"></i>
+            Clear Clippings
+          </button>
+        </div>
+      </div>
+
+      <div id="clippings-empty" class="empty-state hidden">
+        <i class="fa-solid fa-note-sticky fa-3x"></i>
+        <p>No clippings yet</p>
+        <p class="text-secondary">Select text on any page and use "Save Selection to Clippings".</p>
+      </div>
+
+      <ul class="clippings-list" id="clippings-list"></ul>
+    </div>
+  </div>
+  <script src="clippings.js"></script>
+</body>
+</html>

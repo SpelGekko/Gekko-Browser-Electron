@@ -103,6 +103,14 @@ function registerProtocolHandlers() {
         }
       }
 
+      // Handle app assets (icons, etc.)
+      if (domain === 'assets.gekko') {
+        const safePath = urlPath.replace(/^\/+/, '');
+        const assetPath = path.join(__dirname, '..', 'assets', safePath);
+        serveFile(assetPath, callback, CSP_HEADER);
+        return;
+      }
+
       // Try regular path
       let filePath = path.join(__dirname, 'demo_sites', domain, urlPath);
       if (fs.existsSync(filePath)) {
@@ -149,6 +157,14 @@ function registerProtocolHandlers() {
           serveFile(filePath, callback, secureHeaders);
           return;
         }
+      }
+
+      // Handle app assets (icons, etc.)
+      if (domain === 'assets.gekko') {
+        const safePath = urlPath.replace(/^\/+/, '');
+        const assetPath = path.join(__dirname, '..', 'assets', safePath);
+        serveFile(assetPath, callback, secureHeaders);
+        return;
       }
 
       // Try secure directory

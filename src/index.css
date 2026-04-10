@@ -8,6 +8,7 @@
   /* Base Font Size */
   --font-size: 14px;
   
+
   /* Set default theme (dark) */
   --primary: #202124;
   --secondary: #303134;
@@ -43,6 +44,8 @@
   --divider: #3c4043;
   --shadow: rgba(0, 0, 0, 0.3);
   --overlay: rgba(0, 0, 0, 0.5);
+  --taskbar-width: 220px;
+  --titlebar-height: 30px;
 }
 
 /* Global Reset */
@@ -227,6 +230,58 @@ body, html {
 .new-tab-button:hover {
   background-color: var(--tabHover);
   color: var(--textPrimary);
+}
+
+/* Vertical Taskbar Mode */
+body.vertical-taskbar .tab-bar {
+  position: fixed;
+  top: var(--titlebar-height);
+  left: 0;
+  bottom: 0;
+  width: var(--taskbar-width);
+  height: auto;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 6px;
+  border-right: 1px solid var(--divider);
+  background-color: var(--primary);
+  z-index: 5;
+}
+
+body.vertical-taskbar .tab {
+  min-width: 0;
+  max-width: none;
+  width: 100%;
+  height: 32px;
+  margin: 0 0 6px 0;
+  border-radius: 8px;
+  border: 1px solid var(--tabBorder);
+}
+
+body.vertical-taskbar .tab.active {
+  height: 32px;
+  margin-top: 0;
+}
+
+body.vertical-taskbar .new-tab-button {
+  width: 100%;
+  margin: 0 0 8px 0;
+  border-radius: 8px;
+  order: -1;
+}
+
+body.vertical-taskbar .container {
+  padding-left: var(--taskbar-width);
+}
+
+/* Discarded tabs */
+.tab.tab-discarded {
+  opacity: 0.7;
+}
+
+.tab.tab-discarded .tab-title {
+  color: var(--textSecondary);
 }
 
 /* Navigation Bar */
@@ -1111,4 +1166,117 @@ body, html {
 .download-action-button:hover {
   background-color: var(--buttonHover);
   color: var(--navIconHover);
+}
+
+/* Workspace Prompt */
+.workspace-prompt-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top, rgba(20, 28, 24, 0.7), rgba(0, 0, 0, 0.75));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(6px);
+  animation: workspace-backdrop-in 180ms ease-out;
+}
+
+.workspace-prompt {
+  background: linear-gradient(145deg, rgba(32, 33, 36, 0.95), rgba(19, 20, 23, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 1.6rem 1.7rem;
+  width: min(420px, 92vw);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transform: translateY(10px) scale(0.98);
+  animation: workspace-dialog-in 220ms ease-out forwards;
+}
+
+.workspace-prompt-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--textPrimary);
+}
+
+.workspace-prompt-description {
+  font-size: 0.9rem;
+  color: var(--textSecondary);
+}
+
+.workspace-prompt-input {
+  background: rgba(15, 16, 19, 0.85);
+  color: var(--textPrimary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.95rem;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.workspace-prompt-input:focus {
+  outline: none;
+  border-color: rgba(138, 180, 248, 0.65);
+  box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.2);
+}
+
+.workspace-prompt-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.workspace-prompt-button {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(34, 36, 40, 0.9);
+  color: var(--buttonText);
+  border-radius: 10px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.workspace-prompt-button.primary {
+  background: linear-gradient(135deg, rgba(138, 180, 248, 0.95), rgba(100, 181, 246, 0.95));
+  color: #101114;
+  border-color: transparent;
+  box-shadow: 0 10px 20px rgba(100, 181, 246, 0.3);
+}
+
+.workspace-prompt-button:hover {
+  background: rgba(44, 46, 52, 0.95);
+  transform: translateY(-1px);
+}
+
+.workspace-prompt-button.primary:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.workspace-prompt-button:active {
+  transform: translateY(0);
+}
+
+@keyframes workspace-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes workspace-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

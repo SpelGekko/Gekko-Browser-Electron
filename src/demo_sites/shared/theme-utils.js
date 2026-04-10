@@ -116,7 +116,8 @@ function applyTheme(themeId) {
       light: '#1a73e8',
       purple: '#b388ff',
       blue: '#64b5f6',
-      red: '#ff8a80'
+      red: '#ff8a80',
+      gekko: '#7cff00'
     };
     const accentColor = iconColorMap[themeId] || themeColors.accent || iconColorMap.dark;
     document.querySelectorAll('.shortcut-icon i, .card-icon i, .setting-icon i').forEach(icon => {

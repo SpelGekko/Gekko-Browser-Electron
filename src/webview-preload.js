@@ -1,5 +1,34 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
+const buildContextMenuPayload = (event) => {
+  const target = event.target;
+  const tagName = target?.tagName || "";
+  const tagNameLower = tagName ? tagName.toLowerCase() : "";
+  const linkElement = target?.closest ? target.closest("a[href]") : null;
+  const imageElement = target?.closest ? target.closest("img") : null;
+  const imageSrc = imageElement?.currentSrc || imageElement?.src || "";
+
+  return {
+    context: "page",
+    x: event.x,
+    y: event.y,
+    target: {
+      tagName,
+      src: target?.src || "",
+      href: target?.href || "",
+      text: target?.innerText || ""
+    },
+    page: {
+      url: window.location.href || "",
+      title: document.title || ""
+    },
+    selectionText: window.getSelection ? window.getSelection().toString() : "",
+    isEditable: Boolean(target?.isContentEditable) || tagNameLower === "input" || tagNameLower === "textarea",
+    link: linkElement ? { href: linkElement.href, text: (linkElement.textContent || "").trim() } : null,
+    image: imageSrc ? { src: imageSrc, alt: (imageElement?.alt || "").trim() } : null
+  };
+};
+
 // Log that the preload script is running
 console.log("Webview preload script executing");
 
@@ -97,6 +126,79 @@ contextBridge.exposeInMainWorld("api", {
       return false;
     }
   },
+
+  onBookmarksUpdated: (callback) => {
+    ipcRenderer.on('bookmarks-updated', (event, bookmarks) => {
+      callback(bookmarks);
+    });
+  },
+
+  // Clippings management
+  getClippings: () => {
+    try {
+      return ipcRenderer.sendSync('get-clippings');
+    } catch (error) {
+      console.error('Error getting clippings:', error);
+      return [];
+    }
+  },
+
+  addClipping: (clipping) => {
+    ipcRenderer.send('add-clipping', clipping);
+  },
+
+  removeClipping: (clipId) => {
+    ipcRenderer.send('remove-clipping', clipId);
+  },
+
+  clearClippings: () => {
+    ipcRenderer.send('clear-clippings');
+  },
+
+  onClippingsUpdated: (callback) => {
+    ipcRenderer.on('clippings-updated', (event, clippings) => {
+      callback(clippings);
+    });
+  },
+
+  // Workspaces management
+  getWorkspaces: () => {
+    try {
+      return ipcRenderer.sendSync('get-workspaces');
+    } catch (error) {
+      console.error('Error getting workspaces:', error);
+      return [];
+    }
+  },
+
+  addWorkspace: (workspace) => {
+    ipcRenderer.send('add-workspace', workspace);
+  },
+
+  removeWorkspace: (workspaceId) => {
+    ipcRenderer.send('remove-workspace', workspaceId);
+  },
+
+  clearWorkspaces: () => {
+    ipcRenderer.send('clear-workspaces');
+  },
+
+  openWorkspace: (workspaceId) => {
+    ipcRenderer.send('open-workspace', workspaceId);
+  },
+
+  onWorkspacesUpdated: (callback) => {
+    ipcRenderer.on('workspaces-updated', (event, workspaces) => {
+      callback(workspaces);
+    });
+  },
+
+  onWorkspaceOpen: (callback) => {
+    ipcRenderer.on('open-workspace', (event, workspace) => {
+      callback(workspace);
+    });
+  },
+
   setSetting: (key, value) => {
     console.group('Set Setting');
     console.log("Setting", key, "to:", value);
@@ -214,6 +316,8 @@ contextBridge.exposeInMainWorld("api", {
       apiMethods: [
         'getSettings', 'getThemes', 'applyTheme', 
         'getHistory', 'getBookmarks', 'addBookmark', 'removeBookmark', 'isBookmarked',
+        'getClippings', 'addClipping', 'removeClipping', 'clearClippings',
+        'getWorkspaces', 'addWorkspace', 'removeWorkspace', 'clearWorkspaces',
         'getAppVersion', 'checkForUpdates', 'downloadUpdate', 'installUpdate', 
         'getUpdateStatus', 'onUpdateStatus', 'getSetting', 'setSetting'
       ],
@@ -232,17 +336,11 @@ contextBridge.exposeInMainWorld("api", {
 });
 
 // Listen for context menu requests
-window.addEventListener('contextmenu', (e) => {
-  e.preventDefault();
-  ipcRenderer.send('show-context-menu', {
-    x: e.x,
-    y: e.y,
-    target: {
-      tagName: e.target.tagName,
-      src: e.target.src,
-      href: e.target.href,
-      text: e.target.innerText,
-    }
-  });
+window.addEventListener('contextmenu', (event) => {
+  event.preventDefault();
+  const payload = buildContextMenuPayload ? buildContextMenuPayload(event) : null;
+  if (payload) {
+    ipcRenderer.send('show-context-menu', payload);
+  }
 });
 

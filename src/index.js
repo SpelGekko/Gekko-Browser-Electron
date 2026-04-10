@@ -5,6 +5,9 @@ const historyStorage = require('./history-storage');
 const settingsStorage = require('./settings-storage');
 const bookmarksStorage = require('./bookmarks-storage');
 const downloadsStorage = require('./downloads-storage');
+const clippingsStorage = require('./clippings');
+const workspacesStorage = require('./workspaces');
+const buildContextMenu = require('./context-menu/build-context-menu');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 
@@ -117,7 +120,7 @@ ipcMain.on('get-settings', (event) => {
 });
 
 ipcMain.on('get-themes', (event) => {
-  event.returnValue = ['dark', 'light', 'blue', 'purple', 'red'];
+  event.returnValue = ['dark', 'light', 'blue', 'purple', 'red', 'gekko'];
 });
 
 // Handle theme changes
@@ -131,7 +134,7 @@ ipcMain.on('apply-theme', async (event, themeId) => {
     themeId = 'dark';
   }
 
-  const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red'];
+  const allowedThemes = ['dark', 'light', 'purple', 'blue', 'red', 'gekko'];
   if (!allowedThemes.includes(themeId)) {
     console.error('Theme not in allowed list, using default');
     themeId = 'dark';
@@ -292,14 +295,100 @@ ipcMain.on('get-bookmarks', (event) => {
 
 ipcMain.on('add-bookmark', (event, url, title, favicon) => {
   bookmarksStorage.addBookmark(url, title, favicon);
+
+  const payload = bookmarksStorage.getBookmarks();
+  BrowserWindow.getAllWindows().forEach(window => {
+    try {
+      window.webContents.send('bookmarks-updated', payload);
+    } catch (error) {
+      console.error('Error broadcasting bookmark update:', error);
+    }
+  });
 });
 
 ipcMain.on('remove-bookmark', (event, url) => {
   bookmarksStorage.removeBookmark(url);
+
+  const payload = bookmarksStorage.getBookmarks();
+  BrowserWindow.getAllWindows().forEach(window => {
+    try {
+      window.webContents.send('bookmarks-updated', payload);
+    } catch (error) {
+      console.error('Error broadcasting bookmark update:', error);
+    }
+  });
 });
 
 ipcMain.on('is-bookmarked', (event, url) => {
   event.returnValue = bookmarksStorage.isBookmarked(url);
+});
+
+// Clippings handlers
+ipcMain.on('get-clippings', (event) => {
+  event.returnValue = clippingsStorage.getClippings();
+});
+
+ipcMain.on('add-clipping', (event, clipping) => {
+  const result = clippingsStorage.addClipping(clipping);
+  if (result) {
+    clippingsStorage.broadcastClippings();
+  }
+});
+
+ipcMain.on('remove-clipping', (event, clipId) => {
+  const result = clippingsStorage.removeClipping(clipId);
+  if (result) {
+    clippingsStorage.broadcastClippings();
+  }
+});
+
+ipcMain.on('clear-clippings', () => {
+  const result = clippingsStorage.clearClippings();
+  if (result) {
+    clippingsStorage.broadcastClippings();
+  }
+});
+
+// Workspaces handlers
+ipcMain.on('get-workspaces', (event) => {
+  event.returnValue = workspacesStorage.getWorkspaces();
+});
+
+ipcMain.on('add-workspace', (event, workspace) => {
+  const result = workspacesStorage.addWorkspace(workspace);
+  if (result) {
+    workspacesStorage.broadcastWorkspaces();
+  }
+});
+
+ipcMain.on('remove-workspace', (event, workspaceId) => {
+  const result = workspacesStorage.removeWorkspace(workspaceId);
+  if (result) {
+    workspacesStorage.broadcastWorkspaces();
+  }
+});
+
+ipcMain.on('clear-workspaces', () => {
+  const result = workspacesStorage.clearWorkspaces();
+  if (result) {
+    workspacesStorage.broadcastWorkspaces();
+  }
+});
+
+ipcMain.on('open-workspace', (event, workspaceId) => {
+  const workspaces = workspacesStorage.getWorkspaces();
+  const workspace = workspaces.find((item) => item.id === workspaceId);
+  if (!workspace) {
+    return;
+  }
+
+  const targetWindow = BrowserWindow.fromWebContents(event.sender)
+    || BrowserWindow.getFocusedWindow()
+    || BrowserWindow.getAllWindows()[0];
+
+  if (targetWindow && !targetWindow.isDestroyed()) {
+    targetWindow.webContents.send('open-workspace', workspace);
+  }
 });
 
 // Update handlers
@@ -396,11 +485,12 @@ ipcMain.handle('pick-home-background', async () => {
 ipcMain.on('update-bookmarks-order', (event, orderedUrls) => {
   console.log('Updating bookmark order');
   const result = bookmarksStorage.updateBookmarksOrder(orderedUrls);
+  const payload = bookmarksStorage.getBookmarks();
   
   // Broadcast bookmark update to all windows
   BrowserWindow.getAllWindows().forEach(window => {
     try {
-      window.webContents.send('bookmarks-updated');
+      window.webContents.send('bookmarks-updated', payload);
     } catch (error) {
       console.error('Error broadcasting bookmark update:', error);
     }
@@ -637,6 +727,8 @@ app.whenReady().then(async () => {
   settingsStorage.ensureSettingsFile();
   bookmarksStorage.ensureBookmarksFile();
   downloadsStorage.ensureDownloadsFile();
+  clippingsStorage.ensureClippingsFile();
+  workspacesStorage.ensureWorkspacesFile();
 
   // Create the main browser window
   createWindow();
@@ -779,34 +871,18 @@ ipcMain.on('get-active-tab-id', (event) => {
 
 // Handle context menu requests from webviews
 ipcMain.on('show-context-menu', (event, params) => {
-  const { Menu, MenuItem } = require('electron');
-  const menu = new Menu();
+  const menu = buildContextMenu(event, params);
+  const win = BrowserWindow.fromWebContents(event.sender)
+    || (typeof event.sender.getOwnerBrowserWindow === 'function' ? event.sender.getOwnerBrowserWindow() : null)
+    || BrowserWindow.getFocusedWindow();
+  const x = Number.isFinite(params?.x) ? Math.round(params.x) : undefined;
+  const y = Number.isFinite(params?.y) ? Math.round(params.y) : undefined;
 
-  if (params.target.src) {
-    menu.append(new MenuItem({
-      label: 'Download Image',
-      click: () => {
-        event.sender.downloadURL(params.target.src);
-      }
-    }));
+  if (win) {
+    menu.popup({ window: win, x, y });
+  } else {
+    menu.popup({ x, y });
   }
-
-  if (params.target.href) {
-    menu.append(new MenuItem({
-      label: 'Open Link in New Tab',
-      click: () => {
-        BrowserWindow.fromWebContents(event.sender).webContents.send('open-new-tab', params.target.href);
-      }
-    }));
-  }
-
-  menu.append(new MenuItem({ type: 'separator' }));
-  menu.append(new MenuItem({ label: 'Back', click: () => event.sender.goBack(), enabled: event.sender.canGoBack() }));
-  menu.append(new MenuItem({ label: 'Forward', click: () => event.sender.goForward(), enabled: event.sender.canGoForward() }));
-  menu.append(new MenuItem({ label: 'Reload', click: () => event.sender.reload() }));
-
-  const win = BrowserWindow.fromWebContents(event.sender);
-  menu.popup(win);
 });
 
 ipcMain.on('get-downloads', (event) => {
