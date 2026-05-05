@@ -161,11 +161,12 @@
   content: '';
   position: absolute;
   bottom: -4px;
-  left: 0;
+  left: 50%;
   width: 32px;
   height: 2px;
   background-color: var(--accent-color);
   border-radius: 2px;
+  transform: translateX(-50%);
 }
 
 /* Animation for shortcuts when clicking */

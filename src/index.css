@@ -44,8 +44,14 @@
   --divider: #3c4043;
   --shadow: rgba(0, 0, 0, 0.3);
   --overlay: rgba(0, 0, 0, 0.5);
+  --tabbar-height: 36px;
+  --navbar-height: 44px;
+  --bookmarks-bar-height: 32px;
+  --status-bar-height: 24px;
+  --taskbar-collapsed-width: 56px;
   --taskbar-width: 220px;
   --titlebar-height: 30px;
+  --taskbar-top-offset: calc(var(--titlebar-height) + var(--tabbar-height) + var(--navbar-height) + var(--bookmarks-bar-height));
 }
 
 /* Global Reset */
@@ -238,7 +244,7 @@ body.vertical-taskbar .tab-bar {
   top: var(--titlebar-height);
   left: 0;
   bottom: 0;
-  width: var(--taskbar-width);
+  width: var(--taskbar-collapsed-width);
   height: auto;
   flex-direction: column;
   overflow-y: auto;
@@ -247,6 +253,13 @@ body.vertical-taskbar .tab-bar {
   border-right: 1px solid var(--divider);
   background-color: var(--primary);
   z-index: 5;
+  transition: width 0.2s ease;
+}
+
+body.vertical-taskbar .tab-bar:hover,
+body.vertical-taskbar .tab-bar:focus-within,
+body.vertical-taskbar.taskbar-expanded .tab-bar {
+  width: var(--taskbar-width);
 }
 
 body.vertical-taskbar .tab {
@@ -257,11 +270,50 @@ body.vertical-taskbar .tab {
   margin: 0 0 6px 0;
   border-radius: 8px;
   border: 1px solid var(--tabBorder);
+  padding: 0 6px;
 }
 
 body.vertical-taskbar .tab.active {
   height: 32px;
   margin-top: 0;
+}
+
+body.vertical-taskbar .tab-content {
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+}
+
+body.vertical-taskbar .tab-title,
+body.vertical-taskbar .tab-close {
+  opacity: 0;
+  max-width: 0;
+  overflow: hidden;
+  margin-left: 0;
+  transition: opacity 0.15s ease, max-width 0.2s ease, margin-left 0.2s ease;
+}
+
+body.vertical-taskbar .tab-bar:hover .tab-content,
+body.vertical-taskbar .tab-bar:focus-within .tab-content,
+body.vertical-taskbar.taskbar-expanded .tab-content {
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+body.vertical-taskbar .tab-bar:hover .tab-title,
+body.vertical-taskbar .tab-bar:focus-within .tab-title,
+body.vertical-taskbar.taskbar-expanded .tab-title {
+  opacity: 1;
+  max-width: 100%;
+}
+
+body.vertical-taskbar .tab-bar:hover .tab-close,
+body.vertical-taskbar .tab-bar:focus-within .tab-close,
+body.vertical-taskbar.taskbar-expanded .tab-close {
+  opacity: 1;
+  max-width: 20px;
+  margin-left: 4px;
 }
 
 body.vertical-taskbar .new-tab-button {
@@ -272,7 +324,11 @@ body.vertical-taskbar .new-tab-button {
 }
 
 body.vertical-taskbar .container {
-  padding-left: var(--taskbar-width);
+  padding-left: var(--taskbar-collapsed-width);
+}
+
+body.vertical-taskbar.taskbar-expanded .container {
+  padding-left: var(--taskbar-collapsed-width);
 }
 
 /* Discarded tabs */

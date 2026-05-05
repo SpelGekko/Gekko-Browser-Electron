@@ -64,6 +64,7 @@ let updateInfo = null;
 let updateToastTimeout = null;
 let lastWorkspaceOpenId = null;
 let lastWorkspaceOpenTime = 0;
+let verticalTaskbarHoverListenersBound = false;
 
 // Helper to safely load settings
 function loadSettingsSafely() {
@@ -225,6 +226,44 @@ function applyLayoutSettings(settings) {
     document.body.classList.toggle('vertical-taskbar', useVerticalTaskbar);
   }
   document.documentElement.classList.toggle('vertical-taskbar', useVerticalTaskbar);
+
+  if (!useVerticalTaskbar) {
+    setVerticalTaskbarExpanded(false);
+  } else {
+    bindVerticalTaskbarHoverState();
+  }
+}
+
+function setVerticalTaskbarExpanded(isExpanded) {
+  if (document.body) {
+    document.body.classList.toggle('taskbar-expanded', isExpanded);
+  }
+  document.documentElement.classList.toggle('taskbar-expanded', isExpanded);
+}
+
+function bindVerticalTaskbarHoverState() {
+  if (verticalTaskbarHoverListenersBound) {
+    return;
+  }
+
+  const tabBarElement = document.getElementById('tab-bar');
+  if (!tabBarElement) {
+    return;
+  }
+
+  verticalTaskbarHoverListenersBound = true;
+
+  const expandTaskbar = () => setVerticalTaskbarExpanded(true);
+  const collapseTaskbar = () => setVerticalTaskbarExpanded(false);
+
+  tabBarElement.addEventListener('mouseenter', expandTaskbar);
+  tabBarElement.addEventListener('mouseleave', collapseTaskbar);
+  tabBarElement.addEventListener('focusin', expandTaskbar);
+  tabBarElement.addEventListener('focusout', (event) => {
+    if (!tabBarElement.contains(event.relatedTarget)) {
+      collapseTaskbar();
+    }
+  });
 }
 
 // Listen for theme changes from internal pages to apply to webviews

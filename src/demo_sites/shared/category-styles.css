@@ -12,12 +12,13 @@
 .shortcut-category:after {
   content: '';
   position: absolute;
-  left: 0;
+  left: 50%;
   bottom: -1px;
   width: 60px;
   height: 3px;
   background-color: var(--accent-color);
   border-radius: 3px;
+  transform: translateX(-50%);
 }
 
 .home-grid {
