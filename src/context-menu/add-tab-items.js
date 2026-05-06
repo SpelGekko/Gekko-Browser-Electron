@@ -9,7 +9,7 @@ const addTabItems = (menu, context) => {
 
   appendSeparatorIfNeeded(menu);
 
-  const { tabId, tabCount, tabIndex } = params;
+  const { tabId, tabCount, tabIndex, isPinned, splitEnabled } = params;
 
   const sendTabAction = (action) => {
     event.sender.send('tab-context-action', action, { tabId });
@@ -33,6 +33,31 @@ const addTabItems = (menu, context) => {
   menu.append(new MenuItem({
     label: 'Save Tabs as Workspace...',
     click: () => sendTabAction('save-workspace')
+  }));
+
+  menu.append(new MenuItem({ type: 'separator' }));
+
+  menu.append(new MenuItem({
+    label: isPinned ? 'Unpin Tab' : 'Pin Tab',
+    click: () => sendTabAction('toggle-pin-tab')
+  }));
+
+  menu.append(new MenuItem({ type: 'separator' }));
+
+  menu.append(new MenuItem({
+    label: 'Open in Split Right',
+    click: () => sendTabAction('split-open-right')
+  }));
+
+  menu.append(new MenuItem({
+    label: 'Open in Split Left',
+    click: () => sendTabAction('split-open-left')
+  }));
+
+  menu.append(new MenuItem({
+    label: 'Exit Split View',
+    enabled: Boolean(splitEnabled),
+    click: () => sendTabAction('split-exit')
   }));
 
   menu.append(new MenuItem({ type: 'separator' }));

@@ -603,6 +603,21 @@ document.addEventListener('DOMContentLoaded', () => {
   let memorySaverEnabled = false;
   let memorySaverIntervalId = null;
   let memorySaverIdleMs = 15 * 60 * 1000;
+  let sessionSaveTimeoutId = null;
+  const splitViewState = {
+    enabled: false,
+    activePane: 'left',
+    leftTabId: null,
+    rightTabId: null
+  };
+  const tabSearchState = {
+    overlay: null,
+    input: null,
+    results: null,
+    filteredTabs: [],
+    selectedIndex: 0,
+    isOpen: false
+  };
 
   // Helper function to show update toast notification
   function showUpdateToast(info) {
@@ -728,7 +743,13 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // DOM Elements (declared once)
   const tabBar = document.getElementById('tab-bar');
+  const tabBarContainer = document.getElementById('tab-bar-container') || tabBar.parentElement;
   const newTabButton = document.getElementById('new-tab-button');
+  const tabScrollLeftButton = document.getElementById('tab-scroll-left');
+  const tabScrollRightButton = document.getElementById('tab-scroll-right');
+  const tabListButton = document.getElementById('tab-list-button');
+  const tabListDropdown = document.getElementById('tab-list-dropdown');
+  const tabListItems = document.getElementById('tab-list-items');
   const browserContent = document.getElementById('browser-content');
   const addressBar = document.getElementById('address-bar');
   const addressProtocol = document.getElementById('address-protocol');
@@ -759,6 +780,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize bookmarks
   loadBookmarks();
   renderBookmarksBar();
+
+  if (window.api && typeof window.api.markSessionCleanExit === 'function') {
+    window.api.markSessionCleanExit(false);
+  }
   
   // Initialize incognito mode
   isIncognito = window.api.getIncognitoMode();
@@ -815,9 +840,8 @@ document.addEventListener('DOMContentLoaded', () => {
       openWorkspaceTabs(workspace);
     });
   }
-  
-  // Create initial tab with home page
-  createTab(settings?.homePage || 'gkp://home.gekko/');
+
+  initializeSession(settings);
   
   // Check for updates
   if (window.api && typeof window.api.checkForUpdates === 'function') {
@@ -834,6 +858,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Render the bookmarks bar
     renderBookmarksBar();
   }
+
+  window.addEventListener('beforeunload', () => {
+    try {
+      const snapshot = buildSessionSnapshot();
+      if (window.api && typeof window.api.saveSessionStateSync === 'function') {
+        window.api.saveSessionStateSync(snapshot);
+      }
+      if (window.api && typeof window.api.markSessionCleanExit === 'function') {
+        window.api.markSessionCleanExit(true);
+      }
+    } catch (error) {
+      console.warn('Failed to save session on unload:', error);
+    }
+  });
   
   // Make handleNavigation function available to window object for internal pages
   window.handleNavigation = handleNavigation;
@@ -890,7 +928,56 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Tab management
     newTabButton.addEventListener('click', () => createTab());
+    
+    // Tab scroll controls
+    if (tabScrollLeftButton) {
+      tabScrollLeftButton.addEventListener('click', () => scrollTabs(-100));
+    }
+    if (tabScrollRightButton) {
+      tabScrollRightButton.addEventListener('click', () => scrollTabs(100));
+    }
+    
+    // Tab list dropdown
+    if (tabListButton && tabListDropdown) {
+      tabListButton.addEventListener('click', toggleTabList);
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#tab-list-button') && !e.target.closest('#tab-list-dropdown')) {
+          if (tabListDropdown.classList.contains('visible')) {
+            tabListDropdown.classList.remove('visible');
+          }
+        }
+      });
+    }
+    
+    // Scroll wheel support for tabs
+    tabBar.addEventListener('wheel', (e) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        const isVertical = document.body.classList.contains('vertical-taskbar');
+        
+        if (isVertical) {
+          // In vertical mode, scroll vertically
+          tabBar.scrollBy({ top: e.deltaY > 0 ? 30 : -30, behavior: 'smooth' });
+        } else {
+          // In horizontal mode, scroll horizontally
+          tabBar.scrollBy({ left: e.deltaY > 0 ? 50 : -50, behavior: 'smooth' });
+        }
+      }
+    }, { passive: false });
+    
+    // Update scroll button visibility and tab list when tabs change
+    tabBar.addEventListener('scroll', updateScrollButtonVisibility);
+    
     tabBar.addEventListener('contextmenu', handleTabContextMenu);
+    document.addEventListener('contextmenu', (event) => {
+      const target = event.target;
+      const tabElement = target && target.closest ? target.closest('.tab') : null;
+      if (!tabElement) {
+        return;
+      }
+
+      handleTabContextMenu(event);
+    }, true);
     
     // Navigation controls
     backButton.addEventListener('click', () => goBack());
@@ -901,6 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Address bar handling
     addressBar.addEventListener('keydown', handleAddressBarKeyDown);
     clearButton.addEventListener('click', clearAddressBar);
+
       // Bookmark page button in address bar
     const bookmarkPageButton = document.getElementById('bookmark-page-button');
     if (bookmarkPageButton) {
@@ -1183,12 +1271,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const tabIds = getTabIdsInOrder();
     const tabIndex = tabIds.indexOf(tabId);
+    const tab = getTabById(tabId);
 
     window.api.showContextMenu({
       context: 'tab',
       tabId,
       tabIndex,
       tabCount: tabIds.length,
+      isPinned: Boolean(tab?.pinned),
+      splitPane: tab?.splitPane || '',
+      splitEnabled: splitViewState.enabled,
       x: event.x,
       y: event.y
     });
@@ -1227,6 +1319,18 @@ document.addEventListener('DOMContentLoaded', () => {
         break;
       case 'close-tabs-to-right':
         closeTabsToRight(tabId);
+        break;
+      case 'toggle-pin-tab':
+        togglePinTab(tabId);
+        break;
+      case 'split-open-right':
+        openTabInSplit(tabId, 'right');
+        break;
+      case 'split-open-left':
+        openTabInSplit(tabId, 'left');
+        break;
+      case 'split-exit':
+        disableSplitView();
         break;
       case 'save-workspace':
         saveWorkspaceFromTabs();
@@ -1284,6 +1388,574 @@ document.addEventListener('DOMContentLoaded', () => {
     tabIdsToClose.forEach(id => closeTab(id));
   }
 
+  function getOrderedTabs() {
+    return [...tabs].sort((a, b) => {
+      if (a.pinned !== b.pinned) {
+        return a.pinned ? -1 : 1;
+      }
+
+      // Use tabOrder if available (for manual drag-drop reordering)
+      const aOrder = Number.isFinite(a.tabOrder) ? a.tabOrder : Number.MAX_VALUE;
+      const bOrder = Number.isFinite(b.tabOrder) ? b.tabOrder : Number.MAX_VALUE;
+      
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+
+      // Fall back to creation time for new tabs
+      const aTime = Number.isFinite(a.createdAt) ? a.createdAt : 0;
+      const bTime = Number.isFinite(b.createdAt) ? b.createdAt : 0;
+      return aTime - bTime;
+    });
+  }
+
+  function renderTabOrder() {
+    const ordered = getOrderedTabs();
+    ordered.forEach((tab) => {
+      if (tab.element && tab.element.parentNode === tabBar) {
+        tabBar.insertBefore(tab.element, newTabButton);
+      }
+    });
+    updateScrollButtonVisibility();
+    renderTabList();
+  }
+
+  function scrollTabs(amount) {
+    tabBar.scrollBy({ left: amount, behavior: 'smooth' });
+  }
+
+  function updateScrollButtonVisibility() {
+    // Scroll buttons are hidden - users can scroll with mouse wheel
+    // This function exists for potential future use
+  }
+
+  function toggleTabList() {
+    if (!tabListDropdown) {
+      return;
+    }
+    tabListDropdown.classList.toggle('visible');
+    if (tabListDropdown.classList.contains('visible')) {
+      renderTabList();
+    }
+  }
+
+  function renderTabList() {
+    if (!tabListItems) {
+      return;
+    }
+
+    tabListItems.innerHTML = '';
+    const ordered = getOrderedTabs();
+
+    if (ordered.length === 0) {
+      tabListItems.innerHTML = '<div style="padding: 10px 12px; color: var(--textSecondary); font-size: 12px;">No open tabs</div>';
+      return;
+    }
+
+    ordered.forEach((tab) => {
+      const item = document.createElement('div');
+      item.className = 'tab-list-item';
+      if (tab.id === currentTabId) {
+        item.classList.add('active');
+      }
+
+      const icon = document.createElement('div');
+      icon.className = 'tab-list-item-icon';
+      if (tab.favicon) {
+        icon.innerHTML = `<img src="${tab.favicon}" alt="">`;
+      } else {
+        icon.innerHTML = '<i class="fa-solid fa-globe"></i>';
+      }
+
+      const title = document.createElement('div');
+      title.className = 'tab-list-item-title';
+      title.textContent = tab.title || 'New Tab';
+      title.title = tab.title || 'New Tab';
+
+      item.appendChild(icon);
+      item.appendChild(title);
+
+      item.addEventListener('click', () => {
+        setActiveTab(tab.id);
+        tabListDropdown.classList.remove('visible');
+      });
+
+      tabListItems.appendChild(item);
+    });
+  }
+
+  function applyTabVisualState(tabId) {
+    const tab = getTabById(tabId);
+    if (!tab || !tab.element) {
+      return;
+    }
+
+    tab.element.classList.toggle('tab-pinned', Boolean(tab.pinned));
+    tab.element.classList.toggle('tab-split-left', tab.splitPane === 'left');
+    tab.element.classList.toggle('tab-split-right', tab.splitPane === 'right');
+
+    const tabTitle = tab.title || 'New Tab';
+    tab.element.setAttribute('title', tabTitle);
+  }
+
+  function togglePinTab(tabId) {
+    const tab = getTabById(tabId);
+    if (!tab) {
+      return;
+    }
+
+    tab.pinned = !tab.pinned;
+    applyTabVisualState(tab.id);
+    renderTabOrder();
+    scheduleSessionSave();
+  }
+
+  function openTabInSplit(tabId, pane) {
+    const tab = getTabById(tabId);
+    if (!tab) {
+      return;
+    }
+
+    const targetPane = pane === 'left' ? 'left' : 'right';
+    splitViewState.enabled = true;
+    splitViewState.activePane = targetPane;
+
+    if (!splitViewState.leftTabId || !getTabById(splitViewState.leftTabId)) {
+      splitViewState.leftTabId = currentTabId && currentTabId !== tabId ? currentTabId : tabId;
+      const leftTab = getTabById(splitViewState.leftTabId);
+      if (leftTab) {
+        leftTab.splitPane = 'left';
+        applyTabVisualState(leftTab.id);
+      }
+    }
+
+    if (!splitViewState.rightTabId || !getTabById(splitViewState.rightTabId)) {
+      splitViewState.rightTabId = tabId;
+    }
+
+    const previousTabId = targetPane === 'left' ? splitViewState.leftTabId : splitViewState.rightTabId;
+    const previousTab = getTabById(previousTabId);
+    if (previousTab && previousTab.id !== tab.id) {
+      previousTab.splitPane = null;
+      applyTabVisualState(previousTab.id);
+    }
+
+    tab.splitPane = targetPane;
+    if (targetPane === 'left') {
+      splitViewState.leftTabId = tab.id;
+    } else {
+      splitViewState.rightTabId = tab.id;
+    }
+
+    const oppositePane = targetPane === 'left' ? 'right' : 'left';
+    const oppositeTabId = oppositePane === 'left' ? splitViewState.leftTabId : splitViewState.rightTabId;
+    if (oppositeTabId === tab.id) {
+      const fallback = tabs.find((item) => item.id !== tab.id);
+      if (fallback) {
+        fallback.splitPane = oppositePane;
+        if (oppositePane === 'left') {
+          splitViewState.leftTabId = fallback.id;
+        } else {
+          splitViewState.rightTabId = fallback.id;
+        }
+        applyTabVisualState(fallback.id);
+      } else {
+        const duplicateTabId = createTab(tab.url, {
+          activate: false,
+          pinned: tab.pinned,
+          splitPane: oppositePane
+        });
+        if (oppositePane === 'left') {
+          splitViewState.leftTabId = duplicateTabId;
+        } else {
+          splitViewState.rightTabId = duplicateTabId;
+        }
+      }
+    }
+
+    ensureDistinctSplitTabs();
+    applyTabVisualState(tab.id);
+    setActiveTab(tab.id);
+    renderWebviewsForCurrentLayout();
+    scheduleSessionSave();
+  }
+
+  function ensureDistinctSplitTabs() {
+    if (!splitViewState.enabled) {
+      return;
+    }
+
+    if (!splitViewState.leftTabId || !splitViewState.rightTabId) {
+      return;
+    }
+
+    if (splitViewState.leftTabId !== splitViewState.rightTabId) {
+      return;
+    }
+
+    const sharedTab = getTabById(splitViewState.leftTabId);
+    if (!sharedTab) {
+      return;
+    }
+
+    const fallback = tabs.find((item) => item.id !== sharedTab.id);
+    if (fallback) {
+      splitViewState.rightTabId = fallback.id;
+      fallback.splitPane = 'right';
+      sharedTab.splitPane = 'left';
+      applyTabVisualState(fallback.id);
+      applyTabVisualState(sharedTab.id);
+      return;
+    }
+
+    const duplicateTabId = createTab(sharedTab.url, {
+      activate: false,
+      pinned: sharedTab.pinned,
+      splitPane: 'right'
+    });
+
+    splitViewState.leftTabId = sharedTab.id;
+    splitViewState.rightTabId = duplicateTabId;
+    sharedTab.splitPane = 'left';
+    applyTabVisualState(sharedTab.id);
+  }
+
+  function disableSplitView() {
+    splitViewState.enabled = false;
+    splitViewState.activePane = 'left';
+    splitViewState.leftTabId = null;
+    splitViewState.rightTabId = null;
+
+    tabs.forEach((tab) => {
+      tab.splitPane = null;
+      applyTabVisualState(tab.id);
+    });
+
+    renderWebviewsForCurrentLayout();
+    scheduleSessionSave();
+  }
+
+  function setSplitActivePane(pane) {
+    if (!splitViewState.enabled) {
+      return;
+    }
+
+    splitViewState.activePane = pane === 'right' ? 'right' : 'left';
+    const nextTabId = splitViewState.activePane === 'left' ? splitViewState.leftTabId : splitViewState.rightTabId;
+    if (nextTabId && nextTabId !== currentTabId) {
+      setActiveTab(nextTabId);
+    }
+  }
+
+  function renderWebviewsForCurrentLayout() {
+    ensureDistinctSplitTabs();
+
+    document.querySelectorAll('.webview').forEach((webview) => {
+      webview.classList.add('hidden');
+      webview.classList.remove('split-pane-left');
+      webview.classList.remove('split-pane-right');
+    });
+
+    if (splitViewState.enabled && splitViewState.leftTabId && splitViewState.rightTabId) {
+      browserContent.classList.add('split-view-enabled');
+
+      const leftWebview = document.querySelector(`#webview-${splitViewState.leftTabId}`);
+      const rightWebview = document.querySelector(`#webview-${splitViewState.rightTabId}`);
+
+      if (leftWebview) {
+        leftWebview.classList.remove('hidden');
+        leftWebview.classList.add('split-pane-left');
+      }
+
+      if (rightWebview) {
+        rightWebview.classList.remove('hidden');
+        rightWebview.classList.add('split-pane-right');
+      }
+
+      return;
+    }
+
+    browserContent.classList.remove('split-view-enabled');
+    const activeWebview = document.querySelector(`#webview-${currentTabId}`);
+    if (activeWebview) {
+      activeWebview.classList.remove('hidden');
+    }
+  }
+
+  function ensureTabSearchOverlay() {
+    if (tabSearchState.overlay) {
+      return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'tab-search-overlay hidden';
+
+    const dialog = document.createElement('div');
+    dialog.className = 'tab-search-dialog';
+
+    const input = document.createElement('input');
+    input.className = 'tab-search-input';
+    input.type = 'text';
+    input.placeholder = 'Search tabs by title or URL';
+
+    const results = document.createElement('div');
+    results.className = 'tab-search-results';
+
+    dialog.appendChild(input);
+    dialog.appendChild(results);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) {
+        closeTabSearch();
+      }
+    });
+
+    input.addEventListener('input', () => {
+      tabSearchState.selectedIndex = 0;
+      renderTabSearchResults(input.value);
+    });
+
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeTabSearch();
+        return;
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (tabSearchState.filteredTabs.length > 0) {
+          tabSearchState.selectedIndex = Math.min(tabSearchState.selectedIndex + 1, tabSearchState.filteredTabs.length - 1);
+          renderTabSearchResults(input.value);
+        }
+        return;
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (tabSearchState.filteredTabs.length > 0) {
+          tabSearchState.selectedIndex = Math.max(tabSearchState.selectedIndex - 1, 0);
+          renderTabSearchResults(input.value);
+        }
+        return;
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const selected = tabSearchState.filteredTabs[tabSearchState.selectedIndex];
+        if (selected) {
+          closeTabSearch();
+          setActiveTab(selected.id);
+        }
+      }
+    });
+
+    tabSearchState.overlay = overlay;
+    tabSearchState.input = input;
+    tabSearchState.results = results;
+  }
+
+  function renderTabSearchResults(query) {
+    if (!tabSearchState.results) {
+      return;
+    }
+
+    const normalized = (query || '').toLowerCase().trim();
+    const matchingTabs = getOrderedTabs().filter((tab) => {
+      if (!normalized) {
+        return true;
+      }
+
+      const title = (tab.title || '').toLowerCase();
+      const url = (tab.url || '').toLowerCase();
+      return title.includes(normalized) || url.includes(normalized);
+    });
+
+    tabSearchState.filteredTabs = matchingTabs;
+    if (tabSearchState.selectedIndex >= matchingTabs.length) {
+      tabSearchState.selectedIndex = Math.max(0, matchingTabs.length - 1);
+    }
+
+    tabSearchState.results.innerHTML = '';
+    matchingTabs.forEach((tab, index) => {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = `tab-search-result ${index === tabSearchState.selectedIndex ? 'selected' : ''}`;
+      row.innerHTML = `
+        <div class="tab-search-result-title">${tab.title || 'New Tab'}</div>
+        <div class="tab-search-result-url">${tab.url || ''}</div>
+      `;
+
+      row.addEventListener('mouseenter', () => {
+        tabSearchState.selectedIndex = index;
+        renderTabSearchResults(tabSearchState.input.value);
+      });
+
+      row.addEventListener('click', () => {
+        closeTabSearch();
+        setActiveTab(tab.id);
+      });
+
+      tabSearchState.results.appendChild(row);
+    });
+  }
+
+  function openTabSearch() {
+    ensureTabSearchOverlay();
+    tabSearchState.isOpen = true;
+    tabSearchState.selectedIndex = 0;
+    tabSearchState.overlay.classList.remove('hidden');
+    tabSearchState.input.value = '';
+    renderTabSearchResults('');
+    tabSearchState.input.focus();
+  }
+
+  function closeTabSearch() {
+    if (!tabSearchState.overlay) {
+      return;
+    }
+
+    tabSearchState.isOpen = false;
+    tabSearchState.overlay.classList.add('hidden');
+  }
+
+  function buildSessionSnapshot() {
+    const serializedTabs = getOrderedTabs().map((tab) => {
+      let currentUrl = tab.url;
+      try {
+        if (tab.webview && typeof tab.webview.getURL === 'function') {
+          currentUrl = tab.webview.getURL() || currentUrl;
+        }
+      } catch (error) {
+        currentUrl = tab.url;
+      }
+
+      return {
+        id: tab.id,
+        url: currentUrl,
+        title: tab.title,
+        pinned: Boolean(tab.pinned),
+        splitPane: tab.splitPane || null,
+        createdAt: tab.createdAt,
+        lastActiveAt: tab.lastActiveAt,
+        tabOrder: Number.isFinite(tab.tabOrder) ? tab.tabOrder : 0
+      };
+    });
+
+    return {
+      tabs: serializedTabs,
+      currentTabId,
+      splitView: splitViewState.enabled
+        ? {
+            enabled: true,
+            activePane: splitViewState.activePane,
+            leftTabId: splitViewState.leftTabId,
+            rightTabId: splitViewState.rightTabId
+          }
+        : null,
+      cleanExit: false,
+      updatedAt: Date.now()
+    };
+  }
+
+  function scheduleSessionSave() {
+    if (!window.api || typeof window.api.saveSessionState !== 'function') {
+      return;
+    }
+
+    if (sessionSaveTimeoutId) {
+      clearTimeout(sessionSaveTimeoutId);
+    }
+
+    sessionSaveTimeoutId = setTimeout(() => {
+      sessionSaveTimeoutId = null;
+      window.api.saveSessionState(buildSessionSnapshot());
+    }, 250);
+  }
+
+  function restoreSessionState(sessionState) {
+    if (!sessionState || !Array.isArray(sessionState.tabs) || sessionState.tabs.length === 0) {
+      return false;
+    }
+
+    let restoredCount = 0;
+    sessionState.tabs.forEach((tabState) => {
+      if (!tabState || !tabState.url) {
+        return;
+      }
+
+      const restoredId = createTab(tabState.url, {
+        activate: false,
+        preferredId: tabState.id,
+        pinned: tabState.pinned,
+        splitPane: tabState.splitPane
+      });
+
+      const restoredTab = getTabById(restoredId);
+      if (restoredTab) {
+        restoredTab.title = tabState.title || restoredTab.title;
+        restoredTab.createdAt = Number.isFinite(tabState.createdAt) ? tabState.createdAt : restoredTab.createdAt;
+        restoredTab.lastActiveAt = Number.isFinite(tabState.lastActiveAt) ? tabState.lastActiveAt : restoredTab.lastActiveAt;
+        restoredTab.tabOrder = Number.isFinite(tabState.tabOrder) ? tabState.tabOrder : restoredTab.tabOrder;
+        const titleNode = restoredTab.element?.querySelector('.tab-title');
+        if (titleNode && tabState.title) {
+          titleNode.textContent = tabState.title;
+        }
+        applyTabVisualState(restoredTab.id);
+        restoredCount += 1;
+      }
+    });
+
+    if (restoredCount === 0) {
+      return false;
+    }
+
+    renderTabOrder();
+
+    if (sessionState.splitView && sessionState.splitView.enabled) {
+      splitViewState.enabled = true;
+      splitViewState.activePane = sessionState.splitView.activePane === 'right' ? 'right' : 'left';
+      splitViewState.leftTabId = getTabById(sessionState.splitView.leftTabId) ? sessionState.splitView.leftTabId : null;
+      splitViewState.rightTabId = getTabById(sessionState.splitView.rightTabId) ? sessionState.splitView.rightTabId : null;
+      if (!(splitViewState.leftTabId && splitViewState.rightTabId)) {
+        disableSplitView();
+      }
+    }
+
+    const nextTabId = getTabById(sessionState.currentTabId)
+      ? sessionState.currentTabId
+      : (getOrderedTabs()[0] && getOrderedTabs()[0].id);
+
+    if (nextTabId) {
+      setActiveTab(nextTabId);
+    }
+
+    scheduleSessionSave();
+    return true;
+  }
+
+  function initializeSession(settings) {
+    let restored = false;
+    if (window.api && typeof window.api.getSessionState === 'function') {
+      const sessionState = window.api.getSessionState();
+      const hasTabs = Array.isArray(sessionState?.tabs) && sessionState.tabs.length > 0;
+      const restoreLastSession = settings?.restoreOnStartup === 'last-session';
+      const restoreAfterCrash = settings?.crashRestoreEnabled !== false && sessionState?.cleanExit === false;
+
+      if (hasTabs && (restoreLastSession || restoreAfterCrash)) {
+        restored = restoreSessionState(sessionState);
+      }
+    }
+
+    if (!restored) {
+      createTab(settings?.homePage || 'gkp://home.gekko/');
+    }
+
+    scheduleSessionSave();
+  }
+
   async function saveWorkspaceFromTabs() {
     if (!window.api || typeof window.api.addWorkspace !== 'function') {
       return;
@@ -1309,7 +1981,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return {
           url,
-          title: tab.title || url
+          title: tab.title || url,
+          pinned: Boolean(tab.pinned),
+          splitPane: tab.splitPane || null
         };
       })
       .filter(Boolean);
@@ -1330,7 +2004,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function requestWorkspaceName(defaultName) {
+  function requestInputDialog({ titleText, descriptionText, defaultValue, confirmText }) {
     return new Promise((resolve) => {
       const existing = document.querySelector('.workspace-prompt-overlay');
       if (existing) {
@@ -1345,16 +2019,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const title = document.createElement('div');
       title.className = 'workspace-prompt-title';
-      title.textContent = 'Save Workspace';
+      title.textContent = titleText;
 
       const description = document.createElement('div');
       description.className = 'workspace-prompt-description';
-      description.textContent = 'Name this workspace to save your current tabs.';
+      description.textContent = descriptionText;
 
       const input = document.createElement('input');
       input.className = 'workspace-prompt-input';
       input.type = 'text';
-      input.value = defaultName;
+      input.value = defaultValue;
 
       const actions = document.createElement('div');
       actions.className = 'workspace-prompt-actions';
@@ -1365,7 +2039,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const saveButton = document.createElement('button');
       saveButton.className = 'workspace-prompt-button primary';
-      saveButton.textContent = 'Save';
+      saveButton.textContent = confirmText;
 
       actions.appendChild(cancelButton);
       actions.appendChild(saveButton);
@@ -1406,6 +2080,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function requestWorkspaceName(defaultName) {
+    return requestInputDialog({
+      titleText: 'Save Workspace',
+      descriptionText: 'Name this workspace to save your current tabs.',
+      defaultValue: defaultName,
+      confirmText: 'Save'
+    });
+  }
+
   function openWorkspaceTabs(workspace) {
     if (!workspace || !Array.isArray(workspace.tabs)) {
       return;
@@ -1422,7 +2105,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastTabId = null;
     workspace.tabs.forEach((tab) => {
       if (tab && tab.url) {
-        lastTabId = createTab(tab.url, { activate: false });
+        lastTabId = createTab(tab.url, {
+          activate: false,
+          pinned: Boolean(tab.pinned),
+          splitPane: tab.splitPane || null
+        });
       }
     });
 
@@ -1500,9 +2187,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Create a new tab
   function createTab(url, options = {}) {
     const settings = window.api.getSettings();
-    const tabId = generateTabId();
+    let tabId = options.preferredId || generateTabId();
+    if (getTabById(tabId)) {
+      tabId = generateTabId();
+    }
     const homePage = settings.homePage || 'gkp://home.gekko/';
     const shouldActivate = options.activate !== false;
+    const pinned = Boolean(options.pinned);
+    const splitPane = options.splitPane === 'left' || options.splitPane === 'right' ? options.splitPane : null;
 
     // Default URL if none provided
     url = url || homePage;
@@ -1530,6 +2222,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const webview = createWebviewForTab(tabId, url);
 
+    // Calculate tabOrder based on existing tabs of same pinned state
+    const pinnedTabs = tabs.filter(t => t.pinned === pinned);
+    const nextTabOrder = pinnedTabs.length > 0 
+      ? Math.max(...pinnedTabs.map(t => Number.isFinite(t.tabOrder) ? t.tabOrder : 0)) + 1 
+      : 0;
+
     // Store tab info
     tabs.push({
       id: tabId,
@@ -1538,11 +2236,17 @@ document.addEventListener('DOMContentLoaded', () => {
       favicon: null,
       element: tab,
       webview: webview,
+      pinned,
+      splitPane,
       createdAt: Date.now(),
       lastActiveAt: Date.now(),
       isDiscarded: false,
-      discardedUrl: null
+      discardedUrl: null,
+      tabOrder: nextTabOrder
     });
+
+    applyTabVisualState(tabId);
+    renderTabOrder();
 
     if (isInternalUrl(url)) {
       updateTabFavicon(tabId, getInternalFaviconUrl());
@@ -1566,10 +2270,36 @@ document.addEventListener('DOMContentLoaded', () => {
       closeTab(tabId);
     });
 
+    // Handle drag and drop
+    tab.addEventListener('dragstart', (e) => {
+      handleTabDragStart(e, tabId);
+    });
+
+    tab.addEventListener('dragend', (e) => {
+      handleTabDragEnd(e);
+    });
+
+    tab.addEventListener('dragover', (e) => {
+      handleTabDragOver(e, tabId);
+    });
+
+    tab.addEventListener('dragleave', (e) => {
+      handleTabDragLeave(e, tabId);
+    });
+
+    tab.addEventListener('drop', (e) => {
+      handleTabDrop(e, tabId);
+    });
+
+    // Make tab draggable
+    tab.draggable = true;
+
     // Set as active tab
     if (shouldActivate) {
       setActiveTab(tabId);
     }
+
+    scheduleSessionSave();
 
     return tabId;
   }
@@ -1782,6 +2512,26 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetTab.isDiscarded) {
         restoreDiscardedTab(targetTab);
       }
+
+      if (splitViewState.enabled && targetTab.splitPane) {
+        splitViewState.activePane = targetTab.splitPane;
+      } else if (splitViewState.enabled && !targetTab.splitPane) {
+        const targetPane = splitViewState.activePane || 'right';
+        const previousTabId = targetPane === 'left' ? splitViewState.leftTabId : splitViewState.rightTabId;
+        const previousTab = getTabById(previousTabId);
+        if (previousTab) {
+          previousTab.splitPane = null;
+          applyTabVisualState(previousTab.id);
+        }
+
+        targetTab.splitPane = targetPane;
+        if (targetPane === 'left') {
+          splitViewState.leftTabId = targetTab.id;
+        } else {
+          splitViewState.rightTabId = targetTab.id;
+        }
+        applyTabVisualState(targetTab.id);
+      }
     }
     
     // Update tab UI
@@ -1794,15 +2544,10 @@ document.addEventListener('DOMContentLoaded', () => {
       activeTab.classList.add('active');
     }
     
-    // Show active webview, hide others
-    document.querySelectorAll('.webview').forEach(webview => {
-      webview.classList.add('hidden');
-    });
-    
+    renderWebviewsForCurrentLayout();
+
     const activeWebview = document.querySelector(`#webview-${tabId}`);
     if (activeWebview) {
-      activeWebview.classList.remove('hidden');
-      
       // Get the current URL from the webview
       const currentUrl = activeWebview.getAttribute('src');
       
@@ -1833,6 +2578,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     }
+
+    renderTabList();
+    scheduleSessionSave();
   }
 
   // Close a tab
@@ -1852,6 +2600,18 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Remove from tabs array
       tabs.splice(tabIndex, 1);
+
+      if (splitViewState.leftTabId === tabId) {
+        splitViewState.leftTabId = null;
+      }
+
+      if (splitViewState.rightTabId === tabId) {
+        splitViewState.rightTabId = null;
+      }
+
+      if (splitViewState.enabled && (!splitViewState.leftTabId || !splitViewState.rightTabId)) {
+        disableSplitView();
+      }
       
       // If this was the active tab, activate another tab
       if (currentTabId === tabId) {
@@ -1862,6 +2622,9 @@ document.addEventListener('DOMContentLoaded', () => {
           createTab();
         }
       }
+
+      renderTabList();
+      scheduleSessionSave();
     }
   }
 
@@ -1875,6 +2638,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (titleElement) {
         titleElement.textContent = title;
       }
+
+      renderTabList();
+      scheduleSessionSave();
     }
   }
 
@@ -1926,6 +2692,135 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2000);
       }
     }
+  }
+
+  // Drag and drop handlers
+  let draggedTabId = null;
+
+  function handleTabDragStart(e, tabId) {
+    draggedTabId = tabId;
+    const tab = getTabById(tabId);
+    if (tab && tab.element) {
+      tab.element.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', tabId);
+    }
+  }
+
+  function handleTabDragEnd(e) {
+    const allTabs = document.querySelectorAll('.tab');
+    allTabs.forEach(tab => {
+      tab.classList.remove('dragging', 'drag-over-left', 'drag-over-right');
+    });
+    tabBar.classList.remove('drag-over');
+    draggedTabId = null;
+  }
+
+  function handleTabDragOver(e, tabId) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    if (!draggedTabId || draggedTabId === tabId) {
+      return;
+    }
+
+    const draggedTab = getTabById(draggedTabId);
+    const targetTab = getTabById(tabId);
+
+    if (!draggedTab || !targetTab) {
+      return;
+    }
+
+    // Only allow dragging within the same pinned state
+    if (draggedTab.pinned !== targetTab.pinned) {
+      e.dataTransfer.dropEffect = 'none';
+      return;
+    }
+
+    // Calculate where to drop based on mouse position
+    const rect = targetTab.element.getBoundingClientRect();
+    const midpoint = rect.left + rect.width / 2;
+
+    targetTab.element.classList.remove('drag-over-left', 'drag-over-right');
+
+    if (e.clientX < midpoint) {
+      targetTab.element.classList.add('drag-over-left');
+    } else {
+      targetTab.element.classList.add('drag-over-right');
+    }
+  }
+
+  function handleTabDragLeave(e, tabId) {
+    const tab = getTabById(tabId);
+    if (tab && tab.element) {
+      tab.element.classList.remove('drag-over-left', 'drag-over-right');
+    }
+  }
+
+  function handleTabDrop(e, targetTabId) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!draggedTabId || draggedTabId === targetTabId) {
+      return;
+    }
+
+    const draggedTab = getTabById(draggedTabId);
+    const targetTab = getTabById(targetTabId);
+
+    if (!draggedTab || !targetTab) {
+      return;
+    }
+
+    // Only allow reordering within the same pinned state
+    if (draggedTab.pinned !== targetTab.pinned) {
+      return;
+    }
+
+    // Get mouse position to determine drop side
+    const rect = targetTab.element.getBoundingClientRect();
+    const midpoint = rect.left + rect.width / 2;
+    const dropLeft = e.clientX < midpoint;
+
+    // Get all tabs with same pinned state, sorted by current tabOrder
+    const sameStateTabs = tabs
+      .filter(t => t.pinned === draggedTab.pinned)
+      .sort((a, b) => (Number.isFinite(a.tabOrder) ? a.tabOrder : 0) - (Number.isFinite(b.tabOrder) ? b.tabOrder : 0));
+
+    // Find current positions
+    const draggedIndex = sameStateTabs.findIndex(t => t.id === draggedTabId);
+    const targetIndex = sameStateTabs.findIndex(t => t.id === targetTabId);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      return;
+    }
+
+    // Remove dragged tab from array
+    sameStateTabs.splice(draggedIndex, 1);
+
+    // Calculate new position based on drop side
+    let newIndex;
+    if (draggedIndex < targetIndex) {
+      // Dragging to the right - target index shifted down after removal
+      newIndex = dropLeft ? targetIndex - 1 : targetIndex;
+    } else {
+      // Dragging to the left
+      newIndex = dropLeft ? targetIndex : targetIndex + 1;
+    }
+
+    // Clamp to valid range
+    newIndex = Math.max(0, Math.min(newIndex, sameStateTabs.length));
+
+    // Insert dragged tab at new position
+    sameStateTabs.splice(newIndex, 0, draggedTab);
+
+    // Reassign tabOrder values sequentially
+    sameStateTabs.forEach((tab, index) => {
+      tab.tabOrder = index;
+    });
+
+    renderTabOrder();
+    scheduleSessionSave();
   }
 
   // Update the address bar with the current URL

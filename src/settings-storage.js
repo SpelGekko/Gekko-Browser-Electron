@@ -25,6 +25,8 @@ const defaultSettings = {
   homeBackgroundEnabled: false,
   homeBackgroundUrl: '',
   verticalTaskbar: false,
+  restoreOnStartup: 'last-session',
+  crashRestoreEnabled: true,
   memorySaverEnabled: true,
   memorySaverIdleMinutes: 15
 };

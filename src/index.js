@@ -7,6 +7,7 @@ const bookmarksStorage = require('./bookmarks-storage');
 const downloadsStorage = require('./downloads-storage');
 const clippingsStorage = require('./clippings');
 const workspacesStorage = require('./workspaces');
+const sessionStorage = require('./session-storage');
 const buildContextMenu = require('./context-menu/build-context-menu');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
@@ -391,6 +392,22 @@ ipcMain.on('open-workspace', (event, workspaceId) => {
   }
 });
 
+ipcMain.on('get-session-state', (event) => {
+  event.returnValue = sessionStorage.getSessionState();
+});
+
+ipcMain.on('save-session-state', (event, sessionState) => {
+  sessionStorage.saveSessionState(sessionState);
+});
+
+ipcMain.on('save-session-state-sync', (event, sessionState) => {
+  event.returnValue = sessionStorage.saveSessionState(sessionState);
+});
+
+ipcMain.on('mark-session-clean-exit', (event, isClean) => {
+  event.returnValue = sessionStorage.markCleanExit(Boolean(isClean));
+});
+
 // Update handlers
 ipcMain.on('get-app-version', (event) => {
   event.returnValue = app.getVersion();
@@ -729,6 +746,7 @@ app.whenReady().then(async () => {
   downloadsStorage.ensureDownloadsFile();
   clippingsStorage.ensureClippingsFile();
   workspacesStorage.ensureWorkspacesFile();
+  sessionStorage.ensureSessionFile();
 
   // Create the main browser window
   createWindow();

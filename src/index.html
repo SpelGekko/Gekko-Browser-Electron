@@ -66,11 +66,28 @@
       </div>
       
       <!-- Tab Bar -->
-      <div class="tab-bar" id="tab-bar">
-        <!-- Tabs will be generated dynamically -->
-        <div class="new-tab-button" id="new-tab-button">
-          <i class="fa-solid fa-plus"></i>
+      <div class="tab-bar-container">
+        <div class="tab-scroll-button" id="tab-scroll-left" title="Scroll tabs left">
+          <i class="fa-solid fa-chevron-left"></i>
         </div>
+        <div class="tab-bar" id="tab-bar">
+          <!-- Tabs will be generated dynamically -->
+          <div class="new-tab-button" id="new-tab-button">
+            <i class="fa-solid fa-plus"></i>
+          </div>
+        </div>
+        <div class="tab-scroll-button" id="tab-scroll-right" title="Scroll tabs right">
+          <i class="fa-solid fa-chevron-right"></i>
+        </div>
+        <div class="tab-list-button" id="tab-list-button" title="Show all tabs">
+          <i class="fa-solid fa-list"></i>
+        </div>
+      </div>
+      
+      <!-- Tab List Dropdown -->
+      <div class="tab-list-dropdown" id="tab-list-dropdown">
+        <div class="tab-list-header">Open Tabs</div>
+        <div class="tab-list-items" id="tab-list-items"></div>
       </div>
       
       <!-- Navigation Bar -->

@@ -259,12 +259,12 @@ const themes = {
       // Base colors
       primary: '#0f1d12',
       secondary: '#17331e',
-      accent: '#7cff00',
+      accent: '#5ac94d',
 
       // Text colors
       textPrimary: '#e5f9d6',
       textSecondary: '#9bc48b',
-      textAccent: '#7cff00',
+      textAccent: '#5ac94d',
 
       // UI elements
       tabActive: '#17331e',
@@ -285,7 +285,7 @@ const themes = {
       // Navigation
       navIcon: '#9bc48b',
       navIconHover: '#e5f9d6',
-      navIconActive: '#7cff00',
+      navIconActive: '#5ac94d',
 
       // Status and indicators
       error: '#f28b82',

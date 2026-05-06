@@ -89,6 +89,12 @@ contextBridge.exposeInMainWorld('api', {
   onTabContextAction: (callback) => ipcRenderer.on('tab-context-action', (event, action, payload) => callback(action, payload)),
   getActiveTabId: () => ipcRenderer.sendSync('get-active-tab-id'),
 
+  // Session
+  getSessionState: () => ipcRenderer.sendSync('get-session-state'),
+  saveSessionState: (sessionState) => ipcRenderer.send('save-session-state', sessionState),
+  saveSessionStateSync: (sessionState) => ipcRenderer.sendSync('save-session-state-sync', sessionState),
+  markSessionCleanExit: (isClean) => ipcRenderer.sendSync('mark-session-clean-exit', Boolean(isClean)),
+
   // History
   getHistory: () => ipcRenderer.sendSync('get-history'),
   addToHistory: (historyEntry) => {
