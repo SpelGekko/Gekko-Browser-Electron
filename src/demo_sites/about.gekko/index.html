@@ -27,7 +27,7 @@
       <div class="card">
         <h2 class="card-title">About</h2>
         <div class="card-content">
-          <p>Gekko Browser is a modern, lightweight web browser built with Electron. It features a sleek, customizable interface and supports both standard web protocols (HTTP/HTTPS) and the experimental Gekko Protocol (GKP/GKPS).</p>
+          <p>Gekko Browser is a modern, lightweight desktop browser built with Electron. It features a sleek, customizable interface and supports standard web protocols (HTTP/HTTPS) as well as internal demo protocols handled by the app: <strong>gkp://</strong> and <strong>gkps://</strong>.</p>
           <p>Version: 1.0.0</p>
         </div>
       </div>
@@ -37,7 +37,7 @@
         <h2 class="card-title">Features</h2>
         <div class="card-content">
           <ul>
-            <li>Modern, sleek interface inspired by Opera and Opera GX</li>
+            <li>Modern, sleek interface</li>
             <li>Custom GKP and GKPS protocols for demo browsing</li>
             <li>HTTP/HTTPS support for real web browsing</li>
             <li>Tab-based browsing</li>
@@ -53,26 +53,24 @@
       <div class="card">
         <h2 class="card-title">GKP and GKPS Protocols</h2>
         <div class="card-content">
-          <p>The Gekko Protocol (GKP) and its secure variant (GKPS) are specialized protocols for accessing resources across different domains.</p>
-          
-          <h3>Basic URL Structure</h3>
-          <p>GKP URLs follow this format: <code>gkp://&lt;domain&gt;.&lt;tld&gt;/</code></p>
-          <p>For secure connections, use GKPS: <code>gkps://&lt;domain&gt;.&lt;tld&gt;/</code></p>
-          
-          <h3>Supported Top-Level Domains (TLDs)</h3>
+          <p>The app registers two internal stream protocols: <code>gkp://</code> (demo protocol) and <code>gkps://</code> (secure demo protocol). These are served from the packaged demo sites and app assets and are intended for local/demo content only.</p>
+
+          <h3>How the app maps URLs</h3>
           <ul>
-            <li>.rust</li>
-            <li>.gekko</li>
-            <li>.kewl</li>
+            <li><strong>Special domains:</strong> <code>shared.gekko</code> (shared demo files) and <code>assets.gekko</code> (application assets like icons and fonts).</li>
+            <li><strong>TLDs served:</strong> demo-only TLDs such as <code>.rust</code>, <code>.gekko</code>, and <code>.kewl</code> (only resources placed under <code>src/demo_sites</code> or the app <code>assets/</code> directory are served).</li>
+            <li><strong>Secure variant:</strong> <code>gkps://</code> will add security headers (HSTS, CSP) and serves files from <code>src/demo_sites/secure/</code> when present.</li>
           </ul>
-          
-          <h3>Example URLs</h3>
+
+          <h3>Example URLs (served by this app)</h3>
           <ul>
-            <li><code>gkp://home.gekko/</code> - Home page</li>
-            <li><code>gkp://about.gekko/</code> - About page</li>
-            <li><code>gkps://secure.gekko/</code> - Secure content demo</li>
+            <li><code>gkp://home.gekko/</code> — Local demo home page (from <code>src/demo_sites/home.gekko</code>).</li>
+            <li><code>gkp://about.gekko/</code> — This about page.</li>
+            <li><code>gkp://shared.gekko/theme-vars.css</code> — Shared theme CSS served from <code>src/demo_sites/shared</code>.</li>
+            <li><code>gkp://assets.gekko/icons/32x32.png</code> — App icon served from the packaged <code>assets/</code> folder.</li>
+            <li><code>gkps://secure.gekko/</code> — Secure demo content (if present under <code>src/demo_sites/secure/</code>).</li>
           </ul>
-          
+
           <p><a href="gkp://protocols.gekko/" class="setting-button primary">View Full Documentation</a></p>
         </div>
       </div>
