@@ -14,10 +14,13 @@ A modern, sleek web browser built with Electron, featuring custom GKP and GKPS p
 - Tab-based browsing with dynamic tab management
 - Persistent browsing history (file-based, incognito mode supported)
 - Bookmarks management with drag-and-drop reordering
+- Clippings for saving snippets of web content
+- Workspaces for organizing tabs and projects
 - Customizable themes (dark, light, purple, blue, red)
 - Settings persistence between sessions
 - Downloads manager with progress and history
 - Built-in extension support (uBlock Origin included)
+- Rich context menus for enhanced interaction
 - Multiple search engines (Google, Bing, DuckDuckGo, Yahoo)
 - Internal pages for settings, bookmarks, history, downloads, and more
 
@@ -74,9 +77,11 @@ npm run make
 - `gkp://home.gekko/` - Home page with search and shortcuts
 - `gkp://about.gekko/` - About page with browser information
 - `gkp://bookmarks.gekko/` - Manage your bookmarks
+- `gkp://clippings.gekko/` - Save and manage web clippings
 - `gkp://history.gekko/` - View your browsing history
 - `gkp://settings.gekko/` - Configure browser settings
 - `gkp://downloads.gekko/` - Downloads manager
+- `gkp://workspaces.gekko/` - Organize your projects and tabs
 - `gkp://protocols.gekko/` - Protocol documentation
 - `gkps://secure.gekko/` - Secure content demo
 - `gkp://update.gekko/` - Update status and controls
