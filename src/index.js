@@ -121,7 +121,13 @@ ipcMain.on('get-settings', (event) => {
 });
 
 ipcMain.on('get-themes', (event) => {
-  event.returnValue = ['dark', 'light', 'blue', 'purple', 'red', 'gekko'];
+  try {
+    const { themes } = require('./themes.js');
+    event.returnValue = themes;
+  } catch (error) {
+    console.error('Failed to load themes for IPC:', error);
+    event.returnValue = {};
+  }
 });
 
 // Handle theme changes

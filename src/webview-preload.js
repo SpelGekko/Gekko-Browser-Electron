@@ -50,8 +50,18 @@ contextBridge.exposeInMainWorld('navigationAPI', navigationAPI);
 // Log which file is being loaded in the webview
 console.log('Preload: Loading webview for URL:', window.location.href);
 
-// API exposed to webviews  
+// API exposed to webviews
 contextBridge.exposeInMainWorld("api", {
+  // Theme
+  getThemes: () => {
+    try {
+      return ipcRenderer.sendSync('get-themes');
+    } catch (error) {
+      console.error('Error getting themes:', error);
+      return {};
+    }
+  },
+
   // Settings
   getSettings: () => {
     console.group('Get Settings');
@@ -343,4 +353,25 @@ window.addEventListener('contextmenu', (event) => {
     ipcRenderer.send('show-context-menu', payload);
   }
 });
+
+// Forward theme change notifications from the host/main process into the page
+try {
+  ipcRenderer.on('webview-theme-changed', (event, theme) => {
+    try {
+      window.postMessage({ type: 'themeChange', theme }, '*');
+    } catch (e) {
+      console.warn('Failed to forward webview-theme-changed to page', e);
+    }
+  });
+
+  ipcRenderer.on('theme-changed', (event, theme) => {
+    try {
+      window.postMessage({ type: 'themeChange', theme }, '*');
+    } catch (e) {
+      console.warn('Failed to forward theme-changed to page', e);
+    }
+  });
+} catch (e) {
+  console.warn('Error setting up theme forwarding in webview preload:', e);
+}
 
