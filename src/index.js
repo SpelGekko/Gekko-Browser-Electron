@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const path = require('path');
 const registerProtocolHandlers = require('./protocol-handlers');
+const { setupTrackerBlocking } = require('./tracker-blocker');
+const { setupFingerprintProtection } = require('./fingerprint-protection');
 const historyStorage = require('./history-storage');
 const settingsStorage = require('./settings-storage');
 const bookmarksStorage = require('./bookmarks-storage');
@@ -719,16 +721,14 @@ const createWindow = () => {
 
 // Load uBlock Origin browser extension before any windows are created
 async function loadExtensions() {
-  // Allow all response headers for Manifest V2 extensions
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({ responseHeaders: details.responseHeaders });
-  });
-
   try {
     const ublockPath = path.join(__dirname, 'extensions', 'ublock');
     console.log(`[EXTENSIONS] Loading uBlock Origin from: ${ublockPath}`);
-    // Load the extension with file access enabled
-    const ext = await session.defaultSession.loadExtension(ublockPath, { allowFileAccess: true });
+    // keepAlive: true prevents uBlock from being unloaded between navigations
+    const ext = await session.defaultSession.loadExtension(ublockPath, {
+      allowFileAccess: true,
+      keepAlive: true
+    });
     console.log(`[EXTENSIONS] uBlock Origin loaded:`, ext ? ext.name : 'Unknown');
   } catch (error) {
     console.error('[EXTENSIONS] Failed to load uBlock Origin:', error);
@@ -739,8 +739,15 @@ async function loadExtensions() {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
-  // Load uBlock Origin and any other extensions before window creation
+  // Load extensions first, then register native blocker LAST so it isn't overwritten
+  // by any broken extension webRequest listener (Electron only keeps one handler per session)
   await loadExtensions();
+
+  // Native tracker/ad blocking — registered after extensions so it wins the handler slot
+  setupTrackerBlocking();
+
+  // Normalize User Agent and set up main-process fingerprint protections
+  setupFingerprintProtection();
 
   // Register custom protocol handlers
   registerProtocolHandlers();

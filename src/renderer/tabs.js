@@ -332,7 +332,7 @@ export function createWebviewForTab(tabId, url) {
     webview.dataset.tabId = tabId;
     webview.setAttribute('nodeintegration', 'false');
     webview.setAttribute('contextIsolation', 'true');
-    webview.setAttribute('webpreferences', 'contextIsolation=true, sandbox=true');
+    webview.setAttribute('webpreferences', 'contextIsolation=true');
     webview.setAttribute('preload', window.api.getPaths().webviewPreload);
     webview.src = url;
     document.getElementById('browser-content').appendChild(webview);

@@ -13,6 +13,7 @@ import { updateAddressBar, updateTabStatus, updateProtocolIndicator } from './ui
 import { updateBookmarkButton } from './bookmarks.js';
 import { isInternalUrl, getInternalFaviconUrl } from './utils.js';
 import { setIncognito } from './core/state.js';
+import { FINGERPRINT_INJECT_CODE } from './fingerprint-inject.js';
 
 /**
  * Sets up all necessary event listeners for a webview element.
@@ -23,6 +24,10 @@ import { setIncognito } from './core/state.js';
 export function setupWebviewEvents(webview, tabId) {
   webview.addEventListener('dom-ready', () => {
     webview.dataset.ready = 'true';
+
+    // Inject fingerprint protection into page context before fingerprinting scripts collect data
+    webview.executeJavaScript(FINGERPRINT_INJECT_CODE).catch(() => {});
+
     const currentTheme = localStorage.getItem('gekko-theme') || document.documentElement.getAttribute('data-theme') || 'dark';
     applyThemeToWebview(webview, currentTheme);
     if (tabId === currentTabId) {
