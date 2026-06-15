@@ -14,6 +14,8 @@ import { updateBookmarkButton } from './bookmarks.js';
 import { isInternalUrl, getInternalFaviconUrl } from './utils.js';
 import { setIncognito } from './core/state.js';
 import { FINGERPRINT_INJECT_CODE } from './fingerprint-inject.js';
+import { COSMETIC_FILTER_CSS, COSMETIC_FILTER_JS } from './cosmetic-filter-inject.js';
+import { YOUTUBE_ADBLOCK_CODE } from './youtube-adblock-inject.js';
 
 /**
  * Sets up all necessary event listeners for a webview element.
@@ -27,6 +29,17 @@ export function setupWebviewEvents(webview, tabId) {
 
     // Inject fingerprint protection into page context before fingerprinting scripts collect data
     webview.executeJavaScript(FINGERPRINT_INJECT_CODE).catch(() => {});
+
+    // Inject cosmetic CSS to hide ad elements that can't be blocked by domain alone
+    webview.insertCSS(COSMETIC_FILTER_CSS).catch(() => {});
+    // MutationObserver to catch ads inserted dynamically after dom-ready
+    webview.executeJavaScript(COSMETIC_FILTER_JS).catch(() => {});
+
+    // YouTube-specific ad blocking: auto-skip pre-rolls, hide ad UI
+    const pageUrl = webview.getURL ? webview.getURL() : '';
+    if (pageUrl.includes('youtube.com')) {
+      webview.executeJavaScript(YOUTUBE_ADBLOCK_CODE).catch(() => {});
+    }
 
     const currentTheme = localStorage.getItem('gekko-theme') || document.documentElement.getAttribute('data-theme') || 'dark';
     applyThemeToWebview(webview, currentTheme);
@@ -53,6 +66,13 @@ export function setupWebviewEvents(webview, tabId) {
   });
 
   webview.addEventListener('did-start-loading', () => {
+    // Inject YouTube ad blocker as early as possible so fetch/XHR are patched
+    // before YouTube's player scripts request ad data
+    const earlyUrl = webview.getURL ? webview.getURL() : webview.getAttribute('src') || '';
+    if (earlyUrl.includes('youtube.com')) {
+      webview.executeJavaScript(YOUTUBE_ADBLOCK_CODE).catch(() => {});
+    }
+
     updateTabStatus(tabId, 'loading');
     // Clear cached theme state so the new page receives a fresh theme injection
     webview.removeAttribute('data-last-theme');
