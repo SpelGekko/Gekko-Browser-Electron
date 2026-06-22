@@ -4,6 +4,7 @@ import { setupEventListeners } from './renderer/events.js';
 import { initializeSession, buildSessionSnapshot } from './renderer/session.js';
 import { loadBookmarks, renderBookmarksBar } from './renderer/bookmarks.js';
 import { setIncognito } from './renderer/core/state.js';
+import { initCredentialsPrompt } from './renderer/credentials.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Mark that the session did not exit cleanly
@@ -33,6 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Set up all event listeners
   setupEventListeners();
+
+  // Initialize save-password prompt
+  initCredentialsPrompt();
 
   // Restore previous session or start a new one
   initializeSession(settings);

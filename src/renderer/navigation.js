@@ -16,8 +16,9 @@ import { updateAddressBar, updateTabStatus, updateProtocolIndicator } from './ui
 export function navigateTo(url, tabId) {
   const targetTabId = tabId || currentTabId;
   url = processUrl(url);
+
   console.log('Navigating to processed URL:', url);
-  
+
   const webview = document.querySelector(`#webview-${targetTabId}`);
   if (webview) {
     updateAddressBar(url, targetTabId);

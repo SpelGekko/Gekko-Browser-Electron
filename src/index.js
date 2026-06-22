@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const path = require('path');
+
 const registerProtocolHandlers = require('./protocol-handlers');
 const { setupTrackerBlocking } = require('./tracker-blocker');
 const { setupFingerprintProtection } = require('./fingerprint-protection');
@@ -10,6 +11,7 @@ const downloadsStorage = require('./downloads-storage');
 const clippingsStorage = require('./clippings');
 const workspacesStorage = require('./workspaces');
 const sessionStorage = require('./session-storage');
+const credentialsStorage = require('./credentials-storage');
 const buildContextMenu = require('./context-menu/build-context-menu');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
@@ -524,6 +526,178 @@ ipcMain.on('update-bookmarks-order', (event, orderedUrls) => {
   console.log('Bookmark order update complete:', result);
 });
 
+// Google auth popup — opens a real BrowserWindow for Google sign-in.
+// A BrowserWindow is a top-level browser context (not an embedded view), so
+// Google's embedded-browser detection never fires. The popup shares the default
+// session so auth cookies are immediately visible to all webviews.
+function openGoogleAuthPopup(url) {
+  const normalizedUA = session.defaultSession.getUserAgent();
+
+  // Use an isolated persistent session for the popup so stale cookies from
+  // previous Electron-branded browsing sessions can't trigger Google's
+  // embedded-browser detection.  After successful sign-in we copy the auth
+  // cookies back to the main session so the user stays signed in there too.
+  const googleSession = session.fromPartition('persist:google-auth');
+  googleSession.setUserAgent(normalizedUA);
+
+  // Apply the same UA-client-hints normalization to this session.
+  const chromeVerMatch = normalizedUA.match(/Chrome\/([\d.]+)/);
+  const chromeVersion = chromeVerMatch ? chromeVerMatch[1] : '136.0.7103.115';
+  const majorVersion = chromeVersion.split('.')[0];
+  const brandHeader = `"Not)A;Brand";v="8", "Chromium";v="${majorVersion}", "Google Chrome";v="${majorVersion}"`;
+  googleSession.webRequest.onBeforeSendHeaders({ urls: ['<all_urls>'] }, (details, callback) => {
+    const headers = details.requestHeaders;
+    Object.keys(headers).forEach(key => {
+      const lower = key.toLowerCase();
+      if (lower === 'sec-ch-ua' || lower === 'sec-ch-ua-mobile' ||
+          lower === 'sec-ch-ua-platform' || lower === 'sec-ch-ua-full-version-list') {
+        delete headers[key];
+      }
+    });
+    headers['sec-ch-ua'] = brandHeader;
+    headers['sec-ch-ua-mobile'] = '?0';
+    headers['sec-ch-ua-platform'] = '"Windows"';
+    delete headers['X-Electron-Version'];
+    delete headers['x-electron-version'];
+
+    // Log ALL header keys (not values) so we can spot missing x-client-data
+    // or other signals Google might be checking.
+    if (details.url && details.url.includes('accounts.google.com')) {
+      console.log('[GoogleSession] Request to:', details.url.split('?')[0]);
+      console.log('[GoogleSession] Header keys:', Object.keys(headers).join(', '));
+    }
+
+    callback({ requestHeaders: headers });
+  });
+
+  const popup = new BrowserWindow({
+    width: 500,
+    height: 680,
+    resizable: true,
+    title: 'Sign in – Google',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: false,
+      preload: path.join(__dirname, 'google-auth-preload.js'),
+      session: googleSession,
+    },
+  });
+
+  popup.webContents.setUserAgent(normalizedUA);
+
+  // Allow Google to open sub-popups (account chooser, passkey, FIDO flows).
+  popup.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      const { hostname } = new URL(url);
+      if (hostname.endsWith('google.com') || hostname.endsWith('accounts.google.com')) {
+        return {
+          action: 'allow',
+          overrideBrowserWindowOptions: {
+            webPreferences: {
+              nodeIntegration: false,
+              contextIsolation: false,
+              preload: path.join(__dirname, 'google-auth-preload.js'),
+              session: googleSession,
+            },
+          },
+        };
+      }
+    } catch (_) {}
+    return { action: 'deny' };
+  });
+
+  // After successful sign-in, copy Google auth cookies to the main session
+  // so the user is signed in everywhere in the browser.
+  popup.webContents.on('did-navigate', async (_, navUrl) => {
+    try {
+      const { hostname } = new URL(navUrl);
+      if (hostname !== 'accounts.google.com') {
+        const cookies = await googleSession.cookies.get({ domain: '.google.com' });
+        for (const cookie of cookies) {
+          const cookieUrl = `https://${cookie.domain.replace(/^\./, '')}${cookie.path}`;
+          await session.defaultSession.cookies.set({
+            url: cookieUrl,
+            name: cookie.name,
+            value: cookie.value,
+            domain: cookie.domain,
+            path: cookie.path,
+            secure: cookie.secure,
+            httpOnly: cookie.httpOnly,
+            expirationDate: cookie.expirationDate,
+          }).catch(() => {});
+        }
+        console.log('[GooglePopup] Sign-in complete, cookies copied to main session.');
+      }
+    } catch (_) {}
+  });
+
+  popup.loadURL(url);
+
+  // Relay popup console messages to the main-process terminal so we can debug
+  // what the preload and Google's scripts see inside the popup window.
+  popup.webContents.on('console-message', (_, level, message) => {
+    console.log('[GooglePopup]', message);
+  });
+
+  popup.webContents.on('page-title-updated', (_, title) => {
+    popup.setTitle(title || 'Sign in – Google');
+  });
+}
+
+ipcMain.on('open-google-auth-popup', (event, url) => {
+  openGoogleAuthPopup(url || 'https://accounts.google.com/');
+});
+
+
+// Credentials handlers
+ipcMain.handle('credentials-save', (event, origin, username, password) => {
+  return credentialsStorage.saveCredential(origin, username, password);
+});
+
+ipcMain.handle('credentials-get-for-origin', (event, origin) => {
+  return credentialsStorage.getCredentialsForOrigin(origin);
+});
+
+ipcMain.handle('credentials-get-all', () => {
+  return credentialsStorage.getAllCredentials();
+});
+
+ipcMain.handle('credentials-delete', (event, id) => {
+  return credentialsStorage.deleteCredential(id);
+});
+
+ipcMain.handle('credentials-update', (event, id, data) => {
+  return credentialsStorage.updateCredential(id, data);
+});
+
+ipcMain.handle('credentials-get-decrypted', (event, id) => {
+  return credentialsStorage.getDecryptedCredential(id);
+});
+
+ipcMain.handle('credentials-add-never-save', (event, origin) => {
+  credentialsStorage.addNeverSave(origin);
+  return true;
+});
+
+ipcMain.handle('credentials-is-never-save', (event, origin) => {
+  return credentialsStorage.isNeverSave(origin);
+});
+
+// Called from webview-preload when a login form is submitted
+ipcMain.on('credentials-capture', (event, { origin, username, password }) => {
+  if (!origin || !username || !password) return;
+  if (credentialsStorage.isNeverSave(origin)) return;
+
+  // Forward to the parent browser window so the UI can show the save prompt
+  const senderWin = BrowserWindow.fromWebContents(event.sender)
+    || (typeof event.sender.getOwnerBrowserWindow === 'function' ? event.sender.getOwnerBrowserWindow() : null)
+    || BrowserWindow.getFocusedWindow();
+
+  if (senderWin && !senderWin.isDestroyed()) {
+    senderWin.webContents.send('show-save-password-prompt', { origin, username, password });
+  }
+});
+
 // Navigation handler
 ipcMain.on('navigate', (event, url) => {
   console.group('Main Process Navigation');
@@ -760,6 +934,7 @@ app.whenReady().then(async () => {
   clippingsStorage.ensureClippingsFile();
   workspacesStorage.ensureWorkspacesFile();
   sessionStorage.ensureSessionFile();
+  credentialsStorage.ensureFile();
 
   // Create the main browser window
   createWindow();
@@ -894,6 +1069,10 @@ function setupAutoUpdater() {
 }
 
 // Handle active tab ID requests
+ipcMain.on('get-normalized-user-agent', (event) => {
+  event.returnValue = session.defaultSession.getUserAgent();
+});
+
 ipcMain.on('get-active-tab-id', (event) => {
   // This can't be answered by the main process directly
   // We'll just return a success value and let the renderer handle it

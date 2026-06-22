@@ -129,6 +129,15 @@ contextBridge.exposeInMainWorld('api', {
   onWorkspacesUpdated: (callback) => ipcRenderer.on('workspaces-updated', (event, workspaces) => callback(workspaces)),
   onWorkspaceOpen: (callback) => ipcRenderer.on('open-workspace', (event, workspace) => callback(workspace)),
 
+  // Credentials
+  credentialsSave: (origin, username, password) => ipcRenderer.invoke('credentials-save', origin, username, password),
+  credentialsGetAll: () => ipcRenderer.invoke('credentials-get-all'),
+  credentialsDelete: (id) => ipcRenderer.invoke('credentials-delete', id),
+  credentialsUpdate: (id, data) => ipcRenderer.invoke('credentials-update', id, data),
+  credentialsGetDecrypted: (id) => ipcRenderer.invoke('credentials-get-decrypted', id),
+  credentialsAddNeverSave: (origin) => ipcRenderer.invoke('credentials-add-never-save', origin),
+  onShowSavePasswordPrompt: (callback) => ipcRenderer.on('show-save-password-prompt', (event, data) => callback(data)),
+
   // Window Controls
   minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),
@@ -158,6 +167,9 @@ contextBridge.exposeInMainWorld('api', {
       webviewPreload: webviewPreloadPath
     };
   },
+
+  getNormalizedUserAgent: () => ipcRenderer.sendSync('get-normalized-user-agent'),
+  openGoogleAuthPopup: (url) => ipcRenderer.send('open-google-auth-popup', url),
 
   // Home background picker
   pickHomeBackground: () => ipcRenderer.invoke('pick-home-background'),

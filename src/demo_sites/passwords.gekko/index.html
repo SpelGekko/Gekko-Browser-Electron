@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gekko Browser - Passwords</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="gkp://assets.gekko/icons/32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="gkp://assets.gekko/icons/16x16.png" />
+  <link rel="stylesheet" href="gkp://shared.gekko/theme-vars.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/styles.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/button-styles.css" />
+  <link rel="stylesheet" href="gkp://shared.gekko/fontawesome/all.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="gkp://shared.gekko/theme-utils.js"></script>
+</head>
+<body>
+  <div class="internal-page">
+    <div class="internal-page-header">
+      <h1 class="internal-page-title">
+        <i class="fa-solid fa-key"></i>
+        Saved Passwords
+      </h1>
+      <p class="internal-page-subtitle">Passwords are encrypted and stored locally on your device</p>
+    </div>
+
+    <div class="internal-page-content">
+      <div class="pw-controls">
+        <div class="pw-search">
+          <i class="fa-solid fa-magnifying-glass pw-search-icon"></i>
+          <input type="text" class="pw-search-input" id="pw-search" placeholder="Search passwords">
+        </div>
+      </div>
+
+      <div id="pw-empty" class="empty-state hidden">
+        <i class="fa-solid fa-lock fa-3x"></i>
+        <p>No saved passwords yet</p>
+        <p class="text-secondary">When you log in to websites, Gekko will offer to save your credentials</p>
+      </div>
+
+      <div id="pw-list" class="pw-list">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit modal -->
+  <div id="pw-modal-backdrop" class="pw-modal-backdrop hidden">
+    <div class="pw-modal" role="dialog" aria-modal="true" aria-labelledby="pw-modal-title">
+      <div class="pw-modal-header">
+        <h2 class="pw-modal-title" id="pw-modal-title">Edit Password</h2>
+        <button class="pw-modal-close" id="pw-modal-close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="pw-modal-body">
+        <label class="pw-label">Site</label>
+        <input type="text" id="modal-origin" class="pw-input" readonly>
+        <label class="pw-label">Username</label>
+        <input type="text" id="modal-username" class="pw-input" autocomplete="off">
+        <label class="pw-label">Password</label>
+        <div class="pw-input-wrap">
+          <input type="password" id="modal-password" class="pw-input pw-input-pw" autocomplete="off">
+          <button class="pw-toggle-btn" id="modal-toggle-pw" aria-label="Toggle password visibility">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+      </div>
+      <div class="pw-modal-footer">
+        <button class="button button-secondary" id="pw-modal-cancel">Cancel</button>
+        <button class="button button-primary" id="pw-modal-save">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="passwords.js"></script>
+</body>
+</html>

@@ -96,6 +96,7 @@ export function setupEventListeners() {
   document.getElementById('history-button').addEventListener('click', () => navigateTo('gkp://history.gekko/'));
   document.getElementById('settings-button').addEventListener('click', () => navigateTo('gkp://settings.gekko/'));
   document.getElementById('downloads-button').addEventListener('click', () => navigateTo('gkp://downloads.gekko/'));
+  document.getElementById('passwords-button').addEventListener('click', () => navigateTo('gkp://passwords.gekko/'));
   
   // Incognito mode
   document.getElementById('incognito-button').addEventListener('click', () => {

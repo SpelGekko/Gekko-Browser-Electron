@@ -124,6 +124,9 @@ export function setupWebviewEvents(webview, tabId) {
 
   webview.addEventListener('new-window', (e) => {
     e.preventDefault();
+    try {
+      const { hostname } = new URL(e.url);
+    } catch (_) {}
     createTab(e.url);
   });
 

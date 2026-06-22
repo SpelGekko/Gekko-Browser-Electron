@@ -135,6 +135,9 @@
           <div class="browser-action" id="downloads-button">
             <i class="fa-solid fa-download"></i>
           </div>
+          <div class="browser-action" id="passwords-button" title="Saved Passwords">
+            <i class="fa-solid fa-key"></i>
+          </div>
           <div class="browser-action" id="settings-button">
             <i class="fa-solid fa-gear"></i>
           </div>
@@ -154,6 +157,21 @@
       </div>
     </div>
     
+    <!-- Save Password Prompt -->
+    <div id="save-password-prompt" class="save-password-prompt hidden" role="alert">
+      <i class="fa-solid fa-key save-pw-icon"></i>
+      <div class="save-pw-info">
+        <span class="save-pw-title">Save password for <strong id="save-pw-origin"></strong>?</span>
+        <span class="save-pw-user" id="save-pw-user"></span>
+      </div>
+      <div class="save-pw-actions">
+        <button class="save-pw-btn save-pw-save" id="save-pw-confirm">Save</button>
+        <button class="save-pw-btn save-pw-not-now" id="save-pw-dismiss">Not now</button>
+        <button class="save-pw-btn save-pw-never" id="save-pw-never">Never</button>
+      </div>
+      <button class="save-pw-close" id="save-pw-close" aria-label="Dismiss"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
     <!-- Status Bar -->
     <div class="status-bar">
       <div class="status-text" id="status-text">Ready</div>

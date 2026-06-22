@@ -343,7 +343,78 @@ contextBridge.exposeInMainWorld("api", {
   clearDownloads: () => ipcRenderer.send('clear-downloads'),
   cancelDownload: (startTime) => ipcRenderer.send('cancel-download', startTime),
   showDownloadInFolder: (startTime) => ipcRenderer.send('show-download-in-folder', startTime),
+
+  // Google auth popup (called by renderer when /rejected is detected)
+  openGoogleAuthPopup: (url) => ipcRenderer.send('open-google-auth-popup', url),
+
+  // Credentials (used by passwords.gekko manager page)
+  credentialsGetAll: () => ipcRenderer.invoke('credentials-get-all'),
+  credentialsDelete: (id) => ipcRenderer.invoke('credentials-delete', id),
+  credentialsUpdate: (id, data) => ipcRenderer.invoke('credentials-update', id, data),
+  credentialsGetDecrypted: (id) => ipcRenderer.invoke('credentials-get-decrypted', id),
 });
+
+// ── Credentials: autofill + capture ──────────────────────────────────────────
+
+(function initCredentials() {
+  const origin = window.location.origin;
+  if (!origin || origin === 'null') return;
+
+  // Find the primary username field paired with a password field in a form.
+  const findLoginPair = () => {
+    const pwFields = Array.from(document.querySelectorAll('input[type="password"]'));
+    if (!pwFields.length) return null;
+    const pw = pwFields[0];
+    const form = pw.closest('form');
+    const scope = form || document;
+    const userField = scope.querySelector(
+      'input[type="email"], input[type="text"][name*="user"], input[type="text"][name*="email"], input[type="text"][name*="login"], input[type="text"][autocomplete*="username"], input[type="text"][autocomplete*="email"]'
+    ) || scope.querySelector('input[type="text"]');
+    return userField ? { userField, pwField: pw, form } : null;
+  };
+
+  // Autofill once when the page is ready.
+  const tryAutofill = async () => {
+    const pair = findLoginPair();
+    if (!pair) return;
+    try {
+      const creds = await ipcRenderer.invoke('credentials-get-for-origin', origin);
+      if (!creds || !creds.length) return;
+      const best = creds.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      // Only fill if the fields are still empty (don't clobber user typing).
+      if (!pair.userField.value) pair.userField.value = best.username;
+      if (!pair.pwField.value) pair.pwField.value = best.password;
+    } catch (err) {
+      console.warn('credentials autofill error:', err);
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryAutofill);
+  } else {
+    tryAutofill();
+  }
+
+  // Capture credentials on form submit.
+  document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (!form) return;
+    const pwField = form.querySelector('input[type="password"]');
+    if (!pwField || !pwField.value) return;
+    const userField = form.querySelector(
+      'input[type="email"], input[type="text"][name*="user"], input[type="text"][name*="email"], input[type="text"][name*="login"], input[type="text"][autocomplete*="username"], input[type="text"][autocomplete*="email"]'
+    ) || form.querySelector('input[type="text"]');
+    if (!userField || !userField.value) return;
+
+    ipcRenderer.send('credentials-capture', {
+      origin,
+      username: userField.value,
+      password: pwField.value,
+    });
+  }, true);
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Listen for context menu requests
 window.addEventListener('contextmenu', (event) => {

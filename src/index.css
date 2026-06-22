@@ -1685,3 +1685,98 @@ body.vertical-taskbar.taskbar-expanded .container {
     opacity: 1;
   }
 }
+
+/* ── Save Password Prompt ─────────────────────────────────────────────────── */
+
+.save-password-prompt {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: var(--card-background, #2a2a2a);
+  border-top: 1px solid var(--accent-color, #8ab4f8);
+  font-size: 0.875rem;
+  color: var(--text-color, #e8eaed);
+  animation: save-pw-slide-in 0.2s ease;
+  position: relative;
+  z-index: 50;
+}
+
+.save-password-prompt.hidden { display: none; }
+
+@keyframes save-pw-slide-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.save-pw-icon {
+  color: var(--accent-color, #8ab4f8);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.save-pw-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.save-pw-title { color: var(--text-color, #e8eaed); }
+.save-pw-title strong { color: var(--accent-color, #8ab4f8); }
+
+.save-pw-user {
+  color: var(--text-secondary, #9aa0a6);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.save-pw-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.save-pw-btn {
+  padding: 0.3rem 0.75rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: filter 0.15s;
+}
+.save-pw-btn:hover { filter: brightness(1.15); }
+
+.save-pw-save {
+  background: var(--accent-color, #8ab4f8);
+  color: #fff;
+}
+
+.save-pw-not-now {
+  background: transparent;
+  color: var(--text-secondary, #9aa0a6);
+  border: 1px solid var(--divider-color, rgba(255,255,255,0.15));
+}
+
+.save-pw-never {
+  background: transparent;
+  color: #e57373;
+  border: 1px solid rgba(229, 115, 115, 0.35);
+}
+
+.save-pw-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary, #9aa0a6);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.save-pw-close:hover { color: var(--text-color, #e8eaed); }
