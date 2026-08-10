@@ -64,7 +64,61 @@ function serveFile(filePath, callback, extraHeaders = {}) {
 }
 
 // Register custom protocol handlers for GKP and GKPS
-function registerProtocolHandlers() {
+function registerOnSession(ses, CSP_HEADER) {
+  ses.protocol.registerStreamProtocol('gkp', (request, callback) => {
+    try {
+      const url = new URL(request.url);
+      const domain = url.hostname;
+      const urlPath = url.pathname === '/' ? '/index.html' : url.pathname;
+      const tld = domain.split('.').pop();
+      if (!['rust', 'gekko', 'kewl'].includes(tld)) {
+        serveFile(path.join(__dirname, 'pages/error.html'), callback, CSP_HEADER);
+        return;
+      }
+      if (domain === 'shared.gekko') {
+        const fp = path.join(__dirname, 'demo_sites', 'shared', urlPath);
+        if (fs.existsSync(fp)) { serveFile(fp, callback, CSP_HEADER); return; }
+      }
+      if (domain === 'assets.gekko') {
+        serveFile(path.join(__dirname, '..', 'assets', urlPath.replace(/^\/+/, '')), callback, CSP_HEADER);
+        return;
+      }
+      const filePath = path.join(__dirname, 'demo_sites', domain, urlPath);
+      if (fs.existsSync(filePath)) {
+        serveFile(filePath, callback, CSP_HEADER);
+      } else {
+        const sharedPath = path.join(__dirname, 'demo_sites', 'shared', urlPath);
+        serveFile(fs.existsSync(sharedPath) ? sharedPath : path.join(__dirname, 'pages/404.html'), callback, CSP_HEADER);
+      }
+    } catch (e) { serveFile(path.join(__dirname, 'pages/error.html'), callback, CSP_HEADER); }
+  });
+
+  const secureHeaders = { ...CSP_HEADER, 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' };
+  ses.protocol.registerStreamProtocol('gkps', (request, callback) => {
+    try {
+      const url = new URL(request.url);
+      const domain = url.hostname;
+      const urlPath = url.pathname === '/' ? '/index.html' : url.pathname;
+      const tld = domain.split('.').pop();
+      if (!['rust', 'gekko', 'kewl'].includes(tld)) {
+        serveFile(path.join(__dirname, 'pages/error.html'), callback, secureHeaders);
+        return;
+      }
+      if (domain === 'shared.gekko') {
+        const fp = path.join(__dirname, 'demo_sites', 'shared', urlPath);
+        if (fs.existsSync(fp)) { serveFile(fp, callback, secureHeaders); return; }
+      }
+      if (domain === 'assets.gekko') {
+        serveFile(path.join(__dirname, '..', 'assets', urlPath.replace(/^\/+/, '')), callback, secureHeaders);
+        return;
+      }
+      const filePath = path.join(__dirname, 'demo_sites', 'secure', domain, urlPath);
+      serveFile(fs.existsSync(filePath) ? filePath : path.join(__dirname, 'pages/404.html'), callback, secureHeaders);
+    } catch (e) { serveFile(path.join(__dirname, 'pages/error.html'), callback, secureHeaders); }
+  });
+}
+
+function registerProtocolHandlers(extraSessions = []) {
   const CSP_HEADER = {
     'Content-Security-Policy': [
       "default-src 'self' gkp: gkps: blob: data:",
@@ -129,6 +183,9 @@ function registerProtocolHandlers() {
       serveFile(path.join(__dirname, 'pages/error.html'), callback, CSP_HEADER);
     }
   });
+
+  // Register on extra sessions (e.g. persist:browser partition for tab WCVs)
+  extraSessions.forEach(ses => registerOnSession(ses, CSP_HEADER));
 
   // GKPS Protocol Handler (secure version)
   protocol.registerStreamProtocol('gkps', (request, callback) => {

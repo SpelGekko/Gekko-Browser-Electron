@@ -74,16 +74,10 @@ export function applyTheme(newTheme) {
       console.warn('Could not sync theme to storage:', storageError);
     }
 
-    // Apply to all webviews with robust error handling
-    const webviews = document.querySelectorAll('webview');
-    if (webviews.length > 0) {
-      console.log(`Applying theme to ${webviews.length} webviews`);
-      webviews.forEach(webview => {
-        if (webview && webview.isConnected) {
-          applyThemeToWebview(webview, newTheme);
-        }
-      });
-    }
+    // Apply theme to all tab WebContentsViews via IPC
+    tabs.forEach(tab => {
+      if (!tab.isDiscarded) applyThemeToTab(tab.id, newTheme);
+    });
 
     // Set up verification
     const verifyTheme = () => {
@@ -108,93 +102,34 @@ export function applyTheme(newTheme) {
 
 
 /**
- * Applies the current theme to a specific webview. This is used to ensure
- * that internal pages (like settings, history) match the browser's theme.
- * @param {HTMLWebViewElement} webview - The webview element to apply the theme to.
- * @param {string} newTheme - The ID of the theme to apply.
+ * Applies the current theme to a tab's WebContentsView via IPC.
+ * Only meaningful for internal gkp:// pages that read CSS variables.
+ * @param {string} tabId - The tab ID whose WCV should receive the theme.
+ * @param {string} newTheme - The theme ID (e.g. 'dark').
  */
-export function applyThemeToWebview(webview, newTheme) {
-  if (!webview || !webview.isConnected) return;
-
-  console.group('Apply Theme to Webview');
-  console.log('Applying theme:', newTheme);
-
+export function applyThemeToTab(tabId, newTheme) {
+  if (!tabId || !newTheme) return;
   try {
-    const lastWebviewTheme = webview.getAttribute('data-last-theme');
-    if (lastWebviewTheme === newTheme) {
-      console.log('Theme already applied to webview, skipping');
-      console.groupEnd();
-      return;
-    }
-
     const themeObj = window.api.getThemes()[newTheme];
-    if (!themeObj || !themeObj.colors) {
-        console.warn('Could not get theme object for webview');
-        console.groupEnd();
-        return;
-    }
+    if (!themeObj || !themeObj.colors) return;
 
     const cssVariables = Object.entries(themeObj.colors)
-        .map(([key, value]) => `--${key}: ${value};`)
-        .join('\n');
+      .map(([key, value]) => `--${key}: ${value};`)
+      .join('\n');
 
-    // Build a robust script that:
-    // - injects CSS variables
-    // - sets data-theme attributes
-    // - calls any page-level theme hooks (`window.api.applyTheme`, `window.applyTheme`)
-    // - writes `gekko-theme` to localStorage
-    // - posts a message so internal pages listening for `themeChange` will react
-    const themeScript = `
-      (function() {
-        try {
-          // Remove any existing theme style element
-          const existingStyle = document.getElementById('gekko-theme-style');
-          if (existingStyle) existingStyle.remove();
+    const themeScript = `(function(){try{
+      var e=document.getElementById('gekko-theme-style');if(e)e.remove();
+      var s=document.createElement('style');s.id='gekko-theme-style';
+      s.textContent=":root{${cssVariables.replace(/\n/g, ' ')}}";
+      (document.head||document.documentElement).appendChild(s);
+      try{document.documentElement.setAttribute('data-theme','${newTheme}');}catch(_){}
+      try{document.body.setAttribute('data-theme','${newTheme}');}catch(_){}
+      try{localStorage.setItem('gekko-theme','${newTheme}');}catch(_){}
+      try{window.postMessage({type:'themeChange',theme:'${newTheme}'},'*');}catch(_){}
+    }catch(_){}})();`;
 
-          // Create new theme style
-          const style = document.createElement('style');
-          style.id = 'gekko-theme-style';
-          style.setAttribute('data-gekko-theme', '${newTheme}');
-          style.textContent = ":root { ${cssVariables} }";
-          if (document.head) {
-            document.head.appendChild(style);
-          } else {
-            document.documentElement.appendChild(style);
-          }
-
-          // Set theme attributes
-          try { document.documentElement.setAttribute('data-theme', '${newTheme}'); } catch(e){}
-          try { document.body.setAttribute('data-theme', '${newTheme}'); } catch(e){}
-
-          // Persist for pages that read localStorage on init
-          try { localStorage.setItem('gekko-theme', '${newTheme}'); } catch(e){}
-
-          // Call any available page-level theme APIs
-          try { if (window.api && typeof window.api.applyTheme === 'function') window.api.applyTheme('${newTheme}'); } catch(e){}
-          try { if (typeof window.applyTheme === 'function') window.applyTheme('${newTheme}'); } catch(e){}
-
-          // Notify page-level listeners
-          try { window.postMessage({ type: 'themeChange', theme: '${newTheme}' }, '*'); } catch(e){}
-        } catch (err) {
-          // Swallow to avoid breaking host
-          console.warn('Theme script error:', err);
-        }
-      })();
-    `;
-
-    // Execute the theme injection script; if it fails, fall back to insertCSS
-    webview.executeJavaScript(themeScript).catch(error => {
-      console.warn('Failed to inject theme via executeJavaScript:', error);
-      webview.insertCSS(`:root { ${cssVariables} }`).catch(console.warn);
-    });
-
-    // Mark theme as applied
-    webview.setAttribute('data-last-theme', newTheme);
-    console.log('Theme applied successfully to webview');
-
+    window.api.wcvExecuteJs(tabId, themeScript);
   } catch (error) {
-    console.error('Error applying theme to webview:', error);
+    console.error('Error applying theme to tab:', error);
   }
-  
-  console.groupEnd();
 }

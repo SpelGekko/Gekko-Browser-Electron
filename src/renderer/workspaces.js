@@ -14,13 +14,7 @@ export async function saveWorkspaceFromTabs() {
   if (!window.api || typeof window.api.addWorkspace !== 'function') return;
 
   const tabsSnapshot = tabs.map((tab) => {
-    let url = tab.url;
-    try {
-      if (tab.webview && typeof tab.webview.getURL === 'function') {
-        url = tab.webview.getURL() || url;
-      }
-    } catch (error) { /* use fallback */ }
-    
+    const url = tab.url;
     return url ? { url, title: tab.title || url, pinned: Boolean(tab.pinned), splitPane: tab.splitPane || null } : null;
   }).filter(Boolean);
 

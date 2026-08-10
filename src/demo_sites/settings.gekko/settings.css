@@ -281,6 +281,19 @@ input:checked + .slider:before {
   color: var(--text-secondary);
 }
 
+.clear-data-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.clear-data-options .setting-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
 .setting-toggle {
   display: flex;
   align-items: center;

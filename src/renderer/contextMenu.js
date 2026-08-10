@@ -67,15 +67,12 @@ export function handleTabContextAction(action, payload) {
 function duplicateTab(tabId) {
   const tab = getTabById(tabId);
   if (!tab) return;
-  const url = tab.webview && typeof tab.webview.getURL === 'function' ? tab.webview.getURL() : tab.url;
+  const url = tab.url;
   createTab(url);
 }
 
 function reloadTab(tabId) {
-  const tab = getTabById(tabId);
-  if (tab?.webview?.reload) {
-    tab.webview.reload();
-  }
+  window.api.wcvReload(tabId);
 }
 
 function closeOtherTabs(tabId) {

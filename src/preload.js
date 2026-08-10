@@ -65,6 +65,7 @@ const allowedChannels = ['theme-changed', 'settings-changed', 'navigate', 'updat
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('api', {
+  send: (channel) => ipcRenderer.send(channel),
   // Settings
   getSettings: () => ipcRenderer.sendSync('get-settings'),
   onSettingsUpdated: (callback) => ipcRenderer.on('settings-updated', (event, settings) => {
@@ -103,6 +104,7 @@ contextBridge.exposeInMainWorld('api', {
     }
   },
   clearHistory: () => ipcRenderer.send('clear-history'),
+  clearBrowsingData: (options) => ipcRenderer.invoke('clear-browsing-data', options),
   toggleIncognitoMode: () => ipcRenderer.sendSync('toggle-incognito-mode'),
   getIncognitoMode: () => ipcRenderer.sendSync('get-incognito-mode'),
 
@@ -182,4 +184,44 @@ contextBridge.exposeInMainWorld('api', {
   minimize: () => ipcRenderer.send('window:minimize'),
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window-close'),
+
+  // ── WebContentsView tab management ────────────────────────────────────────
+  // Tab lifecycle
+  wcvCreate:   (tabId, url) => ipcRenderer.send('wcv-create',   tabId, url),
+  wcvDestroy:  (tabId)      => ipcRenderer.send('wcv-destroy',  tabId),
+
+  // Navigation
+  wcvNavigate:    (tabId, url) => ipcRenderer.send('wcv-navigate',    tabId, url),
+  wcvGoBack:      (tabId)      => ipcRenderer.send('wcv-go-back',     tabId),
+  wcvGoForward:   (tabId)      => ipcRenderer.send('wcv-go-forward',  tabId),
+  wcvReload:      (tabId)      => ipcRenderer.send('wcv-reload',      tabId),
+  wcvStop:        (tabId)      => ipcRenderer.send('wcv-stop',        tabId),
+
+  // Layout / visibility
+  wcvSetActive:     (tabId)              => ipcRenderer.send('wcv-set-active',     tabId),
+  wcvSetSplitView:  (leftId, rightId)    => ipcRenderer.send('wcv-set-split-view', leftId, rightId),
+  wcvSetChromeHeight: (height)           => ipcRenderer.send('wcv-set-chrome-height', height),
+
+  // Script / CSS injection
+  wcvExecuteJs:  (tabId, code) => ipcRenderer.send('wcv-execute-js', tabId, code),
+  wcvInsertCss:  (tabId, css)  => ipcRenderer.send('wcv-insert-css', tabId, css),
+
+  // Register inject code (sent once at startup, applied on every dom-ready)
+  wcvSetInjectCode: (name, code) => ipcRenderer.send('wcv-set-inject-code', name, code),
+
+  // Async queries
+  wcvGetUrl:        (tabId) => ipcRenderer.invoke('wcv-get-url',         tabId),
+  wcvCanGoBack:     (tabId) => ipcRenderer.invoke('wcv-can-go-back',     tabId),
+  wcvCanGoForward:  (tabId) => ipcRenderer.invoke('wcv-can-go-forward',  tabId),
+
+  // Receive events from main process about tab WebContentsViews
+  onWcvEvent: (channel, callback) => {
+    const allowed = [
+      'wcv-title-updated', 'wcv-favicon-updated', 'wcv-loading-start', 'wcv-loading-stop',
+      'wcv-nav-state', 'wcv-navigated', 'wcv-navigated-in-page', 'wcv-dom-ready',
+      'wcv-fail-load', 'wcv-new-window',
+    ];
+    if (!allowed.includes(channel)) return;
+    ipcRenderer.on(channel, (event, ...args) => callback(...args));
+  },
 });

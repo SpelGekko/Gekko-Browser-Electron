@@ -1,4 +1,76 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webFrame } = require("electron");
+
+// Inject critical overrides into the main world BEFORE any page scripts run.
+try {
+  webFrame.executeJavaScript(`(function(){
+    // Hide Node.js/Electron globals — Google checks window.process to detect Electron
+    try { Object.defineProperty(window,"process",{value:undefined,writable:false,configurable:false}); } catch(_){}
+    try { Object.defineProperty(window,"require",{value:undefined,writable:false,configurable:false}); } catch(_){}
+    try { Object.defineProperty(window,"global",{value:undefined,writable:false,configurable:false}); } catch(_){}
+    // Fix navigator.userAgentData — uaFullVersion must be the REAL full version, not "X.0.0.0"
+    try {
+      var _ua=navigator.userAgent,_ci=_ua.indexOf("Chrome/"),_fv=_ci>=0?_ua.slice(_ci+7).split(" ")[0]:"136.0.7103.115";
+      var _mv=_fv.split(".")[0];
+      var _b=[{brand:"Google Chrome",version:_mv},{brand:"Not)A;Brand",version:"8"},{brand:"Chromium",version:_mv}];
+      var _fb=[{brand:"Google Chrome",version:_fv},{brand:"Not)A;Brand",version:"8.0.0.0"},{brand:"Chromium",version:_fv}];
+      var _ud={brands:_b,mobile:false,platform:"Windows",
+        getHighEntropyValues:function(h){
+          var r={brands:_b,mobile:false,platform:"Windows"};
+          if(h.indexOf("architecture")!==-1)r.architecture="x86";
+          if(h.indexOf("bitness")!==-1)r.bitness="64";
+          if(h.indexOf("platformVersion")!==-1)r.platformVersion="15.0.0";
+          if(h.indexOf("uaFullVersion")!==-1)r.uaFullVersion=_fv;
+          if(h.indexOf("fullVersionList")!==-1)r.fullVersionList=_fb;
+          if(h.indexOf("wow64")!==-1)r.wow64=false;
+          if(h.indexOf("model")!==-1)r.model="";
+          return Promise.resolve(r);
+        },
+        toJSON:function(){return{brands:_b,mobile:false,platform:"Windows"};}
+      };
+      Object.defineProperty(Navigator.prototype,"userAgentData",{get:function(){return _ud;},configurable:true});
+    } catch(_){}
+    // Spoof window outer dimensions — in a real browser outerHeight = innerHeight + chrome (~140px).
+    // In a WCV the content IS the window so outerHeight === innerHeight, which is a strong signal.
+    try {
+      Object.defineProperty(window,"outerHeight",{get:function(){return window.innerHeight+140;},configurable:true});
+      Object.defineProperty(window,"outerWidth",{get:function(){return window.innerWidth;},configurable:true});
+    } catch(_){}
+    // screenX/screenY should reflect a real browser window position on screen
+    try {
+      Object.defineProperty(window,"screenX",{get:function(){return 0;},configurable:true});
+      Object.defineProperty(window,"screenY",{get:function(){return 0;},configurable:true});
+      Object.defineProperty(window,"screenLeft",{get:function(){return 0;},configurable:true});
+      Object.defineProperty(window,"screenTop",{get:function(){return 0;},configurable:true});
+    } catch(_){}
+    // Hide webdriver
+    try { Object.defineProperty(navigator,"webdriver",{get:()=>false,configurable:true}); } catch(_){}
+    // Reject passkey (publicKey) credential requests — keeps PublicKeyCredential defined but prevents OS dialogs
+    try {
+      var _cg = navigator.credentials&&navigator.credentials.get?navigator.credentials.get.bind(navigator.credentials):null;
+      if (_cg) Object.defineProperty(navigator.credentials,"get",{value:function(o){
+        if(o&&o.publicKey) return Promise.reject(new DOMException("Not supported","NotSupportedError"));
+        return _cg(o);
+      },configurable:true});
+    } catch(_){}
+    // Spoof navigator.plugins — empty plugins array is a strong Electron signal
+    try {
+      if(navigator.plugins.length===0){
+        var fp=[
+          {name:"PDF Viewer",filename:"internal-pdf-viewer",description:"Portable Document Format"},
+          {name:"Chrome PDF Viewer",filename:"internal-pdf-viewer",description:"Portable Document Format"},
+          {name:"Chromium PDF Viewer",filename:"internal-pdf-viewer",description:"Portable Document Format"},
+          {name:"Microsoft Edge PDF Viewer",filename:"internal-pdf-viewer",description:"Portable Document Format"},
+          {name:"WebKit built-in PDF",filename:"internal-pdf-viewer",description:"Portable Document Format"}
+        ];
+        Object.defineProperty(Navigator.prototype,"plugins",{get:function(){
+          var a=Object.assign([],fp);a.item=function(i){return fp[i]||null;};
+          a.namedItem=function(n){return fp.find(function(p){return p.name===n;})||null;};
+          a.refresh=function(){};return a;
+        },configurable:true});
+      }
+    } catch(_){}
+  })()`);
+} catch (_) {}
 
 const buildContextMenuPayload = (event) => {
   const target = event.target;

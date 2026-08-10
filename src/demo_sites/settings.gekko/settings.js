@@ -227,6 +227,35 @@ document.addEventListener('DOMContentLoaded', () => {
     themeContainer.appendChild(themeGrid);
   }
 
+  // Clear browsing data
+  const clearDataBtn = document.getElementById('clear-data-btn');
+  const clearDataStatus = document.getElementById('clear-data-status');
+  if (clearDataBtn) {
+    clearDataBtn.addEventListener('click', async () => {
+      const options = {
+        cookies: document.getElementById('clear-cookies')?.checked,
+        cache:   document.getElementById('clear-cache')?.checked,
+        history: document.getElementById('clear-history-data')?.checked,
+        storage: document.getElementById('clear-storage')?.checked,
+      };
+      clearDataBtn.disabled = true;
+      clearDataBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Clearing...';
+      if (clearDataStatus) clearDataStatus.textContent = '';
+      try {
+        const api = window.api || window.parent?.api;
+        if (api?.clearBrowsingData) {
+          await api.clearBrowsingData(options);
+          if (clearDataStatus) clearDataStatus.textContent = 'Done! Restart the browser for all changes to take effect.';
+        }
+      } catch (e) {
+        if (clearDataStatus) clearDataStatus.textContent = 'Error: ' + e.message;
+      } finally {
+        clearDataBtn.disabled = false;
+        clearDataBtn.innerHTML = '<i class="fa-solid fa-broom"></i> Clear Data';
+      }
+    });
+  }
+
   // Setup navigation buttons
   setupNavigationButtons();
   console.groupEnd();

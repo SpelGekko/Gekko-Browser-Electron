@@ -1,4 +1,4 @@
-const { Menu, BrowserWindow } = require('electron');
+const { Menu, webContents } = require('electron');
 const normalizeContextParams = require('./normalize-context-params');
 const addLinkItems = require('./add-link-items');
 const addImageItems = require('./add-image-items');
@@ -8,10 +8,22 @@ const addPageItems = require('./add-page-items');
 const addNavigationItems = require('./add-navigation-items');
 const addTabItems = require('./add-tab-items');
 
+// Shim so context-menu items can send messages to the chrome renderer
+// without needing a BrowserWindow reference.
+const chromeProxy = {
+  webContents: {
+    send: (channel, ...args) => {
+      webContents.getAllWebContents().forEach(wc => {
+        try { if (!wc.isDestroyed()) wc.send(channel, ...args); } catch (_) {}
+      });
+    }
+  }
+};
+
 const buildContextMenu = (event, params) => {
   const menu = new Menu();
   const normalizedParams = normalizeContextParams(params);
-  const hostWindow = BrowserWindow.fromWebContents(event.sender);
+  const hostWindow = chromeProxy;
   const context = { event, params: normalizedParams, hostWindow };
 
   if (normalizedParams.context === 'tab') {

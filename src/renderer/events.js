@@ -16,7 +16,7 @@ import { handleTabContextAction } from './contextMenu.js';
 import { openWorkspaceTabs } from './workspaces.js';
 import { handleSettingsUpdate } from './settings.js';
 import { showUpdateToast } from './updates.js';
-import { applyTheme, applyThemeToWebview } from './theme.js';
+import { applyTheme } from './theme.js';
 
 /**
  * Verifies that all essential UI elements are present in the DOM.
@@ -128,6 +128,13 @@ export function setupEventListeners() {
   });
   window.api.onWorkspaceOpen(openWorkspaceTabs);
   window.api.onSettingsUpdated(handleSettingsUpdate);
+
+  // Ctrl+Shift+J opens DevTools for the active tab WCV (detached window)
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key === 'J') {
+      window.api.send('open-tab-devtools');
+    }
+  });
 
   // Message listener for internal pages
   window.addEventListener('message', (event) => {

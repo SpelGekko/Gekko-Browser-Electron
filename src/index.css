@@ -64,6 +64,7 @@
 body, html {
   font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   font-size: var(--font-size);
+  /* transparent so tab WebContentsViews behind the chrome view show through */
   background-color: var(--primary);
   color: var(--textPrimary);
   height: 100%;
@@ -76,7 +77,6 @@ body, html {
 .container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
   width: 100%;
 }
 
@@ -777,23 +777,15 @@ body.vertical-taskbar.taskbar-expanded .container {
 
 /* Main Content */
 .content-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--primary);
+  /* Tab content is rendered by WebContentsView in the main process,
+     positioned below the chrome view.  The DOM container stays for
+     verifyRequiredElements() but takes up no visible space. */
+  height: 0;
   overflow: hidden;
-  position: relative;
 }
 
 .browser-view {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  background-color: white;
+  display: none;
 }
 
 .browser-view.split-view-enabled {
@@ -828,8 +820,12 @@ body.vertical-taskbar.taskbar-expanded .container {
   display: none;
 }
 
-/* Status Bar */
+/* Status Bar — hidden: content area is a WebContentsView, not a DOM element */
 .status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   height: 24px;
   background-color: var(--secondary);
   border-top: 1px solid var(--divider);
@@ -838,6 +834,7 @@ body.vertical-taskbar.taskbar-expanded .container {
   padding: 0 10px;
   font-size: 12px;
   color: var(--textSecondary);
+  z-index: 1000;
 }
 
 .status-text {

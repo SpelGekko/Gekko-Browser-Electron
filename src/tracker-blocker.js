@@ -133,6 +133,7 @@ function setupTrackerBlocking() {
   }
 
   applyToSession(session.defaultSession);
+  applyToSession(session.fromPartition('persist:browser'));
   console.log('[BLOCKER] Native tracker/ad blocking active');
 }
 

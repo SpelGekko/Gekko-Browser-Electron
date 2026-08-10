@@ -21,6 +21,9 @@ export let memorySaverIntervalId = null;
 export let memorySaverIdleMs = 15 * 60 * 1000;
 export let sessionSaveTimeoutId = null;
 
+// Cached back/forward state per tab, updated via 'wcv-nav-state' IPC events
+export const tabNavState = {};
+
 export const splitViewState = {
   enabled: false,
   activePane: 'left',

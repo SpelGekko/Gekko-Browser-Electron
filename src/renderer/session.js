@@ -15,14 +15,8 @@ import { disableSplitView } from './contextMenu.js';
  */
 export function buildSessionSnapshot() {
   const serializedTabs = getOrderedTabs().map((tab) => {
-    let currentUrl = tab.url;
-    try {
-      if (tab.webview && typeof tab.webview.getURL === 'function') {
-        currentUrl = tab.webview.getURL() || currentUrl;
-      }
-    } catch (error) {
-      currentUrl = tab.url;
-    }
+    // tab.url is kept up-to-date via wcv-navigated IPC events
+    const currentUrl = tab.url || '';
     return {
       id: tab.id,
       url: currentUrl,

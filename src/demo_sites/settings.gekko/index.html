@@ -243,9 +243,28 @@
               <div class="setting-label">Browsing History</div>
               <div class="setting-description">Clear your browsing history</div>
             </div>
-            <div class="setting-control">              <button id="clear-history-btn" class="setting-button danger">
+            <div class="setting-control">
+              <button id="clear-history-btn" class="setting-button danger">
                 <i class="fa-solid fa-trash-can"></i> Clear History
               </button>
+            </div>
+          </div>
+          <div class="setting-item" style="flex-direction:column;align-items:flex-start;gap:1rem;">
+            <div>
+              <div class="setting-label">Clear Browsing Data</div>
+              <div class="setting-description">Delete cookies, cache, and other site data</div>
+            </div>
+            <div class="clear-data-options">
+              <label class="setting-toggle"><input type="checkbox" id="clear-cookies" checked> Cookies &amp; site data</label>
+              <label class="setting-toggle"><input type="checkbox" id="clear-cache" checked> Cached images &amp; files</label>
+              <label class="setting-toggle"><input type="checkbox" id="clear-history-data"> Browsing history</label>
+              <label class="setting-toggle"><input type="checkbox" id="clear-storage"> Local storage &amp; IndexedDB</label>
+            </div>
+            <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+              <button id="clear-data-btn" class="setting-button danger">
+                <i class="fa-solid fa-broom"></i> Clear Data
+              </button>
+              <span id="clear-data-status" style="font-size:0.85rem;color:var(--text-secondary);"></span>
             </div>
           </div>
           <div class="setting-item">

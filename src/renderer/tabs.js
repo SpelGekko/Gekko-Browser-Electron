@@ -7,10 +7,9 @@
 
 import { tabs, setTabs, currentTabId, setCurrentTabId, splitViewState } from './core/state.js';
 import { generateTabId, isInternalUrl, getInternalFaviconUrl } from './utils.js';
-import { setupWebviewEvents, renderWebviewsForCurrentLayout } from './webview.js';
+import { renderWebviewsForCurrentLayout } from './webview.js';
 import { restoreDiscardedTab } from './memory.js';
 import { scheduleSessionSave } from './session.js';
-import { navigateTo } from './navigation.js';
 
 let draggedTabId = null;
 
@@ -48,7 +47,8 @@ export function createTab(url, options = {}) {
   const tabBar = document.getElementById('tab-bar');
   tabBar.insertBefore(tabElement, newTabButton);
 
-  const webview = setupWebviewEvents(createWebviewForTab(tabId, url), tabId);
+  // Create the WebContentsView in the main process and start loading the URL
+  window.api.wcvCreate(tabId, url);
 
   const pinnedTabs = tabs.filter(t => t.pinned === pinned);
   const nextTabOrder = pinnedTabs.length > 0 
@@ -61,7 +61,6 @@ export function createTab(url, options = {}) {
     title: 'New Tab',
     favicon: null,
     element: tabElement,
-    webview: webview,
     pinned,
     splitPane,
     createdAt: Date.now(),
@@ -127,8 +126,19 @@ export function setActiveTab(tabId) {
   }
   
   renderWebviewsForCurrentLayout();
-  // Other UI updates like address bar, nav buttons, etc.
-  
+
+  // Update address bar and nav buttons for the newly active tab
+  const newActiveTab = getTabById(tabId);
+  if (newActiveTab) {
+    import('./ui.js').then(({ updateAddressBar, updateProtocolIndicator }) => {
+      updateAddressBar(newActiveTab.url || '', tabId);
+      updateProtocolIndicator(newActiveTab.url || '');
+    }).catch(() => {});
+  }
+  import('./navigation.js').then(({ updateNavigationButtons }) => {
+    updateNavigationButtons(tabId);
+  }).catch(() => {});
+
   renderTabList();
   scheduleSessionSave();
 }
@@ -143,8 +153,8 @@ export function closeTab(tabId) {
 
   const tab = tabs[tabIndex];
   tab.element.remove();
-  if (tab.webview) tab.webview.remove();
-  
+  window.api.wcvDestroy(tabId);
+
   tabs.splice(tabIndex, 1);
 
   // Handle split view state
@@ -325,19 +335,8 @@ function handleTabContextMenu(event) {
     });
 }
 
-export function createWebviewForTab(tabId, url) {
-    const webview = document.createElement('webview');
-    webview.id = `webview-${tabId}`;
-    webview.className = 'webview hidden';
-    webview.dataset.tabId = tabId;
-    webview.setAttribute('nodeintegration', 'false');
-    webview.setAttribute('contextIsolation', 'true');
-    webview.setAttribute('webpreferences', 'contextIsolation=true');
-    webview.setAttribute('preload', window.api.getPaths().webviewPreload);
-    webview.src = url;
-    document.getElementById('browser-content').appendChild(webview);
-    return webview;
-}
+// createWebviewForTab is intentionally removed — tabs are now WebContentsView
+// instances managed by the main process, created via window.api.wcvCreate()
 
 export function updateTabTitle(tabId, title) {
     const tab = getTabById(tabId);

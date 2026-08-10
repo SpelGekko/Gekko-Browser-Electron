@@ -14,45 +14,28 @@ import { navigateTo } from './navigation.js';
 export function toggleBookmark() {
   if (!currentTabId) return;
 
-  const activeWebview = document.querySelector(`#webview-${currentTabId}`);
-  if (!activeWebview) return;
-  
   const currentTab = tabs.find(tab => tab.id === currentTabId);
-  if (!currentTab) return;
-  
-  let url = currentTab.url;
-  try {
-    if (activeWebview.getURL && typeof activeWebview.getURL === 'function') {
-      const webviewUrl = activeWebview.getURL();
-      if (webviewUrl) url = webviewUrl;
-    }
-  } catch (error) {
-    console.log('Using fallback URL from tab object due to error:', error);
-  }
-  
-  if (!url) url = activeWebview.getAttribute('src');
-  if (!url) return;
-  
+  if (!currentTab || !currentTab.url) return;
+
+  const url = currentTab.url;
+
   try {
     const isBookmarked = window.api.isBookmarked(url);
     if (isBookmarked) {
       window.api.removeBookmark(url);
     } else {
-      const title = currentTab.title || 'Untitled';
-      const favicon = currentTab.favicon || null;
-      window.api.addBookmark(url, title, favicon);
+      window.api.addBookmark(url, currentTab.title || 'Untitled', currentTab.favicon || null);
     }
-    
+
     updateBookmarkButton(url);
     loadBookmarks();
     renderBookmarksBar();
-    
-    const bookmarksWebview = Array.from(document.querySelectorAll('webview')).find(webview => 
-      webview.getURL && webview.getURL().endsWith('bookmarks.gekko/index.html')
-    );
-    if (bookmarksWebview) {
-      bookmarksWebview.reload();
-    }
+
+    tabs.forEach(tab => {
+      if (tab.url && tab.url.endsWith('bookmarks.gekko/index.html')) {
+        window.api.wcvReload(tab.id);
+      }
+    });
   } catch (error) {
     console.error('Error toggling bookmark:', error);
   }
