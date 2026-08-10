@@ -78,6 +78,18 @@ function registerOnSession(ses, CSP_HEADER) {
       if (domain === 'shared.gekko') {
         const fp = path.join(__dirname, 'demo_sites', 'shared', urlPath);
         if (fs.existsSync(fp)) { serveFile(fp, callback, CSP_HEADER); return; }
+        // Fallback: serve FontAwesome from node_modules when not in shared/
+        if (urlPath.startsWith('/fontawesome/')) {
+          const faPath = urlPath.replace('/fontawesome/', '');
+          const nodeFA = path.join(__dirname, '..', 'node_modules', '@fortawesome', 'fontawesome-free', 'css', faPath);
+          if (fs.existsSync(nodeFA)) { serveFile(nodeFA, callback, CSP_HEADER); return; }
+          const nodeFAWeb = path.join(__dirname, '..', 'node_modules', '@fortawesome', 'fontawesome-free', 'webfonts', faPath);
+          if (fs.existsSync(nodeFAWeb)) { serveFile(nodeFAWeb, callback, CSP_HEADER); return; }
+        }
+        if (urlPath.startsWith('/webfonts/')) {
+          const wf = path.join(__dirname, '..', 'node_modules', '@fortawesome', 'fontawesome-free', 'webfonts', path.basename(urlPath));
+          if (fs.existsSync(wf)) { serveFile(wf, callback, CSP_HEADER); return; }
+        }
       }
       if (domain === 'assets.gekko') {
         serveFile(path.join(__dirname, '..', 'assets', urlPath.replace(/^\/+/, '')), callback, CSP_HEADER);
@@ -107,6 +119,18 @@ function registerOnSession(ses, CSP_HEADER) {
       if (domain === 'shared.gekko') {
         const fp = path.join(__dirname, 'demo_sites', 'shared', urlPath);
         if (fs.existsSync(fp)) { serveFile(fp, callback, secureHeaders); return; }
+        // Fallback: serve FontAwesome from node_modules when not in shared/
+        if (urlPath.startsWith('/fontawesome/')) {
+          const faPath = urlPath.replace('/fontawesome/', '');
+          const nodeFA = path.join(__dirname, '..', 'node_modules', '@fortawesome', 'fontawesome-free', 'css', faPath);
+          if (fs.existsSync(nodeFA)) { serveFile(nodeFA, callback, secureHeaders); return; }
+          const nodeFAWeb = path.join(__dirname, '..', 'node_modules', '@fortawesome', 'fontawesome-free', 'webfonts', faPath);
+          if (fs.existsSync(nodeFAWeb)) { serveFile(nodeFAWeb, callback, secureHeaders); return; }
+        }
+        if (urlPath.startsWith('/webfonts/')) {
+          const wf = path.join(__dirname, '..', 'node_modules', '@fortawesome', 'fontawesome-free', 'webfonts', path.basename(urlPath));
+          if (fs.existsSync(wf)) { serveFile(wf, callback, secureHeaders); return; }
+        }
       }
       if (domain === 'assets.gekko') {
         serveFile(path.join(__dirname, '..', 'assets', urlPath.replace(/^\/+/, '')), callback, secureHeaders);

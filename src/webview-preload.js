@@ -432,20 +432,34 @@ contextBridge.exposeInMainWorld("api", {
   const origin = window.location.origin;
   if (!origin || origin === 'null') return;
 
-  // Find the primary username field paired with a password field in a form.
+  const USER_SELECTOR = [
+    'input[type="email"]',
+    'input[autocomplete="username"]',
+    'input[autocomplete="email"]',
+    'input[name="username"]',
+    'input[name="email"]',
+    'input[name="login"]',
+    'input[id*="user" i]',
+    'input[id*="email" i]',
+    'input[id*="login" i]',
+    'input[name*="user" i]',
+    'input[name*="email" i]',
+    'input[name*="login" i]',
+    'input[type="text"]',
+  ].join(', ');
+
+  const PW_SELECTOR = 'input[type="password"]:not([autocomplete="new-password"])';
+  const findUserField = (scope) => scope.querySelector(USER_SELECTOR);
+
   const findLoginPair = () => {
-    const pwFields = Array.from(document.querySelectorAll('input[type="password"]'));
-    if (!pwFields.length) return null;
-    const pw = pwFields[0];
-    const form = pw.closest('form');
-    const scope = form || document;
-    const userField = scope.querySelector(
-      'input[type="email"], input[type="text"][name*="user"], input[type="text"][name*="email"], input[type="text"][name*="login"], input[type="text"][autocomplete*="username"], input[type="text"][autocomplete*="email"]'
-    ) || scope.querySelector('input[type="text"]');
-    return userField ? { userField, pwField: pw, form } : null;
+    const pw = document.querySelector(PW_SELECTOR);
+    if (!pw) return null;
+    const scope = pw.closest('form') || document;
+    const user = findUserField(scope) || (scope !== document ? findUserField(document) : null);
+    return user ? { user, pw } : null;
   };
 
-  // Autofill once when the page is ready.
+  // ── Autofill ──────────────────────────────────────────────────────────────
   const tryAutofill = async () => {
     const pair = findLoginPair();
     if (!pair) return;
@@ -453,37 +467,94 @@ contextBridge.exposeInMainWorld("api", {
       const creds = await ipcRenderer.invoke('credentials-get-for-origin', origin);
       if (!creds || !creds.length) return;
       const best = creds.sort((a, b) => b.updatedAt - a.updatedAt)[0];
-      // Only fill if the fields are still empty (don't clobber user typing).
-      if (!pair.userField.value) pair.userField.value = best.username;
-      if (!pair.pwField.value) pair.pwField.value = best.password;
+      if (!pair.user.value) {
+        pair.user.value = best.username;
+        pair.user.dispatchEvent(new Event('input', { bubbles: true }));
+        pair.user.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      if (!pair.pw.value) {
+        pair.pw.value = best.password;
+        pair.pw.dispatchEvent(new Event('input', { bubbles: true }));
+        pair.pw.dispatchEvent(new Event('change', { bubbles: true }));
+      }
     } catch (err) {
-      console.warn('credentials autofill error:', err);
+      console.warn('Credentials autofill error:', err);
     }
   };
 
+  // ── Capture ───────────────────────────────────────────────────────────────
+  let lastSentKey = null;
+  const tryCapture = (username, password) => {
+    if (!username || !password) return;
+    const key = `${username}\0${password}`;
+    if (key === lastSentKey) return;
+    lastSentKey = key;
+    setTimeout(() => { if (lastSentKey === key) lastSentKey = null; }, 10000);
+    ipcRenderer.send('credentials-capture', { origin, username, password });
+  };
+
+  // Method 1: native form submit.
+  document.addEventListener('submit', (e) => {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    const pw = form.querySelector(PW_SELECTOR);
+    if (!pw || !pw.value) return;
+    const user = findUserField(form) || form.querySelector('input[type="text"]');
+    if (!user || !user.value) return;
+    tryCapture(user.value, pw.value);
+  }, true);
+
+  const captureFromActivePwField = (pw) => {
+    if (!pw || !pw.value) return;
+    const scope = pw.closest('form') || document;
+    const user = findUserField(scope) || (scope !== document ? findUserField(document) : null);
+    if (!user || !user.value) return;
+    tryCapture(user.value, pw.value);
+  };
+
+  // Method 2a: button/link click with a filled password present.
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('button, [type="submit"], [role="button"], a[href="#"], [onclick]');
+    if (!btn) return;
+    captureFromActivePwField(document.querySelector(PW_SELECTOR));
+  }, true);
+
+  // Method 2b: Enter key in a password field.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const active = document.activeElement;
+    if (!active || active.type !== 'password') return;
+    captureFromActivePwField(active);
+  }, true);
+
+  // Method 3: SPA navigation with a filled login form.
+  let trackedPair = null;
+  document.addEventListener('input', () => {
+    const pair = findLoginPair();
+    if (pair && pair.pw.value && pair.user.value) {
+      trackedPair = { username: pair.user.value, password: pair.pw.value };
+    }
+  }, true);
+  window.addEventListener('beforeunload', () => {
+    if (trackedPair) tryCapture(trackedPair.username, trackedPair.password);
+  });
+
+  // ── MutationObserver — re-detect when SPA injects a login form ───────────
+  let autofillDebounce = null;
+  const startObserver = () => {
+    if (!document.body) return;
+    new MutationObserver(() => {
+      clearTimeout(autofillDebounce);
+      autofillDebounce = setTimeout(tryAutofill, 400);
+    }).observe(document.body, { childList: true, subtree: true });
+  };
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', tryAutofill);
+    document.addEventListener('DOMContentLoaded', () => { tryAutofill(); startObserver(); });
   } else {
     tryAutofill();
+    startObserver();
   }
-
-  // Capture credentials on form submit.
-  document.addEventListener('submit', (event) => {
-    const form = event.target;
-    if (!form) return;
-    const pwField = form.querySelector('input[type="password"]');
-    if (!pwField || !pwField.value) return;
-    const userField = form.querySelector(
-      'input[type="email"], input[type="text"][name*="user"], input[type="text"][name*="email"], input[type="text"][name*="login"], input[type="text"][autocomplete*="username"], input[type="text"][autocomplete*="email"]'
-    ) || form.querySelector('input[type="text"]');
-    if (!userField || !userField.value) return;
-
-    ipcRenderer.send('credentials-capture', {
-      origin,
-      username: userField.value,
-      password: pwField.value,
-    });
-  }, true);
 })();
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -121,24 +121,30 @@
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-color, #e8eaed);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
   font-size: 0.875rem;
 }
 
 .pw-action-btn:hover {
-  background: var(--accent-color);
+  background: var(--accent-color, #4caf50);
+  border-color: transparent;
   color: #fff;
+}
+
+.pw-action-delete {
+  border-color: rgba(229,57,53,0.3);
 }
 
 .pw-action-delete:hover {
   background: #e53935;
+  border-color: transparent;
   color: #fff;
 }
 

@@ -555,7 +555,15 @@ ipcMain.handle('credentials-is-never-save', (event, origin) => {
 ipcMain.on('credentials-capture', (event, { origin, username, password }) => {
   if (!origin || !username || !password) return;
   if (credentialsStorage.isNeverSave(origin)) return;
-  broadcastToChrome('show-save-password-prompt', { origin, username, password });
+
+  // Check if we already have this exact credential saved — no prompt needed.
+  const existing = credentialsStorage.getCredentialsForOrigin(origin)
+    .find(c => c.username === username);
+  if (existing && existing.password === password) return;
+
+  // New credential or password changed — ask the user.
+  const isUpdate = !!existing;
+  broadcastToChrome('show-save-password-prompt', { origin, username, password, isUpdate });
 });
 
 // Google Auth popup (fallback for sites that still need a real BrowserWindow)
@@ -1025,6 +1033,16 @@ const createWindow = () => {
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     broadcastToChrome('open-new-tab', url);
     return { action: 'deny' };
+  });
+
+  // Prevent chrome DevTools from docking inside the window — always detach.
+  let devToolsDetaching = false;
+  mainWindow.webContents.on('devtools-opened', () => {
+    if (devToolsDetaching) return;
+    devToolsDetaching = true;
+    mainWindow.webContents.closeDevTools();
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
+    setTimeout(() => { devToolsDetaching = false; }, 500);
   });
 
   // On resize: reposition any visible tab views

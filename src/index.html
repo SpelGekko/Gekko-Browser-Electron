@@ -143,22 +143,8 @@
           </div>
         </div>
       </div>
-    </div>
-    
-    <!-- Bookmarks Bar -->
-    <div class="bookmarks-bar" id="bookmarks-bar">
-      <!-- Bookmarks will be inserted here dynamically -->
-    </div>
-    
-    <!-- Main Content -->
-    <div class="content-container">
-      <div class="browser-view" id="browser-content">
-        <!-- Browser content (webviews) will be inserted here dynamically -->
-      </div>
-    </div>
-    
-    <!-- Save Password Prompt -->
-    <div id="save-password-prompt" class="save-password-prompt hidden" role="alert">
+      <!-- Save Password Prompt — inside .browser-header so ResizeObserver pushes WCV down -->
+      <div id="save-password-prompt" class="save-password-prompt hidden" role="alert">
       <i class="fa-solid fa-key save-pw-icon"></i>
       <div class="save-pw-info">
         <span class="save-pw-title">Save password for <strong id="save-pw-origin"></strong>?</span>
@@ -170,6 +156,15 @@
         <button class="save-pw-btn save-pw-never" id="save-pw-never">Never</button>
       </div>
       <button class="save-pw-close" id="save-pw-close" aria-label="Dismiss"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    </div><!-- /.browser-header -->
+
+    <!-- Bookmarks Bar -->
+    <div class="bookmarks-bar" id="bookmarks-bar"></div>
+
+    <!-- Main Content -->
+    <div class="content-container">
+      <div class="browser-view" id="browser-content"></div>
     </div>
 
     <!-- Status Bar -->

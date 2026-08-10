@@ -22,7 +22,7 @@ const hidePrompt = () => {
   pendingCredential = null;
 };
 
-const showPrompt = ({ origin, username, password }) => {
+const showPrompt = ({ origin, username, password, isUpdate }) => {
   const { prompt, origin: originEl, user } = getEls();
   if (!prompt) return;
 
@@ -34,6 +34,11 @@ const showPrompt = ({ origin, username, password }) => {
     originEl.textContent = origin;
   }
   user.textContent = username;
+
+  const titleEl = prompt.querySelector('.save-pw-title');
+  if (titleEl) titleEl.innerHTML = isUpdate
+    ? `Update saved password for <strong>${originEl.textContent}</strong>?`
+    : `Save password for <strong>${originEl.textContent}</strong>?`;
 
   prompt.classList.remove('hidden');
 

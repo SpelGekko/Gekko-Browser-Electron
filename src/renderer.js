@@ -25,6 +25,8 @@ function initChromeHeightObserver() {
   const bookmarks = document.getElementById('bookmarks-bar');
   if (!header) return;
 
+  const prompt = document.getElementById('save-password-prompt');
+
   const report = () => {
     const h1 = header.getBoundingClientRect().height;
     const h2 = bookmarks ? bookmarks.getBoundingClientRect().height : 0;
@@ -38,6 +40,7 @@ function initChromeHeightObserver() {
   const ro = new ResizeObserver(report);
   ro.observe(header);
   if (bookmarks) ro.observe(bookmarks);
+  if (prompt) ro.observe(prompt);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
